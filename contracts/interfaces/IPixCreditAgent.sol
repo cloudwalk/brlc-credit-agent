@@ -1,0 +1,181 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.0;
+
+/**
+ * @title IPixCreditAgentTypes interface
+ * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @dev Defines the types used in the PIX credit agent contract.
+ */
+interface IPixCreditAgentTypes {
+    /**
+     * @dev The status of a PIX credit.
+     *
+     * The possible values:
+     *
+     * - Nonexistent - The credit does not exist. The default value.
+     * - Initiated --- The credit is initiated by a manager, waiting for the related PIX cash-out operation request.
+     * - Pending ----- The credit is pending due to the related PIX operation request, waiting for further actions.
+     * - Confirmed --- The credit is confirmed as the related PIX operation was confirmed.
+     * - Reversed ---- The credit is reversed as the related PIX operation was reversed.
+     *
+     * The possible status transitions are:
+     *
+     * - Nonexistent => Initiated (by a manager)
+     * - Initiated => Pending (due to requesting the related PIX cash-out operation)
+     * - Pending => Confirmed (due to confirming the related PIX cash-out operation)
+     * - Pending => Reversed (due to reversing the related PIX cash-out operation)
+     * - Reversed => Initiated (by a manager)
+     *
+     * Matching the state of the related loan on the lending market depending on the status:
+     *
+     * - Nonexistent: The loan does not exist.
+     * - Initiated: The loan does not exist.
+     * - Pending: The loan is taken but can be revoked.
+     * - Confirmed: The loan is taken and cannot be revoked.
+     * - Reversed: The loan is revoked.
+     */
+    enum PixCreditStatus {
+        Nonexistent, // 0
+        Initiated,   // 1
+        Pending,     // 2
+        Confirmed,   // 3
+        Reversed     // 4
+    }
+
+    /// @dev The PIX credit structure.
+    struct PixCredit {
+        // Slot 1
+        address borrower;         // The address of the borrower.
+        uint32 programId;         // The unique identifier of a lending program for the credit.
+        uint32 durationInPeriods; // The duration of the credit in periods. The period length is defined outside.
+        PixCreditStatus status;   // The status of the credit, see {PixCreditStatus}.
+        // Slot 2
+        uint64 loanAmount;        // The amount of the related loan.
+        uint64 loanAddon;         // The addon amount (extra charges or fees) of the related loan.
+        // Slot 3
+        uint256 loanId;            // The unique ID of the related loan on the lending market or zero if not taken.
+    }
+
+    /// @dev This agent contract state structure.
+    struct AgentState {
+        // Slot 1
+        uint64 initiatedCreditCounter; // The counter of initiated credits.
+        uint64 pendingCreditCounter;   // The counter of pending credits.
+        uint64 processedCreditCounter; // The counter of processed credits: confirmed or reversed ones.
+        bool configured;               // True if the agent is properly configured.
+        // uint56 reserved             // Reserved for future use.
+    }
+}
+
+/**
+ * @title PixCreditAgent main interface
+ * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @dev The main part of the contract interface for PIX credit operations.
+ */
+interface IPixCreditAgentMain is IPixCreditAgentTypes {
+    // ------------------ Events ---------------------------------- //
+
+    /// @dev Emitted when the status of a PIX credit is changed.
+    event PixCreditStatusChanged(
+        bytes32 indexed pixTxId,   // The unique identifier of the related PIX cash-out operation.
+        address indexed borrower,  // The address of the borrower.
+        PixCreditStatus newStatus, // The current status of the credit.
+        PixCreditStatus oldStatus, // The previous status of the credit.
+        uint256 loanId,            // The unique ID of the related loan on the lending market or zero if not taken.
+        uint256 programId,         // The unique identifier of the lending program for the credit.
+        uint256 durationInPeriods, // The duration of the credit in periods.
+        uint256 loanAmount,        // The amount of the related loan.
+        uint256 loanAddon          // The addon amount of the related loan.
+    );
+
+    // ------------------ Functions ------------------------------- //
+
+    /**
+     * @dev Initiates a PIX credit.
+     *
+     * This function is expected to be called by a limited number of accounts.
+     *
+     * @param pixTxId The unique identifier of the related PIX cash-out operation.
+     * @param borrower The address of the borrower.
+     * @param programId The unique identifier of the lending program for the credit.
+     * @param durationInPeriods The duration of the credit in periods. The period length is defined outside.
+     * @param loanAmount The amount of the related loan.
+     * @param loanAddon The addon amount (extra charges or fees) of the related loan.
+     */
+    function initiatePixCredit(
+        bytes32 pixTxId, // Tools: this comment prevents Prettier from collapsing parameters into a single line.
+        address borrower,
+        uint256 programId,
+        uint256 durationInPeriods,
+        uint256 loanAmount,
+        uint256 loanAddon
+    ) external;
+
+    /**
+     * @dev Revokes a PIX credit.
+     *
+     * This function is expected to be called by a limited number of accounts.
+     *
+     * @param pixTxId The unique identifier of the related PIX cash-out operation.
+     */
+    function revokePixCredit(bytes32 pixTxId) external;
+
+    /**
+     * @dev Returns a PIX credit structure by its unique identifier.
+     * @param pixTxId The unique identifier of the related PIX cash-out operation.
+     * @return The PIX credit structure.
+     */
+    function getPixCredit(bytes32 pixTxId) external view returns (PixCredit memory);
+
+    /**
+     * @dev Returns the state of this agent contract.
+     */
+    function agentState() external view returns (AgentState memory);
+}
+
+/**
+ * @title PixCreditAgent configuration interface
+ * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @dev The configuration part of the contract interface for PIX credit operations.
+ */
+interface IPixCreditAgentConfiguration is IPixCreditAgentTypes {
+    // ------------------ Events ---------------------------------- //
+
+    /// @dev Emitted when the configured PIX cashier contract address is changed.
+    event PixCashierChanged(address newPixCashier, address oldPixCashier);
+
+    /// @dev Emitted when the configured lending market contract address is changed.
+    event LendingMarketChanged(address newLendingMarket, address oldLendingMarket);
+
+    // ------------------ Functions ------------------------------- //
+
+    /**
+     * @dev Sets the address of the PIX cashier contract in this contract configuration.
+     * @param newPixCashier The address of the new PIX cashier contract to set.
+     */
+    function setPixCashier(address newPixCashier) external;
+
+    /**
+     * @dev Sets the address of the lending market contract in this contract configuration.
+     * @param newLendingMarket The address of the new lending market contract to set.
+     */
+    function setLendingMarket(address newLendingMarket) external;
+
+    /**
+     * @dev Returns the address of the currently configured PIX cashier contract.
+     */
+    function pixCashier() external view returns (address);
+
+    /**
+     * @dev Returns the address of the currently configured lending market contract.
+     */
+    function lendingMarket() external view returns (address);
+}
+
+/**
+ * @title PixCreditAgent full interface
+ * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @dev The full interface of the contract for PIX credit operations.
+ */
+interface IPixCreditAgent is IPixCreditAgentMain, IPixCreditAgentConfiguration {}
