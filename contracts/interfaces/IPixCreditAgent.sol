@@ -50,9 +50,13 @@ interface IPixCreditAgentTypes {
         uint32 programId;         // The unique identifier of a lending program for the credit.
         uint32 durationInPeriods; // The duration of the credit in periods. The period length is defined outside.
         PixCreditStatus status;   // The status of the credit, see {PixCreditStatus}.
+        // uint24 __reserved;     // Reserved for future use until the end of the storage slot.
+
         // Slot 2
         uint64 loanAmount;        // The amount of the related loan.
         uint64 loanAddon;         // The addon amount (extra charges or fees) of the related loan.
+        // uint128 __reserved;    // Reserved for future use until the end of the storage slot.
+
         // Slot 3
         uint256 loanId;            // The unique ID of the related loan on the lending market or zero if not taken.
     }
@@ -64,7 +68,7 @@ interface IPixCreditAgentTypes {
         uint64 pendingCreditCounter;   // The counter of pending credits.
         uint64 processedCreditCounter; // The counter of processed credits: confirmed or reversed ones.
         bool configured;               // True if the agent is properly configured.
-        // uint56 reserved             // Reserved for future use.
+        // uint56 __reserved;          // Reserved for future use until the end of the storage slot.
     }
 }
 

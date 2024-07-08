@@ -66,6 +66,7 @@ interface IPixHookableTypes {
     struct HookConfig {
         address callableContract; // The address of the contract that implements the hook function.
         uint32 hookFlags;         // The bit flags that define when the hook function should be called
+        // uint64 __reserved;     // Reserved for future use until the end of the storage slot.
     }
 }
 
