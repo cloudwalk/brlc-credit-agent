@@ -58,41 +58,41 @@ contract PixCreditAgent is
 
     // ------------------ Errors ---------------------------------- //
     /// @dev The zero PIX off-chain transaction identifier has been passed as a function argument.
-    error PixTxIdZero();
+    error PixCreditAgent_PixTxIdZero();
 
     /// @dev The zero borrower address has been passed as a function argument.
-    error BorrowerAddressZero();
+    error PixCreditAgent_BorrowerAddressZero();
 
     /// @dev The zero program ID has been passed as a function argument.
-    error ProgramIdZero();
+    error PixCreditAgent_ProgramIdZero();
 
     /// @dev The zero loan amount has been passed as a function argument.
-    error LoanAmountZero();
+    error PixCreditAgent_LoanAmountZero();
 
     /// @dev The zero loan duration has been passed as a function argument.
-    error LoanDurationZero();
+    error PixCreditAgent_LoanDurationZero();
 
     /**
      * @dev The related PIX credit has inappropriate status to execute the requested operation.
      * @param pixTxId The PIX off-chain transaction identifiers of the operation.
      * @param status The current status of the credit.
      */
-    error PixCreditStatusInappropriate(bytes32 pixTxId, PixCreditStatus status);
+    error PixCreditAgent_PixCreditStatusInappropriate(bytes32 pixTxId, PixCreditStatus status);
 
     /// @dev The related PIX cash-out operation has inappropriate parameters (e.g. account, amount values).
-    error PixCashOutInappropriate(bytes32 pixTxId);
+    error PixCreditAgent_PixCashOutInappropriate(bytes32 pixTxId);
 
     /// @dev Configuring is prohibited due to at least one unprocessed PIX credit exists or other conditions.
-    error ConfiguringProhibited();
+    error PixCreditAgent_ConfiguringProhibited();
 
     /// @dev The value of a configuration parameter is the same as previously set one.
-    error ConfigurationUnchanged();
+    error PixCreditAgent_AlreadyConfigured();
 
     /// @dev The caller is not allowed to execute the hook function.
-    error PixHookCallerUnauthorized(address caller);
+    error PixCreditAgent_PixHookCallerUnauthorized(address caller);
 
     /// @dev This agent contract is not configured yet.
-    error ContractNotConfigured();
+    error PixCreditAgent_ContractNotConfigured();
 
     // ------------------ Initializers ---------------------------- //
 
@@ -150,7 +150,7 @@ contract PixCreditAgent is
         _checkConfiguringPermission();
         address oldPixCashier = _pixCashier;
         if (oldPixCashier == newPixCashier) {
-            revert ConfigurationUnchanged();
+            revert PixCreditAgent_AlreadyConfigured();
         }
 
         _pixCashier = newPixCashier;
@@ -172,7 +172,7 @@ contract PixCreditAgent is
         _checkConfiguringPermission();
         address oldLendingMarket = _lendingMarket;
         if (oldLendingMarket == newLendingMarket) {
-            revert ConfigurationUnchanged();
+            revert PixCreditAgent_AlreadyConfigured();
         }
 
         _lendingMarket = newLendingMarket;
@@ -201,27 +201,27 @@ contract PixCreditAgent is
         uint256 loanAddon
     ) external whenNotPaused onlyRole(MANAGER_ROLE) {
         if (!_agentState.configured) {
-            revert ContractNotConfigured();
+            revert PixCreditAgent_ContractNotConfigured();
         }
         if (pixTxId == bytes32(0)) {
-            revert PixTxIdZero();
+            revert PixCreditAgent_PixTxIdZero();
         }
         if (borrower == address(0)) {
-            revert BorrowerAddressZero();
+            revert PixCreditAgent_BorrowerAddressZero();
         }
         if (programId == 0) {
-            revert ProgramIdZero();
+            revert PixCreditAgent_ProgramIdZero();
         }
         if (durationInPeriods == 0) {
-            revert LoanDurationZero();
+            revert PixCreditAgent_LoanDurationZero();
         }
         if (loanAmount == 0) {
-            revert LoanAmountZero();
+            revert PixCreditAgent_LoanAmountZero();
         }
 
         PixCredit storage pixCredit = _pixCredits[pixTxId];
         if (pixCredit.status != PixCreditStatus.Nonexistent && pixCredit.status != PixCreditStatus.Reversed) {
-            revert PixCreditStatusInappropriate(pixTxId, pixCredit.status);
+            revert PixCreditAgent_PixCreditStatusInappropriate(pixTxId, pixCredit.status);
         }
 
         IPixHookable(_pixCashier).configureCashOutHooks(pixTxId, address(this), NEEDED_PIX_CASH_OUT_HOOK_FLAGS);
@@ -256,11 +256,11 @@ contract PixCreditAgent is
      */
     function revokePixCredit(bytes32 pixTxId) external whenNotPaused onlyRole(MANAGER_ROLE) {
         if (pixTxId == bytes32(0)) {
-            revert PixTxIdZero();
+            revert PixCreditAgent_PixTxIdZero();
         }
         PixCredit storage pixCredit = _pixCredits[pixTxId];
         if (pixCredit.status != PixCreditStatus.Initiated) {
-            revert PixCreditStatusInappropriate(pixTxId, pixCredit.status);
+            revert PixCreditAgent_PixCreditStatusInappropriate(pixTxId, pixCredit.status);
         }
 
         IPixHookable(_pixCashier).configureCashOutHooks(pixTxId, address(0), 0);
@@ -331,7 +331,7 @@ contract PixCreditAgent is
      */
     function _checkConfiguringPermission() internal view {
         if (_agentState.initiatedCreditCounter > 0 || _agentState.pendingCreditCounter > 0) {
-            revert ConfiguringProhibited();
+            revert PixCreditAgent_ConfiguringProhibited();
         }
     }
 
@@ -405,7 +405,7 @@ contract PixCreditAgent is
     function _processPixHookCashOutRequestBefore(bytes32 pixTxId) internal {
         PixCredit storage pixCredit = _pixCredits[pixTxId];
         if (pixCredit.status != PixCreditStatus.Initiated) {
-            revert PixCreditStatusInappropriate(pixTxId, pixCredit.status);
+            revert PixCreditAgent_PixCreditStatusInappropriate(pixTxId, pixCredit.status);
         }
 
         address borrower = pixCredit.borrower;
@@ -437,7 +437,7 @@ contract PixCreditAgent is
     function _processPixHookCashOutConfirmationAfter(bytes32 pixTxId) internal {
         PixCredit storage pixCredit = _pixCredits[pixTxId];
         if (pixCredit.status != PixCreditStatus.Pending) {
-            revert PixCreditStatusInappropriate(pixTxId, pixCredit.status);
+            revert PixCreditAgent_PixCreditStatusInappropriate(pixTxId, pixCredit.status);
         }
 
         _changePixCreditStatus(
@@ -456,7 +456,7 @@ contract PixCreditAgent is
     function _processPixHookCashOutReversalAfter(bytes32 pixTxId) internal {
         PixCredit storage pixCredit = _pixCredits[pixTxId];
         if (pixCredit.status != PixCreditStatus.Pending) {
-            revert PixCreditStatusInappropriate(pixTxId, pixCredit.status);
+            revert PixCreditAgent_PixCreditStatusInappropriate(pixTxId, pixCredit.status);
         }
 
         ILendingMarket(_lendingMarket).revokeLoan(pixCredit.loanId);
@@ -475,7 +475,7 @@ contract PixCreditAgent is
     function _checkPixHookCaller() internal view {
         address sender = _msgSender();
         if (sender != _pixCashier) {
-            revert PixHookCallerUnauthorized(sender);
+            revert PixCreditAgent_PixHookCallerUnauthorized(sender);
         }
     }
 
@@ -493,7 +493,7 @@ contract PixCreditAgent is
     ) internal view {
         (address actualAccount, uint256 actualAmount) = IPixCashier(_pixCashier).getCashOutAccountAndAmount(pixTxId);
         if (actualAccount != expectedAccount || actualAmount != expectedAmount) {
-            revert PixCashOutInappropriate(pixTxId);
+            revert PixCreditAgent_PixCashOutInappropriate(pixTxId);
         }
     }
 

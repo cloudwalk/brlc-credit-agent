@@ -116,22 +116,24 @@ describe("Contract 'PixCreditAgent'", async () => {
     (1 << HookIndex.CashOutConfirmationAfter) +
     (1 << HookIndex.CashOutReversalAfter);
 
+  // Errors of the lib contracts
   const REVERT_ERROR_IF_CONTRACT_INITIALIZATION_IS_INVALID = "InvalidInitialization";
   const REVERT_ERROR_IF_CONTRACT_IS_PAUSED = "EnforcedPause";
   const REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
 
-  const REVERT_ERROR_IF_BORROWER_ADDRESS_ZERO = "BorrowerAddressZero";
-  const REVERT_ERROR_IF_CONFIGURATION_UNCHANGED = "ConfigurationUnchanged";
-  const REVERT_ERROR_IF_CONFIGURING_PROHIBITED = "ConfiguringProhibited";
-  const REVERT_ERROR_IF_CONTRACT_NOT_CONFIGURED = "ContractNotConfigured";
-  const REVERT_ERROR_IF_LOAN_AMOUNT_ZERO = "LoanAmountZero";
-  const REVERT_ERROR_IF_LOAN_DURATION_ZERO = "LoanDurationZero";
-  const REVERT_ERROR_IF_PIX_CASH_OUT_INAPPROPRIATE = "PixCashOutInappropriate"; // with parameters
-  const REVERT_ERROR_IF_PIX_CREDIT_STATUS_INAPPROPRIATE = "PixCreditStatusInappropriate"; // with parameters
-  const REVERT_ERROR_IF_PIX_HOOK_CALLER_UNAUTHORIZED = "PixHookCallerUnauthorized";
-  const REVERT_ERROR_IF_PIX_TX_ID_ZERO = "PixTxIdZero";
-  const REVERT_ERROR_IF_PROGRAM_ID_ZERO = "ProgramIdZero";
-  const REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
+  // Errors of the contracts under test
+  const REVERT_ERROR_IF_BORROWER_ADDRESS_ZERO = "PixCreditAgent_BorrowerAddressZero";
+  const REVERT_ERROR_IF_ALREADY_CONFIGURED = "PixCreditAgent_AlreadyConfigured";
+  const REVERT_ERROR_IF_CONFIGURING_PROHIBITED = "PixCreditAgent_ConfiguringProhibited";
+  const REVERT_ERROR_IF_CONTRACT_NOT_CONFIGURED = "PixCreditAgent_ContractNotConfigured";
+  const REVERT_ERROR_IF_LOAN_AMOUNT_ZERO = "PixCreditAgent_LoanAmountZero";
+  const REVERT_ERROR_IF_LOAN_DURATION_ZERO = "PixCreditAgent_LoanDurationZero";
+  const REVERT_ERROR_IF_PIX_CASH_OUT_INAPPROPRIATE = "PixCreditAgent_PixCashOutInappropriate";
+  const REVERT_ERROR_IF_PIX_CREDIT_STATUS_INAPPROPRIATE = "PixCreditAgent_PixCreditStatusInappropriate";
+  const REVERT_ERROR_IF_PIX_HOOK_CALLER_UNAUTHORIZED = "PixCreditAgent_PixHookCallerUnauthorized";
+  const REVERT_ERROR_IF_PIX_TX_ID_ZERO = "PixCreditAgent_PixTxIdZero";
+  const REVERT_ERROR_IF_PROGRAM_ID_ZERO = "PixCreditAgent_ProgramIdZero";
+  const REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCast_OverflowedUintDowncast";
 
   const EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED = "MockConfigureCashOutHooksCalled";
   const EVENT_NAME_MOCK_REVOKE_LOAN_CALLED = "MockRevokeLoanCalled";
@@ -463,13 +465,13 @@ describe("Contract 'PixCreditAgent'", async () => {
       // Try to set the default value
       await expect(
         connect(pixCreditAgent, admin).setPixCashier(ADDRESS_ZERO)
-      ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_CONFIGURATION_UNCHANGED);
+      ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_ALREADY_CONFIGURED);
 
       // Try to set the same value twice
       await proveTx(connect(pixCreditAgent, admin).setPixCashier(pixCashierMockAddress));
       await expect(
         connect(pixCreditAgent, admin).setPixCashier(pixCashierMockAddress)
-      ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_CONFIGURATION_UNCHANGED);
+      ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_ALREADY_CONFIGURED);
     });
 
     // Additional more complex checks are in the other sections
@@ -570,13 +572,13 @@ describe("Contract 'PixCreditAgent'", async () => {
       // Try to set the default value
       await expect(
         connect(pixCreditAgent, admin).setLendingMarket(ADDRESS_ZERO)
-      ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_CONFIGURATION_UNCHANGED);
+      ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_ALREADY_CONFIGURED);
 
       // Try to set the same value twice
       await proveTx(connect(pixCreditAgent, admin).setLendingMarket(lendingMarketMockAddress));
       await expect(
         connect(pixCreditAgent, admin).setLendingMarket(lendingMarketMockAddress)
-      ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_CONFIGURATION_UNCHANGED);
+      ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_ALREADY_CONFIGURED);
     });
 
     // Additional more complex checks are in the other sections
