@@ -57,20 +57,26 @@ contract PixCreditAgent is
         (1 << uint256(IPixHookableTypes.HookIndex.CashOutReversalAfter));
 
     // ------------------ Errors ---------------------------------- //
-    /// @dev The zero PIX off-chain transaction identifier has been passed as a function argument.
-    error PixCreditAgent_PixTxIdZero();
+    /// @dev The value of a configuration parameter is the same as previously set one.
+    error PixCreditAgent_AlreadyConfigured();
 
     /// @dev The zero borrower address has been passed as a function argument.
     error PixCreditAgent_BorrowerAddressZero();
 
-    /// @dev The zero program ID has been passed as a function argument.
-    error PixCreditAgent_ProgramIdZero();
+    /// @dev Configuring is prohibited due to at least one unprocessed PIX credit exists or other conditions.
+    error PixCreditAgent_ConfiguringProhibited();
+
+    /// @dev This agent contract is not configured yet.
+    error PixCreditAgent_ContractNotConfigured();
 
     /// @dev The zero loan amount has been passed as a function argument.
     error PixCreditAgent_LoanAmountZero();
 
     /// @dev The zero loan duration has been passed as a function argument.
     error PixCreditAgent_LoanDurationZero();
+
+    /// @dev The related PIX cash-out operation has inappropriate parameters (e.g. account, amount values).
+    error PixCreditAgent_PixCashOutInappropriate(bytes32 pixTxId);
 
     /**
      * @dev The related PIX credit has inappropriate status to execute the requested operation.
@@ -79,20 +85,14 @@ contract PixCreditAgent is
      */
     error PixCreditAgent_PixCreditStatusInappropriate(bytes32 pixTxId, PixCreditStatus status);
 
-    /// @dev The related PIX cash-out operation has inappropriate parameters (e.g. account, amount values).
-    error PixCreditAgent_PixCashOutInappropriate(bytes32 pixTxId);
-
-    /// @dev Configuring is prohibited due to at least one unprocessed PIX credit exists or other conditions.
-    error PixCreditAgent_ConfiguringProhibited();
-
-    /// @dev The value of a configuration parameter is the same as previously set one.
-    error PixCreditAgent_AlreadyConfigured();
-
     /// @dev The caller is not allowed to execute the hook function.
     error PixCreditAgent_PixHookCallerUnauthorized(address caller);
 
-    /// @dev This agent contract is not configured yet.
-    error PixCreditAgent_ContractNotConfigured();
+    /// @dev The zero PIX off-chain transaction identifier has been passed as a function argument.
+    error PixCreditAgent_PixTxIdZero();
+
+    /// @dev The zero program ID has been passed as a function argument.
+    error PixCreditAgent_ProgramIdZero();
 
     // ------------------ Initializers ---------------------------- //
 
