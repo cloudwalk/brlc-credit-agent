@@ -104,7 +104,7 @@ interface IPixCreditAgentMain is IPixCreditAgentTypes {
      * @param loanAddon The addon amount (extra charges or fees) of the related loan.
      */
     function initiatePixCredit(
-        bytes32 pixTxId, // Tools: this comment prevents Prettier from collapsing parameters into a single line.
+        bytes32 pixTxId, // Tools: This comment prevents Prettier from formatting into a single line.
         address borrower,
         uint256 programId,
         uint256 durationInPeriods,
