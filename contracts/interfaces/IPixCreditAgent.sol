@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 /**
  * @title IPixCreditAgentTypes interface
@@ -70,6 +70,50 @@ interface IPixCreditAgentTypes {
         bool configured;               // True if the agent is properly configured.
         // uint56 __reserved;          // Reserved for future use until the end of the storage slot.
     }
+}
+
+/**
+ * @title IPixCreditAgentTypes interface
+ * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @dev Defines the custom errors used in the PIX credit agent contract.
+ */
+interface IPixCreditAgentErrors is IPixCreditAgentTypes {
+    /// @dev The value of a configuration parameter is the same as previously set one.
+    error PixCreditAgent_AlreadyConfigured();
+
+    /// @dev The zero borrower address has been passed as a function argument.
+    error PixCreditAgent_BorrowerAddressZero();
+
+    /// @dev Configuring is prohibited due to at least one unprocessed PIX credit exists or other conditions.
+    error PixCreditAgent_ConfiguringProhibited();
+
+    /// @dev This agent contract is not configured yet.
+    error PixCreditAgent_ContractNotConfigured();
+
+    /// @dev The zero loan amount has been passed as a function argument.
+    error PixCreditAgent_LoanAmountZero();
+
+    /// @dev The zero loan duration has been passed as a function argument.
+    error PixCreditAgent_LoanDurationZero();
+
+    /// @dev The related PIX cash-out operation has inappropriate parameters (e.g. account, amount values).
+    error PixCreditAgent_PixCashOutInappropriate(bytes32 pixTxId);
+
+    /**
+     * @dev The related PIX credit has inappropriate status to execute the requested operation.
+     * @param pixTxId The PIX off-chain transaction identifiers of the operation.
+     * @param status The current status of the credit.
+     */
+    error PixCreditAgent_PixCreditStatusInappropriate(bytes32 pixTxId, PixCreditStatus status);
+
+    /// @dev The caller is not allowed to execute the hook function.
+    error PixCreditAgent_PixHookCallerUnauthorized(address caller);
+
+    /// @dev The zero PIX off-chain transaction identifier has been passed as a function argument.
+    error PixCreditAgent_PixTxIdZero();
+
+    /// @dev The zero program ID has been passed as a function argument.
+    error PixCreditAgent_ProgramIdZero();
 }
 
 /**
@@ -182,4 +226,4 @@ interface IPixCreditAgentConfiguration is IPixCreditAgentTypes {
  * @author CloudWalk Inc. (See https://cloudwalk.io)
  * @dev The full interface of the contract for PIX credit operations.
  */
-interface IPixCreditAgent is IPixCreditAgentMain, IPixCreditAgentConfiguration {}
+interface IPixCreditAgent is IPixCreditAgentErrors, IPixCreditAgentMain, IPixCreditAgentConfiguration {}
