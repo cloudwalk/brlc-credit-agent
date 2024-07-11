@@ -36,9 +36,9 @@ contract PixCashierMock is IPixHookableTypes {
         );
     }
 
-    /// @dev Calls the `IPixHook.pixHook()` function for a provided contract with provided parameters.
+    /// @dev Calls the `IPixHook.onPixHook()` function for a provided contract with provided parameters.
     function callPixHook(address callableContract, uint256 hookIndex, bytes32 txId) external {
-        IPixHook(callableContract).pixHook(hookIndex, txId);
+        IPixHook(callableContract).onPixHook(hookIndex, txId);
     }
 
     /// @dev Sets the account and amount fields of a single cash-out operation for a provided PIX transaction ID.

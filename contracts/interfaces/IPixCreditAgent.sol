@@ -64,11 +64,10 @@ interface IPixCreditAgentTypes {
     /// @dev This agent contract state structure.
     struct AgentState {
         // Slot 1
+        bool configured;               // True if the agent is properly configured.
         uint64 initiatedCreditCounter; // The counter of initiated credits.
         uint64 pendingCreditCounter;   // The counter of pending credits.
-        uint64 processedCreditCounter; // The counter of processed credits: confirmed or reversed ones.
-        bool configured;               // True if the agent is properly configured.
-        // uint56 __reserved;          // Reserved for future use until the end of the storage slot.
+        // uint120 __reserved;         // Reserved for future use until the end of the storage slot.
     }
 }
 
@@ -108,6 +107,9 @@ interface IPixCreditAgentErrors is IPixCreditAgentTypes {
 
     /// @dev The caller is not allowed to execute the hook function.
     error PixCreditAgent_PixHookCallerUnauthorized(address caller);
+
+    /// @dev The the hook function is called with unexpected hook index.
+    error PixCreditAgent_PixHookIndexUnexpected(uint256 hookIndex, bytes32 pixTxId, address caller);
 
     /// @dev The zero PIX off-chain transaction identifier has been passed as a function argument.
     error PixCreditAgent_PixTxIdZero();

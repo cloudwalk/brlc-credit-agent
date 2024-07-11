@@ -51,10 +51,23 @@ contract PixCreditAgent is
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     /// @dev The bit flags that represent the required hooks for PIX cash-out operations.
-    uint256 private constant NEEDED_PIX_CASH_OUT_HOOK_FLAGS =
+    uint256 private constant REQUIRED_PIX_CASH_OUT_HOOK_FLAGS =
         (1 << uint256(IPixHookableTypes.HookIndex.CashOutRequestBefore)) +
         (1 << uint256(IPixHookableTypes.HookIndex.CashOutConfirmationAfter)) +
         (1 << uint256(IPixHookableTypes.HookIndex.CashOutReversalAfter));
+
+    // ------------------ Modifiers ------------------------------- //
+
+    /**
+     * @dev Modifier that checks that an account has a specific role. Reverts
+     * with an {AccessControlUnauthorizedAccount} error including the required role.
+     */
+    modifier onlyPixCashier() {
+        if (_msgSender() != _pixCashier) {
+            revert PixCreditAgent_PixHookCallerUnauthorized(_msgSender());
+        }
+        _;
+    }
 
     // ------------------ Initializers ---------------------------- //
 
@@ -110,13 +123,14 @@ contract PixCreditAgent is
      */
     function setPixCashier(address newPixCashier) external whenNotPaused onlyRole(ADMIN_ROLE) {
         _checkConfiguringPermission();
+
         address oldPixCashier = _pixCashier;
         if (oldPixCashier == newPixCashier) {
             revert PixCreditAgent_AlreadyConfigured();
         }
 
         _pixCashier = newPixCashier;
-        _changeConfiguredState();
+        _updateConfiguredState();
 
         emit PixCashierChanged(newPixCashier, oldPixCashier);
     }
@@ -132,13 +146,14 @@ contract PixCreditAgent is
      */
     function setLendingMarket(address newLendingMarket) external whenNotPaused onlyRole(ADMIN_ROLE) {
         _checkConfiguringPermission();
+
         address oldLendingMarket = _lendingMarket;
         if (oldLendingMarket == newLendingMarket) {
             revert PixCreditAgent_AlreadyConfigured();
         }
 
         _lendingMarket = newLendingMarket;
-        _changeConfiguredState();
+        _updateConfiguredState();
 
         emit LendingMarketChanged(newLendingMarket, oldLendingMarket);
     }
@@ -182,11 +197,10 @@ contract PixCreditAgent is
         }
 
         PixCredit storage pixCredit = _pixCredits[pixTxId];
-        if (pixCredit.status != PixCreditStatus.Nonexistent && pixCredit.status != PixCreditStatus.Reversed) {
-            revert PixCreditAgent_PixCreditStatusInappropriate(pixTxId, pixCredit.status);
+        PixCreditStatus oldStatus = pixCredit.status;
+        if (oldStatus != PixCreditStatus.Nonexistent && oldStatus != PixCreditStatus.Reversed) {
+            revert PixCreditAgent_PixCreditStatusInappropriate(pixTxId, oldStatus);
         }
-
-        IPixHookable(_pixCashier).configureCashOutHooks(pixTxId, address(this), NEEDED_PIX_CASH_OUT_HOOK_FLAGS);
 
         pixCredit.borrower = borrower;
         pixCredit.programId = programId.toUint32();
@@ -194,7 +208,7 @@ contract PixCreditAgent is
         pixCredit.loanAddon = loanAddon.toUint64();
         pixCredit.durationInPeriods = durationInPeriods.toUint32();
 
-        if (pixCredit.loanId != 0) {
+        if (oldStatus != PixCreditStatus.Nonexistent) {
             pixCredit.loanId = 0;
         }
 
@@ -204,6 +218,8 @@ contract PixCreditAgent is
             PixCreditStatus.Initiated, // newStatus
             PixCreditStatus.Nonexistent // oldStatus
         );
+
+        IPixHookable(_pixCashier).configureCashOutHooks(pixTxId, address(this), REQUIRED_PIX_CASH_OUT_HOOK_FLAGS);
     }
 
     /**
@@ -220,12 +236,11 @@ contract PixCreditAgent is
         if (pixTxId == bytes32(0)) {
             revert PixCreditAgent_PixTxIdZero();
         }
+
         PixCredit storage pixCredit = _pixCredits[pixTxId];
         if (pixCredit.status != PixCreditStatus.Initiated) {
             revert PixCreditAgent_PixCreditStatusInappropriate(pixTxId, pixCredit.status);
         }
-
-        IPixHookable(_pixCashier).configureCashOutHooks(pixTxId, address(0), 0);
 
         _changePixCreditStatus(
             pixTxId,
@@ -235,6 +250,8 @@ contract PixCreditAgent is
         );
 
         delete _pixCredits[pixTxId];
+
+        IPixHookable(_pixCashier).configureCashOutHooks(pixTxId, address(0), 0);
     }
 
     /**
@@ -245,14 +262,15 @@ contract PixCreditAgent is
      * - The contract must not be paused.
      * - The caller must be the configured PIX cashier contract.
      */
-    function pixHook(uint256 hookIndex, bytes32 txId) external whenNotPaused {
-        _checkPixHookCaller();
+    function onPixHook(uint256 hookIndex, bytes32 txId) external whenNotPaused onlyPixCashier {
         if (hookIndex == uint256(IPixHookableTypes.HookIndex.CashOutRequestBefore)) {
             _processPixHookCashOutRequestBefore(txId);
         } else if (hookIndex == uint256(IPixHookableTypes.HookIndex.CashOutConfirmationAfter)) {
             _processPixHookCashOutConfirmationAfter(txId);
         } else if (hookIndex == uint256(IPixHookableTypes.HookIndex.CashOutReversalAfter)) {
             _processPixHookCashOutReversalAfter(txId);
+        } else {
+            revert PixCreditAgent_PixHookIndexUnexpected(hookIndex, txId, _msgSender());
         }
     }
 
@@ -300,7 +318,7 @@ contract PixCreditAgent is
     /**
      * @dev Changes the configured state of this agent contract if necessary.
      */
-    function _changeConfiguredState() internal {
+    function _updateConfiguredState() internal {
         if (_lendingMarket != address(0) && _pixCashier != address(0)) {
             if (!_agentState.configured) {
                 _agentState.configured = true;
@@ -350,9 +368,8 @@ contract PixCreditAgent is
             _agentState.initiatedCreditCounter += uint64(1);
         } else if (newStatus == PixCreditStatus.Pending) {
             _agentState.pendingCreditCounter += uint64(1);
-        } else if (newStatus == PixCreditStatus.Confirmed || newStatus == PixCreditStatus.Reversed) {
-            _agentState.processedCreditCounter += uint64(1);
-        } else {
+        } else if (newStatus == PixCreditStatus.Nonexistent){
+            // Skip the other actions because the PixCredit structure will be deleted
             return;
         }
 
@@ -432,16 +449,6 @@ contract PixCreditAgent is
     }
 
     /**
-     * @dev Checks the caller of the hook function.
-     */
-    function _checkPixHookCaller() internal view {
-        address sender = _msgSender();
-        if (sender != _pixCashier) {
-            revert PixCreditAgent_PixHookCallerUnauthorized(sender);
-        }
-    }
-
-    /**
      * @dev Checks the state of a related PIX cash-out operation to be matched with the expected values.
      *
      * @param pixTxId The unique identifier of the related PIX cash-out operation.
@@ -462,9 +469,8 @@ contract PixCreditAgent is
     /**
      * @dev The upgrade authorization function for UUPSProxy.
      */
-    function _authorizeUpgrade(address newImplementation) internal view override {
+    function _authorizeUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
         newImplementation; // Suppresses a compiler warning about the unused variable
-        _checkRole(OWNER_ROLE);
     }
 
     // ------------------ Service functions ----------------------- //

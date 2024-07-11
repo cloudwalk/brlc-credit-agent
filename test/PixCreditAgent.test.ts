@@ -43,10 +43,9 @@ interface Fixture {
 }
 
 interface AgentState {
+  configured: boolean;
   initiatedCreditCounter: bigint;
   pendingCreditCounter: bigint;
-  processedCreditCounter: bigint;
-  configured: boolean;
 
   // Indexing signature to ensure that fields are iterated over in a key-value style
   [key: string]: bigint | boolean;
@@ -60,10 +59,9 @@ interface CashOut {
 }
 
 const initialAgentState: AgentState = {
+  configured: false,
   initiatedCreditCounter: 0n,
-  pendingCreditCounter: 0n,
-  processedCreditCounter: 0n,
-  configured: false
+  pendingCreditCounter: 0n
 };
 
 const initialPixCredit: PixCredit = {
@@ -131,6 +129,7 @@ describe("Contract 'PixCreditAgent'", async () => {
   const REVERT_ERROR_IF_PIX_CASH_OUT_INAPPROPRIATE = "PixCreditAgent_PixCashOutInappropriate";
   const REVERT_ERROR_IF_PIX_CREDIT_STATUS_INAPPROPRIATE = "PixCreditAgent_PixCreditStatusInappropriate";
   const REVERT_ERROR_IF_PIX_HOOK_CALLER_UNAUTHORIZED = "PixCreditAgent_PixHookCallerUnauthorized";
+  const REVERT_ERROR_IF_PIX_HOOK_INDEX_UNEXPECTED = "PixCreditAgent_PixHookIndexUnexpected";
   const REVERT_ERROR_IF_PIX_TX_ID_ZERO = "PixCreditAgent_PixTxIdZero";
   const REVERT_ERROR_IF_PROGRAM_ID_ZERO = "PixCreditAgent_ProgramIdZero";
   const REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCast_OverflowedUintDowncast";
@@ -824,7 +823,7 @@ describe("Contract 'PixCreditAgent'", async () => {
     // Additional more complex checks are in the other sections
   });
 
-  describe("Function 'pixHook()", async () => {
+  describe("Function 'onPixHook()", async () => {
     async function checkPixHookCalling(fixture: Fixture, props: {
       pixTxId: string;
       pixCredit: PixCredit;
@@ -876,7 +875,7 @@ describe("Contract 'PixCreditAgent'", async () => {
     }
 
     describe("Executes as expected if", async () => {
-      it("The a PIX cash-out requested and then confirmed with other proper conditions", async () => {
+      it("A PIX cash-out requested and then confirmed with other proper conditions", async () => {
         const { fixture, pixTxId, initPixCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
         const expectedAgentState: AgentState = {
           ...initialAgentState,
@@ -901,19 +900,6 @@ describe("Contract 'PixCreditAgent'", async () => {
         expectedAgentState.pendingCreditCounter = 1n;
         checkEquality(await fixture.pixCreditAgent.agentState() as AgentState, expectedAgentState);
 
-        // Emulate an unexpected hook call
-        await checkPixHookCalling(
-          fixture,
-          {
-            pixTxId,
-            pixCredit,
-            hookIndex: HookIndex.Unused,
-            newPixCreditStatus: PixCreditStatus.Pending,
-            oldPixCreditStatus: PixCreditStatus.Pending
-          }
-        );
-        checkEquality(await fixture.pixCreditAgent.agentState() as AgentState, expectedAgentState);
-
         // Emulate PIX cash-out confirmation
         await checkPixHookCalling(
           fixture,
@@ -926,24 +912,10 @@ describe("Contract 'PixCreditAgent'", async () => {
           }
         );
         expectedAgentState.pendingCreditCounter = 0n;
-        expectedAgentState.processedCreditCounter = 1n;
-        checkEquality(await fixture.pixCreditAgent.agentState() as AgentState, expectedAgentState);
-
-        // Emulate an unexpected hook call
-        await checkPixHookCalling(
-          fixture,
-          {
-            pixTxId,
-            pixCredit,
-            hookIndex: HookIndex.Unused,
-            newPixCreditStatus: PixCreditStatus.Confirmed,
-            oldPixCreditStatus: PixCreditStatus.Confirmed
-          }
-        );
         checkEquality(await fixture.pixCreditAgent.agentState() as AgentState, expectedAgentState);
       });
 
-      it("The a PIX cash-out requested and then reversed with other proper conditions", async () => {
+      it("A PIX cash-out requested and then reversed with other proper conditions", async () => {
         const { fixture, pixTxId, initPixCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
         const pixCredit: PixCredit = { ...initPixCredit, loanId: fixture.loanIdStub };
 
@@ -977,20 +949,6 @@ describe("Contract 'PixCreditAgent'", async () => {
           }
         );
         expectedAgentState.pendingCreditCounter = 0n;
-        expectedAgentState.processedCreditCounter = 1n;
-        checkEquality(await fixture.pixCreditAgent.agentState() as AgentState, expectedAgentState);
-
-        // Emulate an unexpected hook call
-        await checkPixHookCalling(
-          fixture,
-          {
-            pixTxId,
-            pixCredit,
-            hookIndex: HookIndex.Unused,
-            newPixCreditStatus: PixCreditStatus.Reversed,
-            oldPixCreditStatus: PixCreditStatus.Reversed
-          }
-        );
         checkEquality(await fixture.pixCreditAgent.agentState() as AgentState, expectedAgentState);
       });
     });
@@ -1031,7 +989,7 @@ describe("Contract 'PixCreditAgent'", async () => {
         const hookIndex = HookIndex.CashOutRequestBefore;
 
         await expect(
-          connect(pixCreditAgent, deployer).pixHook(hookIndex, PIX_TX_ID_STUB)
+          connect(pixCreditAgent, deployer).onPixHook(hookIndex, PIX_TX_ID_STUB)
         ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_PIX_HOOK_CALLER_UNAUTHORIZED);
       });
 
@@ -1137,6 +1095,23 @@ describe("Contract 'PixCreditAgent'", async () => {
           REVERT_ERROR_IF_PIX_CASH_OUT_INAPPROPRIATE
         ).withArgs(pixTxId);
       });
+
+      it("The provided hook index is unexpected", async () => {
+        const { fixture } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
+        const { pixCreditAgent, pixCashierMock } = fixture;
+        const hookIndex = HookIndex.Unused;
+
+        await expect(
+          pixCashierMock.callPixHook(getAddress(pixCreditAgent), hookIndex, PIX_TX_ID_STUB)
+        ).to.be.revertedWithCustomError(
+          pixCreditAgent,
+          REVERT_ERROR_IF_PIX_HOOK_INDEX_UNEXPECTED
+        ).withArgs(
+          hookIndex,
+          PIX_TX_ID_STUB,
+          getAddress(pixCashierMock)
+        );
+      });
     });
   });
 
@@ -1175,7 +1150,6 @@ describe("Contract 'PixCreditAgent'", async () => {
       const expectedAgentState: AgentState = {
         initiatedCreditCounter: 1n,
         pendingCreditCounter: 0n,
-        processedCreditCounter: 1n,
         configured: true
       };
       checkEquality(await fixture.pixCreditAgent.agentState() as AgentState, expectedAgentState);
