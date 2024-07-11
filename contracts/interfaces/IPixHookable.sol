@@ -80,7 +80,7 @@ interface IPixHookable is IPixHookableTypes {
 
     /// @dev Emitted when the hook configuration is changed for a PIX cash-out operation.
     event CashOutHookConfigChanged(
-        bytes32 indexed txId, // Tools: This comment prevents Prettier from formatting into a single line.
+        bytes32 indexed txId, // Tools: this comment prevents Prettier from formatting into a single line.
         address newCallableContract,
         address oldCallableContract,
         uint256 newHookFlags,
@@ -89,7 +89,7 @@ interface IPixHookable is IPixHookableTypes {
 
     /// @dev Emitted when a hook function is called.
     event HookInvoked(
-        bytes32 indexed txId, // Tools: This comment prevents Prettier from formatting into a single line.
+        bytes32 indexed txId, // Tools: this comment prevents Prettier from formatting into a single line.
         uint256 indexed hookIndex,
         address callableContract
     );

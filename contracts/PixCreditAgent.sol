@@ -170,7 +170,7 @@ contract PixCreditAgent is
      * - The PIX credit with the provided `pixTxId` must have the `Nonexistent` or `Reversed` status.
      */
     function initiatePixCredit(
-        bytes32 pixTxId, // Tools: This comment prevents Prettier from formatting into a single line.
+        bytes32 pixTxId, // Tools: this comment prevents Prettier from formatting into a single line.
         address borrower,
         uint256 programId,
         uint256 durationInPeriods,
@@ -339,7 +339,7 @@ contract PixCreditAgent is
      * @param oldStatus The previous status of the credit.
      */
     function _changePixCreditStatus(
-        bytes32 pixTxId, // Tools: This comment prevents Prettier from formatting into a single line.
+        bytes32 pixTxId, // Tools: this comment prevents Prettier from formatting into a single line.
         PixCredit storage pixCredit,
         PixCreditStatus newStatus,
         PixCreditStatus oldStatus
@@ -456,7 +456,7 @@ contract PixCreditAgent is
      * @param expectedAmount The expected amount of the PIX operation.
      */
     function _checkPixCashOutState(
-        bytes32 pixTxId, // Tools: This comment prevents Prettier from formatting into a single line.
+        bytes32 pixTxId, // Tools: this comment prevents Prettier from formatting into a single line.
         address expectedAccount,
         uint256 expectedAmount
     ) internal view {

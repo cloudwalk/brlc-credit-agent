@@ -17,7 +17,7 @@ contract PixCashierMock is IPixHookableTypes, IPixCashier {
 
     /// @dev Emitted when the `configureCashOutHooks()` function is called with the parameters of the function.
     event MockConfigureCashOutHooksCalled(
-        bytes32 txId, // Tools: This comment prevents Prettier from formatting into a single line.
+        bytes32 txId, // Tools: this comment prevents Prettier from formatting into a single line.
         address newCallableContract,
         uint256 newHookFlags
     );
@@ -25,7 +25,7 @@ contract PixCashierMock is IPixHookableTypes, IPixCashier {
     /// @dev Imitates the same-name function of the {IPixHookable} interface. Just emits an event about the call.
     function configureCashOutHooks(bytes32 txId, address newCallableContract, uint256 newHookFlags) external {
         emit MockConfigureCashOutHooksCalled(
-            txId, // Tools: This comment prevents Prettier from formatting into a single line.
+            txId, // Tools: this comment prevents Prettier from formatting into a single line.
             newCallableContract,
             newHookFlags
         );
