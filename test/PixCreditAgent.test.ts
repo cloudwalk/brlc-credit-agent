@@ -222,7 +222,7 @@ describe("Contract 'PixCreditAgent'", async () => {
     };
 
     await proveTx(initiatePixCredit(pixCreditAgent, { pixTxId }));
-    await proveTx(pixCashierMock.setCashOutAccountAndAmount(pixTxId, initCashOut.account, initCashOut.amount));
+    await proveTx(pixCashierMock.setCashOut(pixTxId, initCashOut));
 
     return { fixture, pixTxId, initPixCredit, initCashOut };
   }
@@ -1069,7 +1069,7 @@ describe("Contract 'PixCreditAgent'", async () => {
           ...initCashOut,
           account: deployer.address
         };
-        await proveTx(pixCashierMock.setCashOutAccountAndAmount(pixTxId, cashOut.account, cashOut.amount));
+        await proveTx(pixCashierMock.setCashOut(pixTxId, cashOut));
 
         await expect(
           pixCashierMock.callPixHook(getAddress(pixCreditAgent), HookIndex.CashOutRequestBefore, pixTxId)
@@ -1086,7 +1086,7 @@ describe("Contract 'PixCreditAgent'", async () => {
           ...initCashOut,
           amount: initCashOut.amount + 1n
         };
-        await proveTx(pixCashierMock.setCashOutAccountAndAmount(pixTxId, cashOut.account, cashOut.amount));
+        await proveTx(pixCashierMock.setCashOut(pixTxId, cashOut));
 
         await expect(
           pixCashierMock.callPixHook(getAddress(pixCreditAgent), HookIndex.CashOutRequestBefore, pixTxId)

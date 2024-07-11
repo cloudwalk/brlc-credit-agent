@@ -368,7 +368,7 @@ contract PixCreditAgent is
             _agentState.initiatedCreditCounter += uint64(1);
         } else if (newStatus == PixCreditStatus.Pending) {
             _agentState.pendingCreditCounter += uint64(1);
-        } else if (newStatus == PixCreditStatus.Nonexistent){
+        } else if (newStatus == PixCreditStatus.Nonexistent) {
             // Skip the other actions because the PixCredit structure will be deleted
             return;
         }
@@ -460,8 +460,8 @@ contract PixCreditAgent is
         address expectedAccount,
         uint256 expectedAmount
     ) internal view {
-        (address actualAccount, uint256 actualAmount) = IPixCashier(_pixCashier).getCashOutAccountAndAmount(pixTxId);
-        if (actualAccount != expectedAccount || actualAmount != expectedAmount) {
+        IPixCashier.CashOutOperation memory operation = IPixCashier(_pixCashier).getCashOut(pixTxId);
+        if (operation.account != expectedAccount || operation.amount != expectedAmount) {
             revert PixCreditAgent_PixCashOutInappropriate(pixTxId);
         }
     }
