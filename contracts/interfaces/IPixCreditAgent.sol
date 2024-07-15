@@ -22,12 +22,13 @@ interface IPixCreditAgentTypes {
      * The possible status transitions are:
      *
      * - Nonexistent => Initiated (by a manager)
+     * - Initiated => Nonexistent (by a manager)
      * - Initiated => Pending (due to requesting the related PIX cash-out operation)
      * - Pending => Confirmed (due to confirming the related PIX cash-out operation)
      * - Pending => Reversed (due to reversing the related PIX cash-out operation)
      * - Reversed => Initiated (by a manager)
      *
-     * Matching the state of the related loan on the lending market depending on the status:
+     * Matching the statuses with the states of the related loan on the lending market:
      *
      * - Nonexistent: The loan does not exist.
      * - Initiated: The loan does not exist.
