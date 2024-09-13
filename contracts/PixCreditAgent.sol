@@ -12,13 +12,13 @@ import { PixCreditAgentStorage } from "./PixCreditAgentStorage.sol";
 import { SafeCast } from "./libraries/SafeCast.sol";
 
 import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
-import { IPixCashier } from "./interfaces/IPixCashier.sol";
+import { IPixCashier } from "./interfaces/ICashier.sol";
 import { IPixCreditAgent } from "./interfaces/IPixCreditAgent.sol";
 import { IPixCreditAgentConfiguration } from "./interfaces/IPixCreditAgent.sol";
 import { IPixCreditAgentMain } from "./interfaces/IPixCreditAgent.sol";
-import { IPixHook } from "./interfaces/IPixHook.sol";
-import { IPixHookable } from "./interfaces/IPixHookable.sol";
-import { IPixHookableTypes } from "./interfaces/IPixHookable.sol";
+import { IPixHook } from "./interfaces/ICashierHook.sol";
+import { IPixHookable } from "./interfaces/ICashierHookable.sol";
+import { IPixHookableTypes } from "./interfaces/ICashierHookable.sol";
 
 /**
  * @title PixCashier contract

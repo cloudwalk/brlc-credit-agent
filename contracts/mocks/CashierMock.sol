@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-import { IPixHook } from "../interfaces/IPixHook.sol";
-import { IPixHookableTypes } from "../interfaces/IPixHookable.sol";
-import { IPixCashier } from "../interfaces/IPixCashier.sol";
+import { IPixHook } from "../interfaces/ICashierHook.sol";
+import { IPixHookableTypes } from "../interfaces/ICashierHookable.sol";
+import { IPixCashier } from "../interfaces/ICashier.sol";
 
 /**
  * @title PixCashierMock contract
