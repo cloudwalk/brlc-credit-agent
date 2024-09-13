@@ -14,18 +14,18 @@ interface IPixCreditAgentTypes {
      * The possible values:
      *
      * - Nonexistent - The credit does not exist. The default value.
-     * - Initiated --- The credit is initiated by a manager, waiting for the related PIX cash-out operation request.
-     * - Pending ----- The credit is pending due to the related PIX operation request, waiting for further actions.
-     * - Confirmed --- The credit is confirmed as the related PIX operation was confirmed.
-     * - Reversed ---- The credit is reversed as the related PIX operation was reversed.
+     * - Initiated --- The credit is initiated by a manager, waiting for the related cash-out operation request.
+     * - Pending ----- The credit is pending due to the related operation request, waiting for further actions.
+     * - Confirmed --- The credit is confirmed as the related operation was confirmed.
+     * - Reversed ---- The credit is reversed as the related operation was reversed.
      *
      * The possible status transitions are:
      *
      * - Nonexistent => Initiated (by a manager)
      * - Initiated => Nonexistent (by a manager)
-     * - Initiated => Pending (due to requesting the related PIX cash-out operation)
-     * - Pending => Confirmed (due to confirming the related PIX cash-out operation)
-     * - Pending => Reversed (due to reversing the related PIX cash-out operation)
+     * - Initiated => Pending (due to requesting the related cash-out operation)
+     * - Pending => Confirmed (due to confirming the related cash-out operation)
+     * - Pending => Reversed (due to reversing the related cash-out operation)
      * - Reversed => Initiated (by a manager)
      *
      * Matching the statuses with the states of the related loan on the lending market:
@@ -96,23 +96,23 @@ interface IPixCreditAgentErrors is IPixCreditAgentTypes {
     /// @dev The zero loan duration has been passed as a function argument.
     error PixCreditAgent_LoanDurationZero();
 
-    /// @dev The related PIX cash-out operation has inappropriate parameters (e.g. account, amount values).
-    error PixCreditAgent_PixCashOutInappropriate(bytes32 pixTxId);
+    /// @dev The related cash-out operation has inappropriate parameters (e.g. account, amount values).
+    error PixCreditAgent_CashierCashOutInappropriate(bytes32 txId);
 
     /**
      * @dev The related PIX credit has inappropriate status to execute the requested operation.
-     * @param pixTxId The PIX off-chain transaction identifiers of the operation.
+     * @param txId The off-chain transaction identifiers of the operation.
      * @param status The current status of the credit.
      */
-    error PixCreditAgent_PixCreditStatusInappropriate(bytes32 pixTxId, PixCreditStatus status);
+    error PixCreditAgent_PixCreditStatusInappropriate(bytes32 txId, PixCreditStatus status);
 
     /// @dev The caller is not allowed to execute the hook function.
-    error PixCreditAgent_PixHookCallerUnauthorized(address caller);
+    error PixCreditAgent_CashierHookCallerUnauthorized(address caller);
 
     /// @dev The the hook function is called with unexpected hook index.
-    error PixCreditAgent_PixHookIndexUnexpected(uint256 hookIndex, bytes32 pixTxId, address caller);
+    error PixCreditAgent_CashierHookIndexUnexpected(uint256 hookIndex, bytes32 txId, address caller);
 
-    /// @dev The zero PIX off-chain transaction identifier has been passed as a function argument.
+    /// @dev The zero off-chain transaction identifier has been passed as a function argument.
     error PixCreditAgent_PixTxIdZero();
 
     /// @dev The zero program ID has been passed as a function argument.
@@ -129,7 +129,7 @@ interface IPixCreditAgentMain is IPixCreditAgentTypes {
 
     /// @dev Emitted when the status of a PIX credit is changed.
     event PixCreditStatusChanged(
-        bytes32 indexed pixTxId,   // The unique identifier of the related PIX cash-out operation.
+        bytes32 indexed txId,      // The unique identifier of the related cash-out operation.
         address indexed borrower,  // The address of the borrower.
         PixCreditStatus newStatus, // The current status of the credit.
         PixCreditStatus oldStatus, // The previous status of the credit.
@@ -147,7 +147,7 @@ interface IPixCreditAgentMain is IPixCreditAgentTypes {
      *
      * This function is expected to be called by a limited number of accounts.
      *
-     * @param pixTxId The unique identifier of the related PIX cash-out operation.
+     * @param txId The unique identifier of the related cash-out operation.
      * @param borrower The address of the borrower.
      * @param programId The unique identifier of the lending program for the credit.
      * @param durationInPeriods The duration of the credit in periods. The period length is defined outside.
@@ -155,7 +155,7 @@ interface IPixCreditAgentMain is IPixCreditAgentTypes {
      * @param loanAddon The addon amount (extra charges or fees) of the related loan.
      */
     function initiatePixCredit(
-        bytes32 pixTxId, // Tools: this comment prevents Prettier from formatting into a single line.
+        bytes32 txId, // Tools: this comment prevents Prettier from formatting into a single line.
         address borrower,
         uint256 programId,
         uint256 durationInPeriods,
@@ -168,16 +168,16 @@ interface IPixCreditAgentMain is IPixCreditAgentTypes {
      *
      * This function is expected to be called by a limited number of accounts.
      *
-     * @param pixTxId The unique identifier of the related PIX cash-out operation.
+     * @param txId The unique identifier of the related cash-out operation.
      */
-    function revokePixCredit(bytes32 pixTxId) external;
+    function revokePixCredit(bytes32 txId) external;
 
     /**
      * @dev Returns a PIX credit structure by its unique identifier.
-     * @param pixTxId The unique identifier of the related PIX cash-out operation.
+     * @param txId The unique identifier of the related cash-out operation.
      * @return The PIX credit structure.
      */
-    function getPixCredit(bytes32 pixTxId) external view returns (PixCredit memory);
+    function getPixCredit(bytes32 txId) external view returns (PixCredit memory);
 
     /**
      * @dev Returns the state of this agent contract.
@@ -193,8 +193,8 @@ interface IPixCreditAgentMain is IPixCreditAgentTypes {
 interface IPixCreditAgentConfiguration is IPixCreditAgentTypes {
     // ------------------ Events ---------------------------------- //
 
-    /// @dev Emitted when the configured PIX cashier contract address is changed.
-    event PixCashierChanged(address newPixCashier, address oldPixCashier);
+    /// @dev Emitted when the configure cashier contract address is changed.
+    event CashierChanged(address newCashier, address oldCashier);
 
     /// @dev Emitted when the configured lending market contract address is changed.
     event LendingMarketChanged(address newLendingMarket, address oldLendingMarket);
@@ -202,10 +202,10 @@ interface IPixCreditAgentConfiguration is IPixCreditAgentTypes {
     // ------------------ Functions ------------------------------- //
 
     /**
-     * @dev Sets the address of the PIX cashier contract in this contract configuration.
-     * @param newPixCashier The address of the new PIX cashier contract to set.
+     * @dev Sets the address of the cashier contract in this contract configuration.
+     * @param newCashier The address of the new cashier contract to set.
      */
-    function setPixCashier(address newPixCashier) external;
+    function setCashier(address newCashier) external;
 
     /**
      * @dev Sets the address of the lending market contract in this contract configuration.
@@ -214,9 +214,9 @@ interface IPixCreditAgentConfiguration is IPixCreditAgentTypes {
     function setLendingMarket(address newLendingMarket) external;
 
     /**
-     * @dev Returns the address of the currently configured PIX cashier contract.
+     * @dev Returns the address of the currently configured cashier contract.
      */
-    function pixCashier() external view returns (address);
+    function cashier() external view returns (address);
 
     /**
      * @dev Returns the address of the currently configured lending market contract.

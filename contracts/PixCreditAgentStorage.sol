@@ -9,13 +9,13 @@ import { IPixCreditAgentTypes } from "./interfaces/IPixCreditAgent.sol";
  * @author CloudWalk Inc. (See https://cloudwalk.io)
  */
 abstract contract PixCreditAgentStorageV1 is IPixCreditAgentTypes {
-    /// @dev The address of the related PixCashier contract.
-    address internal _pixCashier;
+    /// @dev The address of the related Cashier contract.
+    address internal _cashier;
 
     /// @dev The address of the related lending market contract.
     address internal _lendingMarket;
 
-    /// @dev The mapping of the credit structure for a related PIX operation identifier.
+    /// @dev The mapping of the credit structure for a related operation identifier.
     mapping(bytes32 => PixCredit) internal _pixCredits;
 
     /// @dev The state of this agent contract.

@@ -12,18 +12,18 @@ import { PixCreditAgentStorage } from "./PixCreditAgentStorage.sol";
 import { SafeCast } from "./libraries/SafeCast.sol";
 
 import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
-import { IPixCashier } from "./interfaces/ICashier.sol";
+import { ICashier } from "./interfaces/ICashier.sol";
 import { IPixCreditAgent } from "./interfaces/IPixCreditAgent.sol";
 import { IPixCreditAgentConfiguration } from "./interfaces/IPixCreditAgent.sol";
 import { IPixCreditAgentMain } from "./interfaces/IPixCreditAgent.sol";
-import { IPixHook } from "./interfaces/ICashierHook.sol";
-import { IPixHookable } from "./interfaces/ICashierHookable.sol";
-import { IPixHookableTypes } from "./interfaces/ICashierHookable.sol";
+import { ICashierHook } from "./interfaces/ICashierHook.sol";
+import { ICashierHookable } from "./interfaces/ICashierHookable.sol";
+import { ICashierHookableTypes } from "./interfaces/ICashierHookable.sol";
 
 /**
- * @title PixCashier contract
+ * @title PixCreditAgent contract
  * @author CloudWalk Inc. (See https://cloudwalk.io)
- * @dev Wrapper contract for PIX cash-in and cash-out operations.
+ * @dev Wrapper contract for PIX credit operations.
  *
  * Only accounts that have {CASHIER_ROLE} role can execute the cash-in operations and process the cash-out operations.
  * About roles see https://docs.openzeppelin.com/contracts/4.x/api/access#AccessControl.
@@ -35,7 +35,7 @@ contract PixCreditAgent is
     RescuableUpgradeable,
     UUPSUpgradeable,
     IPixCreditAgent,
-    IPixHook
+    ICashierHook
 {
     using SafeCast for uint256;
 
@@ -50,11 +50,11 @@ contract PixCreditAgent is
     /// @dev The role of manager that is allowed to initialize and cancel PIX credit operations.
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
-    /// @dev The bit flags that represent the required hooks for PIX cash-out operations.
-    uint256 private constant REQUIRED_PIX_CASH_OUT_HOOK_FLAGS =
-        (1 << uint256(IPixHookableTypes.HookIndex.CashOutRequestBefore)) +
-        (1 << uint256(IPixHookableTypes.HookIndex.CashOutConfirmationAfter)) +
-        (1 << uint256(IPixHookableTypes.HookIndex.CashOutReversalAfter));
+    /// @dev The bit flags that represent the required hooks for cash-out operations.
+    uint256 private constant REQUIRED_CASHIER_CASH_OUT_HOOK_FLAGS =
+        (1 << uint256(ICashierHookableTypes.HookIndex.CashOutRequestBefore)) +
+        (1 << uint256(ICashierHookableTypes.HookIndex.CashOutConfirmationAfter)) +
+        (1 << uint256(ICashierHookableTypes.HookIndex.CashOutReversalAfter));
 
     // ------------------ Modifiers ------------------------------- //
 
@@ -62,9 +62,9 @@ contract PixCreditAgent is
      * @dev Modifier that checks that an account has a specific role. Reverts
      * with an {AccessControlUnauthorizedAccount} error including the required role.
      */
-    modifier onlyPixCashier() {
-        if (_msgSender() != _pixCashier) {
-            revert PixCreditAgent_PixHookCallerUnauthorized(_msgSender());
+    modifier onlyCashier() {
+        if (_msgSender() != _cashier) {
+            revert PixCreditAgent_CashierHookCallerUnauthorized(_msgSender());
         }
         _;
     }
@@ -119,20 +119,20 @@ contract PixCreditAgent is
      *
      * - The contract must not be paused.
      * - The caller must have the {ADMIN_ROLE} role.
-     * - The new PIX cashier contract address must differ from the previously set one.
+     * - The new cashier contract address must differ from the previously set one.
      */
-    function setPixCashier(address newPixCashier) external whenNotPaused onlyRole(ADMIN_ROLE) {
+    function setCashier(address newCashier) external whenNotPaused onlyRole(ADMIN_ROLE) {
         _checkConfiguringPermission();
 
-        address oldPixCashier = _pixCashier;
-        if (oldPixCashier == newPixCashier) {
+        address oldCashier = _cashier;
+        if (oldCashier == newCashier) {
             revert PixCreditAgent_AlreadyConfigured();
         }
 
-        _pixCashier = newPixCashier;
+        _cashier = newCashier;
         _updateConfiguredState();
 
-        emit PixCashierChanged(newPixCashier, oldPixCashier);
+        emit CashierChanged(newCashier, oldCashier);
     }
 
     /**
@@ -166,11 +166,11 @@ contract PixCreditAgent is
      * - The contract must not be paused.
      * - The caller must have the {MANAGER_ROLE} role.
      * - The contract must be configured.
-     * - The provided `pixTxId`, `borrower`, `programId`, `durationInPeriods`, `loanAmount` must not be zeros.
-     * - The PIX credit with the provided `pixTxId` must have the `Nonexistent` or `Reversed` status.
+     * - The provided `txId`, `borrower`, `programId`, `durationInPeriods`, `loanAmount` must not be zeros.
+     * - The PIX credit with the provided `txId` must have the `Nonexistent` or `Reversed` status.
      */
     function initiatePixCredit(
-        bytes32 pixTxId, // Tools: this comment prevents Prettier from formatting into a single line.
+        bytes32 txId, // Tools: this comment prevents Prettier from formatting into a single line.
         address borrower,
         uint256 programId,
         uint256 durationInPeriods,
@@ -180,7 +180,7 @@ contract PixCreditAgent is
         if (!_agentState.configured) {
             revert PixCreditAgent_ContractNotConfigured();
         }
-        if (pixTxId == bytes32(0)) {
+        if (txId == bytes32(0)) {
             revert PixCreditAgent_PixTxIdZero();
         }
         if (borrower == address(0)) {
@@ -196,10 +196,10 @@ contract PixCreditAgent is
             revert PixCreditAgent_LoanAmountZero();
         }
 
-        PixCredit storage pixCredit = _pixCredits[pixTxId];
+        PixCredit storage pixCredit = _pixCredits[txId];
         PixCreditStatus oldStatus = pixCredit.status;
         if (oldStatus != PixCreditStatus.Nonexistent && oldStatus != PixCreditStatus.Reversed) {
-            revert PixCreditAgent_PixCreditStatusInappropriate(pixTxId, oldStatus);
+            revert PixCreditAgent_PixCreditStatusInappropriate(txId, oldStatus);
         }
 
         pixCredit.borrower = borrower;
@@ -213,13 +213,13 @@ contract PixCreditAgent is
         }
 
         _changePixCreditStatus(
-            pixTxId,
+            txId,
             pixCredit,
             PixCreditStatus.Initiated, // newStatus
             PixCreditStatus.Nonexistent // oldStatus
         );
 
-        IPixHookable(_pixCashier).configureCashOutHooks(pixTxId, address(this), REQUIRED_PIX_CASH_OUT_HOOK_FLAGS);
+        ICashierHookable(_cashier).configureCashOutHooks(txId, address(this), REQUIRED_CASHIER_CASH_OUT_HOOK_FLAGS);
     }
 
     /**
@@ -229,48 +229,48 @@ contract PixCreditAgent is
      *
      * - The contract must not be paused.
      * - The caller must have the {MANAGER_ROLE} role.
-     * - The provided `pixTxId` must not be zero.
-     * - The PIX credit with the provided `pixTxId` must have the `Initiated` status.
+     * - The provided `txId` must not be zero.
+     * - The PIX credit with the provided `txId` must have the `Initiated` status.
      */
-    function revokePixCredit(bytes32 pixTxId) external whenNotPaused onlyRole(MANAGER_ROLE) {
-        if (pixTxId == bytes32(0)) {
+    function revokePixCredit(bytes32 txId) external whenNotPaused onlyRole(MANAGER_ROLE) {
+        if (txId == bytes32(0)) {
             revert PixCreditAgent_PixTxIdZero();
         }
 
-        PixCredit storage pixCredit = _pixCredits[pixTxId];
+        PixCredit storage pixCredit = _pixCredits[txId];
         if (pixCredit.status != PixCreditStatus.Initiated) {
-            revert PixCreditAgent_PixCreditStatusInappropriate(pixTxId, pixCredit.status);
+            revert PixCreditAgent_PixCreditStatusInappropriate(txId, pixCredit.status);
         }
 
         _changePixCreditStatus(
-            pixTxId,
+            txId,
             pixCredit,
             PixCreditStatus.Nonexistent, // newStatus
             PixCreditStatus.Initiated // oldStatus
         );
 
-        delete _pixCredits[pixTxId];
+        delete _pixCredits[txId];
 
-        IPixHookable(_pixCashier).configureCashOutHooks(pixTxId, address(0), 0);
+        ICashierHookable(_cashier).configureCashOutHooks(txId, address(0), 0);
     }
 
     /**
-     * @inheritdoc IPixHook
+     * @inheritdoc ICashierHook
      *
      * @dev Requirements:
      *
      * - The contract must not be paused.
-     * - The caller must be the configured PIX cashier contract.
+     * - The caller must be the configured cashier contract.
      */
-    function onPixHook(uint256 hookIndex, bytes32 txId) external whenNotPaused onlyPixCashier {
-        if (hookIndex == uint256(IPixHookableTypes.HookIndex.CashOutRequestBefore)) {
-            _processPixHookCashOutRequestBefore(txId);
-        } else if (hookIndex == uint256(IPixHookableTypes.HookIndex.CashOutConfirmationAfter)) {
-            _processPixHookCashOutConfirmationAfter(txId);
-        } else if (hookIndex == uint256(IPixHookableTypes.HookIndex.CashOutReversalAfter)) {
-            _processPixHookCashOutReversalAfter(txId);
+    function onCashierHook(uint256 hookIndex, bytes32 txId) external whenNotPaused onlyCashier {
+        if (hookIndex == uint256(ICashierHookableTypes.HookIndex.CashOutRequestBefore)) {
+            _processCashierHookCashOutRequestBefore(txId);
+        } else if (hookIndex == uint256(ICashierHookableTypes.HookIndex.CashOutConfirmationAfter)) {
+            _processCashierHookCashOutConfirmationAfter(txId);
+        } else if (hookIndex == uint256(ICashierHookableTypes.HookIndex.CashOutReversalAfter)) {
+            _processCashierHookCashOutReversalAfter(txId);
         } else {
-            revert PixCreditAgent_PixHookIndexUnexpected(hookIndex, txId, _msgSender());
+            revert PixCreditAgent_CashierHookIndexUnexpected(hookIndex, txId, _msgSender());
         }
     }
 
@@ -279,8 +279,8 @@ contract PixCreditAgent is
     /**
      * @inheritdoc IPixCreditAgentConfiguration
      */
-    function pixCashier() external view returns (address) {
-        return _pixCashier;
+    function cashier() external view returns (address) {
+        return _cashier;
     }
 
     /**
@@ -293,8 +293,8 @@ contract PixCreditAgent is
     /**
      * @inheritdoc IPixCreditAgentMain
      */
-    function getPixCredit(bytes32 pixTxId) external view returns (PixCredit memory) {
-        return _pixCredits[pixTxId];
+    function getPixCredit(bytes32 txId) external view returns (PixCredit memory) {
+        return _pixCredits[txId];
     }
 
     /**
@@ -319,7 +319,7 @@ contract PixCreditAgent is
      * @dev Changes the configured state of this agent contract if necessary.
      */
     function _updateConfiguredState() internal {
-        if (_lendingMarket != address(0) && _pixCashier != address(0)) {
+        if (_lendingMarket != address(0) && _cashier != address(0)) {
             if (!_agentState.configured) {
                 _agentState.configured = true;
             }
@@ -333,19 +333,19 @@ contract PixCreditAgent is
     /**
      * @dev Changes the status of a PIX credit with event emitting and counters updating.
      *
-     * @param pixTxId The unique identifier of the related PIX cash-out operation.
-     * @param pixCredit The storage reference to the PIX credit to be updated.
+     * @param txId The unique identifier of the related cash-out operation.
+     * @param pixCredit The storage reference to the credit to be updated.
      * @param newStatus The current status of the credit.
      * @param oldStatus The previous status of the credit.
      */
     function _changePixCreditStatus(
-        bytes32 pixTxId, // Tools: this comment prevents Prettier from formatting into a single line.
+        bytes32 txId, // Tools: this comment prevents Prettier from formatting into a single line.
         PixCredit storage pixCredit,
         PixCreditStatus newStatus,
         PixCreditStatus oldStatus
     ) internal {
         emit PixCreditStatusChanged(
-            pixTxId,
+            txId,
             pixCredit.borrower,
             newStatus,
             oldStatus,
@@ -377,20 +377,20 @@ contract PixCreditAgent is
     }
 
     /**
-     * @dev Processes the PIX cash-out request before hook.
+     * @dev Processes the cash-out request before hook.
      *
-     * @param pixTxId The unique identifier of the related PIX cash-out operation.
+     * @param txId The unique identifier of the related cash-out operation.
      */
-    function _processPixHookCashOutRequestBefore(bytes32 pixTxId) internal {
-        PixCredit storage pixCredit = _pixCredits[pixTxId];
+    function _processCashierHookCashOutRequestBefore(bytes32 txId) internal {
+        PixCredit storage pixCredit = _pixCredits[txId];
         if (pixCredit.status != PixCreditStatus.Initiated) {
-            revert PixCreditAgent_PixCreditStatusInappropriate(pixTxId, pixCredit.status);
+            revert PixCreditAgent_PixCreditStatusInappropriate(txId, pixCredit.status);
         }
 
         address borrower = pixCredit.borrower;
         uint256 loanAmount = pixCredit.loanAmount;
 
-        _checkPixCashOutState(pixTxId, borrower, loanAmount);
+        _checkCashierCashOutState(txId, borrower, loanAmount);
 
         pixCredit.loanId = ILendingMarket(_lendingMarket).takeLoanFor(
             borrower,
@@ -401,7 +401,7 @@ contract PixCreditAgent is
         );
 
         _changePixCreditStatus(
-            pixTxId,
+            txId,
             pixCredit,
             PixCreditStatus.Pending, // newStatus
             PixCreditStatus.Initiated // oldStatus
@@ -409,18 +409,18 @@ contract PixCreditAgent is
     }
 
     /**
-     * @dev Processes the PIX cash-out confirmation after hook.
+     * @dev Processes the cash-out confirmation after hook.
      *
-     * @param pixTxId The unique identifier of the related PIX cash-out operation.
+     * @param txId The unique identifier of the related cash-out operation.
      */
-    function _processPixHookCashOutConfirmationAfter(bytes32 pixTxId) internal {
-        PixCredit storage pixCredit = _pixCredits[pixTxId];
+    function _processCashierHookCashOutConfirmationAfter(bytes32 txId) internal {
+        PixCredit storage pixCredit = _pixCredits[txId];
         if (pixCredit.status != PixCreditStatus.Pending) {
-            revert PixCreditAgent_PixCreditStatusInappropriate(pixTxId, pixCredit.status);
+            revert PixCreditAgent_PixCreditStatusInappropriate(txId, pixCredit.status);
         }
 
         _changePixCreditStatus(
-            pixTxId,
+            txId,
             pixCredit,
             PixCreditStatus.Confirmed, // newStatus
             PixCreditStatus.Pending // oldStatus
@@ -428,20 +428,20 @@ contract PixCreditAgent is
     }
 
     /**
-     * @dev Processes the PIX cash-out reversal after hook.
+     * @dev Processes the cash-out reversal after hook.
      *
-     * @param pixTxId The unique identifier of the related PIX cash-out operation.
+     * @param txId The unique identifier of the related cash-out operation.
      */
-    function _processPixHookCashOutReversalAfter(bytes32 pixTxId) internal {
-        PixCredit storage pixCredit = _pixCredits[pixTxId];
+    function _processCashierHookCashOutReversalAfter(bytes32 txId) internal {
+        PixCredit storage pixCredit = _pixCredits[txId];
         if (pixCredit.status != PixCreditStatus.Pending) {
-            revert PixCreditAgent_PixCreditStatusInappropriate(pixTxId, pixCredit.status);
+            revert PixCreditAgent_PixCreditStatusInappropriate(txId, pixCredit.status);
         }
 
         ILendingMarket(_lendingMarket).revokeLoan(pixCredit.loanId);
 
         _changePixCreditStatus(
-            pixTxId,
+            txId,
             pixCredit,
             PixCreditStatus.Reversed, // newStatus
             PixCreditStatus.Pending // oldStatus
@@ -449,20 +449,20 @@ contract PixCreditAgent is
     }
 
     /**
-     * @dev Checks the state of a related PIX cash-out operation to be matched with the expected values.
+     * @dev Checks the state of a related cash-out operation to be matched with the expected values.
      *
-     * @param pixTxId The unique identifier of the related PIX cash-out operation.
-     * @param expectedAccount The expected account of the PIX operation.
-     * @param expectedAmount The expected amount of the PIX operation.
+     * @param txId The unique identifier of the related cash-out operation.
+     * @param expectedAccount The expected account of the operation.
+     * @param expectedAmount The expected amount of the operation.
      */
-    function _checkPixCashOutState(
-        bytes32 pixTxId, // Tools: this comment prevents Prettier from formatting into a single line.
+    function _checkCashierCashOutState(
+        bytes32 txId, // Tools: this comment prevents Prettier from formatting into a single line.
         address expectedAccount,
         uint256 expectedAmount
     ) internal view {
-        IPixCashier.CashOutOperation memory operation = IPixCashier(_pixCashier).getCashOut(pixTxId);
+        ICashier.CashOutOperation memory operation = ICashier(_cashier).getCashOut(txId);
         if (operation.account != expectedAccount || operation.amount != expectedAmount) {
-            revert PixCreditAgent_PixCashOutInappropriate(pixTxId);
+            revert PixCreditAgent_CashierCashOutInappropriate(txId);
         }
     }
 

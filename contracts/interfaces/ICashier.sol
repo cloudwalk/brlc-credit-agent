@@ -3,11 +3,11 @@
 pragma solidity ^0.8.0;
 
 /**
- * @title IPixCashier interface
+ * @title ICashier interface
  * @author CloudWalk Inc. (See https://cloudwalk.io)
- * @dev Defines the needed functions of the PIX cashier contract.
+ * @dev Defines the needed functions of the cashier contract.
  */
-interface IPixCashier {
+interface ICashier {
     /**
      * @dev Possible statuses of a cash-out operation as an enum.
      *
