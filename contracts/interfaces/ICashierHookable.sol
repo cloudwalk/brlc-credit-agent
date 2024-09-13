@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 /**
- * @title CashierHookable types interface
+ * @title ICashierHookableTypes interface
  * @author CloudWalk Inc. (See https://cloudwalk.io)
  * @dev Defines the types used in the CashierHookable contract.
  */
