@@ -13,11 +13,11 @@ interface IPixCreditAgentTypes {
      *
      * The possible values:
      *
-     * - Nonexistent - The credit does not exist. The default value.
-     * - Initiated --- The credit is initiated by a manager, waiting for the related cash-out operation request.
-     * - Pending ----- The credit is pending due to the related operation request, waiting for further actions.
-     * - Confirmed --- The credit is confirmed as the related operation was confirmed.
-     * - Reversed ---- The credit is reversed as the related operation was reversed.
+     * - Nonexistent = 0 - The credit does not exist. The default value.
+     * - Initiated = 1 --- The credit is initiated by a manager, waiting for the related cash-out operation request.
+     * - Pending = 2 ----- The credit is pending due to the related operation request, waiting for further actions.
+     * - Confirmed = 3 --- The credit is confirmed as the related operation was confirmed.
+     * - Reversed = 4 ---- The credit is reversed as the related operation was reversed.
      *
      * The possible status transitions are:
      *
@@ -37,38 +37,38 @@ interface IPixCreditAgentTypes {
      * - Reversed: The loan is revoked.
      */
     enum PixCreditStatus {
-        Nonexistent, // 0
-        Initiated,   // 1
-        Pending,     // 2
-        Confirmed,   // 3
-        Reversed     // 4
+        Nonexistent,
+        Initiated,
+        Pending,
+        Confirmed,
+        Reversed
     }
 
     /// @dev The PIX credit structure.
     struct PixCredit {
         // Slot 1
-        address borrower;         // The address of the borrower.
-        uint32 programId;         // The unique identifier of a lending program for the credit.
-        uint32 durationInPeriods; // The duration of the credit in periods. The period length is defined outside.
-        PixCreditStatus status;   // The status of the credit, see {PixCreditStatus}.
-        // uint24 __reserved;     // Reserved for future use until the end of the storage slot.
+        address borrower; // --------- The address of the borrower.
+        uint32 programId; // --------- The unique identifier of a lending program for the credit.
+        uint32 durationInPeriods; // - The duration of the credit in periods. The period length is defined outside.
+        PixCreditStatus status; // --- The status of the credit, see {PixCreditStatus}.
+        // uint24 __reserved; // ----- Reserved for future use until the end of the storage slot.
 
         // Slot 2
-        uint64 loanAmount;        // The amount of the related loan.
-        uint64 loanAddon;         // The addon amount (extra charges or fees) of the related loan.
-        // uint128 __reserved;    // Reserved for future use until the end of the storage slot.
+        uint64 loanAmount; // -------- The amount of the related loan.
+        uint64 loanAddon; // --------- The addon amount (extra charges or fees) of the related loan.
+        // uint128 __reserved; // ---- Reserved for future use until the end of the storage slot.
 
         // Slot 3
-        uint256 loanId;            // The unique ID of the related loan on the lending market or zero if not taken.
+        uint256 loanId; // ----------- The unique ID of the related loan on the lending market or zero if not taken.
     }
 
     /// @dev This agent contract state structure.
     struct AgentState {
         // Slot 1
-        bool configured;               // True if the agent is properly configured.
-        uint64 initiatedCreditCounter; // The counter of initiated credits.
-        uint64 pendingCreditCounter;   // The counter of pending credits.
-        // uint120 __reserved;         // Reserved for future use until the end of the storage slot.
+        bool configured; // --------------- True if the agent is properly configured.
+        uint64 initiatedCreditCounter; // - The counter of initiated credits.
+        uint64 pendingCreditCounter; // --- The counter of pending credits.
+        // uint120 __reserved; // --------- Reserved for future use until the end of the storage slot.
     }
 }
 
@@ -96,7 +96,10 @@ interface IPixCreditAgentErrors is IPixCreditAgentTypes {
     /// @dev The zero loan duration has been passed as a function argument.
     error PixCreditAgent_LoanDurationZero();
 
-    /// @dev The related cash-out operation has inappropriate parameters (e.g. account, amount values).
+    /**
+     * @dev The related cash-out operation has inappropriate parameters (e.g. account, amount values).
+     * @param txId The off-chain transaction identifiers of the operation.
+     */
     error PixCreditAgent_CashierCashOutInappropriate(bytes32 txId);
 
     /**
@@ -106,10 +109,18 @@ interface IPixCreditAgentErrors is IPixCreditAgentTypes {
      */
     error PixCreditAgent_PixCreditStatusInappropriate(bytes32 txId, PixCreditStatus status);
 
-    /// @dev The caller is not allowed to execute the hook function.
+    /**
+     * @dev The caller is not allowed to execute the hook function.
+     * @param caller The address of the caller.
+     */
     error PixCreditAgent_CashierHookCallerUnauthorized(address caller);
 
-    /// @dev The the hook function is called with unexpected hook index.
+    /**
+     * @dev The the hook function is called with unexpected hook index.
+     * @param hookIndex The index of the hook.
+     * @param txId The off-chain transaction identifier of the operation.
+     * @param caller The address of the caller.
+     */
     error PixCreditAgent_CashierHookIndexUnexpected(uint256 hookIndex, bytes32 txId, address caller);
 
     /// @dev The zero off-chain transaction identifier has been passed as a function argument.
@@ -127,7 +138,18 @@ interface IPixCreditAgentErrors is IPixCreditAgentTypes {
 interface IPixCreditAgentPrimary is IPixCreditAgentTypes {
     // ------------------ Events ---------------------------------- //
 
-    /// @dev Emitted when the status of a PIX credit is changed.
+    /**
+     * @dev Emitted when the status of a PIX credit is changed.
+     * @param txId The unique identifier of the related cash-out operation.
+     * @param borrower The address of the borrower.
+     * @param newStatus The current status of the credit.
+     * @param oldStatus The previous status of the credit.
+     * @param loanId The unique ID of the related loan on the lending market or zero if not taken.
+     * @param programId The unique identifier of the lending program for the credit.
+     * @param durationInPeriods The duration of the credit in periods.
+     * @param loanAmount The amount of the related loan.
+     * @param loanAddon The addon amount of the related loan.
+     */
     event PixCreditStatusChanged(
         bytes32 indexed txId,      // The unique identifier of the related cash-out operation.
         address indexed borrower,  // The address of the borrower.
@@ -193,10 +215,18 @@ interface IPixCreditAgentPrimary is IPixCreditAgentTypes {
 interface IPixCreditAgentConfiguration is IPixCreditAgentTypes {
     // ------------------ Events ---------------------------------- //
 
-    /// @dev Emitted when the configure cashier contract address is changed.
+    /**
+     * @dev Emitted when the configured cashier contract address is changed.
+     * @param newCashier The address of the new cashier contract.
+     * @param oldCashier The address of the old cashier contract.
+     */
     event CashierChanged(address newCashier, address oldCashier);
 
-    /// @dev Emitted when the configured lending market contract address is changed.
+    /**
+     * @dev Emitted when the configured lending market contract address is changed.
+     * @param newLendingMarket The address of the new lending market contract.
+     * @param oldLendingMarket The address of the old lending market contract.
+     */
     event LendingMarketChanged(address newLendingMarket, address oldLendingMarket);
 
     // ------------------ Functions ------------------------------- //
