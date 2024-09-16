@@ -151,15 +151,15 @@ interface IPixCreditAgentPrimary is IPixCreditAgentTypes {
      * @param loanAddon The addon amount of the related loan.
      */
     event PixCreditStatusChanged(
-        bytes32 indexed txId,      // The unique identifier of the related cash-out operation.
-        address indexed borrower,  // The address of the borrower.
-        PixCreditStatus newStatus, // The current status of the credit.
-        PixCreditStatus oldStatus, // The previous status of the credit.
-        uint256 loanId,            // The unique ID of the related loan on the lending market or zero if not taken.
-        uint256 programId,         // The unique identifier of the lending program for the credit.
-        uint256 durationInPeriods, // The duration of the credit in periods.
-        uint256 loanAmount,        // The amount of the related loan.
-        uint256 loanAddon          // The addon amount of the related loan.
+        bytes32 indexed txId,
+        address indexed borrower,
+        PixCreditStatus newStatus,
+        PixCreditStatus oldStatus,
+        uint256 loanId,
+        uint256 programId,
+        uint256 durationInPeriods,
+        uint256 loanAmount,
+        uint256 loanAddon
     );
 
     // ------------------ Functions ------------------------------- //
