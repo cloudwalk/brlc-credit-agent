@@ -124,7 +124,7 @@ interface IPixCreditAgentErrors is IPixCreditAgentTypes {
     error PixCreditAgent_CashierHookIndexUnexpected(uint256 hookIndex, bytes32 txId, address caller);
 
     /// @dev The zero off-chain transaction identifier has been passed as a function argument.
-    error PixCreditAgent_PixTxIdZero();
+    error PixCreditAgent_TxIdZero();
 
     /// @dev The zero program ID has been passed as a function argument.
     error PixCreditAgent_ProgramIdZero();

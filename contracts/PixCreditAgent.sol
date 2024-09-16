@@ -181,7 +181,7 @@ contract PixCreditAgent is
             revert PixCreditAgent_ContractNotConfigured();
         }
         if (txId == bytes32(0)) {
-            revert PixCreditAgent_PixTxIdZero();
+            revert PixCreditAgent_TxIdZero();
         }
         if (borrower == address(0)) {
             revert PixCreditAgent_BorrowerAddressZero();
@@ -234,7 +234,7 @@ contract PixCreditAgent is
      */
     function revokePixCredit(bytes32 txId) external whenNotPaused onlyRole(MANAGER_ROLE) {
         if (txId == bytes32(0)) {
-            revert PixCreditAgent_PixTxIdZero();
+            revert PixCreditAgent_TxIdZero();
         }
 
         PixCredit storage pixCredit = _pixCredits[txId];
