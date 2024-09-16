@@ -120,11 +120,11 @@ interface IPixCreditAgentErrors is IPixCreditAgentTypes {
 }
 
 /**
- * @title IPixCreditAgentPrimery interface
+ * @title IPixCreditAgentPrimary interface
  * @author CloudWalk Inc. (See https://cloudwalk.io)
  * @dev The main part of the contract interface for PIX credit operations.
  */
-interface IPixCreditAgentPrimery is IPixCreditAgentTypes {
+interface IPixCreditAgentPrimary is IPixCreditAgentTypes {
     // ------------------ Events ---------------------------------- //
 
     /// @dev Emitted when the status of a PIX credit is changed.
@@ -229,4 +229,4 @@ interface IPixCreditAgentConfiguration is IPixCreditAgentTypes {
  * @author CloudWalk Inc. (See https://cloudwalk.io)
  * @dev The full interface of the contract for PIX credit operations.
  */
-interface IPixCreditAgent is IPixCreditAgentErrors, IPixCreditAgentPrimery, IPixCreditAgentConfiguration {}
+interface IPixCreditAgent is IPixCreditAgentErrors, IPixCreditAgentPrimary, IPixCreditAgentConfiguration {}

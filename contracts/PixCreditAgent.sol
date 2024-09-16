@@ -15,7 +15,7 @@ import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
 import { ICashier } from "./interfaces/ICashier.sol";
 import { IPixCreditAgent } from "./interfaces/IPixCreditAgent.sol";
 import { IPixCreditAgentConfiguration } from "./interfaces/IPixCreditAgent.sol";
-import { IPixCreditAgentPrimery } from "./interfaces/IPixCreditAgent.sol";
+import { IPixCreditAgentPrimary } from "./interfaces/IPixCreditAgent.sol";
 import { ICashierHook } from "./interfaces/ICashierHook.sol";
 import { ICashierHookable } from "./interfaces/ICashierHookable.sol";
 import { ICashierHookableTypes } from "./interfaces/ICashierHookable.sol";
@@ -159,7 +159,7 @@ contract PixCreditAgent is
     }
 
     /**
-     * @inheritdoc IPixCreditAgentPrimery
+     * @inheritdoc IPixCreditAgentPrimary
      *
      * @dev Requirements:
      *
@@ -223,7 +223,7 @@ contract PixCreditAgent is
     }
 
     /**
-     * @inheritdoc IPixCreditAgentPrimery
+     * @inheritdoc IPixCreditAgentPrimary
      *
      * @dev Requirements:
      *
@@ -291,14 +291,14 @@ contract PixCreditAgent is
     }
 
     /**
-     * @inheritdoc IPixCreditAgentPrimery
+     * @inheritdoc IPixCreditAgentPrimary
      */
     function getPixCredit(bytes32 txId) external view returns (PixCredit memory) {
         return _pixCredits[txId];
     }
 
     /**
-     * @inheritdoc IPixCreditAgentPrimery
+     * @inheritdoc IPixCreditAgentPrimary
      */
     function agentState() external view returns (AgentState memory) {
         return _agentState;
