@@ -133,7 +133,7 @@ interface ICreditAgentErrors is ICreditAgentTypes {
 /**
  * @title ICreditAgentPrimary interface
  * @author CloudWalk Inc. (See https://cloudwalk.io)
- * @dev The main part of the contract interface for credit operations.
+ * @dev The primary part of the credit agent contract interface.
  */
 interface ICreditAgentPrimary is ICreditAgentTypes {
     // ------------------ Events ---------------------------------- //
@@ -210,7 +210,7 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
 /**
  * @title ICreditAgentConfiguration interface
  * @author CloudWalk Inc. (See https://cloudwalk.io)
- * @dev The configuration part of the contract interface for credit operations.
+ * @dev The configuration part of the credit agent contract interface.
  */
 interface ICreditAgentConfiguration is ICreditAgentTypes {
     // ------------------ Events ---------------------------------- //
@@ -257,6 +257,10 @@ interface ICreditAgentConfiguration is ICreditAgentTypes {
 /**
  * @title ICreditAgent interface
  * @author CloudWalk Inc. (See https://cloudwalk.io)
- * @dev The full interface of the contract for credit operations.
+ * @dev The full interface of the credit agent contract.
  */
-interface ICreditAgent is ICreditAgentErrors, ICreditAgentPrimary, ICreditAgentConfiguration {}
+interface ICreditAgent is
+    ICreditAgentErrors, // Tools: this comment prevents Prettier from formatting into a single line.
+    ICreditAgentPrimary,
+    ICreditAgentConfiguration
+{}
