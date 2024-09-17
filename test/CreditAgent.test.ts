@@ -120,19 +120,19 @@ describe("Contract 'CreditAgent'", async () => {
   const REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
 
   // Errors of the contracts under test
-  const REVERT_ERROR_IF_BORROWER_ADDRESS_ZERO = "CreditAgent_BorrowerAddressZero";
   const REVERT_ERROR_IF_ALREADY_CONFIGURED = "CreditAgent_AlreadyConfigured";
-  const REVERT_ERROR_IF_CONFIGURING_PROHIBITED = "CreditAgent_ConfiguringProhibited";
-  const REVERT_ERROR_IF_CONTRACT_NOT_CONFIGURED = "CreditAgent_ContractNotConfigured";
-  const REVERT_ERROR_IF_LOAN_AMOUNT_ZERO = "CreditAgent_LoanAmountZero";
-  const REVERT_ERROR_IF_LOAN_DURATION_ZERO = "CreditAgent_LoanDurationZero";
-  const REVERT_ERROR_IF_CASHIER_CASH_OUT_INAPPROPRIATE = "CreditAgent_CashierCashOutInappropriate";
-  const REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE = "CreditAgent_CreditStatusInappropriate";
+  const REVERT_ERROR_IF_BORROWER_ADDRESS_ZERO = "CreditAgent_BorrowerAddressZero";
+  const REVERT_ERROR_IF_CASH_OUT_PARAMETERS_INAPPROPRIATE = "CreditAgent_CashOutParametersInappropriate";
   const REVERT_ERROR_IF_CASHIER_HOOK_CALLER_UNAUTHORIZED = "CreditAgent_CashierHookCallerUnauthorized";
   const REVERT_ERROR_IF_CASHIER_HOOK_INDEX_UNEXPECTED = "CreditAgent_CashierHookIndexUnexpected";
-  const REVERT_ERROR_IF_TX_ID_ZERO = "CreditAgent_TxIdZero";
+  const REVERT_ERROR_IF_CONFIGURING_PROHIBITED = "CreditAgent_ConfiguringProhibited";
+  const REVERT_ERROR_IF_CONTRACT_NOT_CONFIGURED = "CreditAgent_ContractNotConfigured";
+  const REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE = "CreditAgent_CreditStatusInappropriate";
+  const REVERT_ERROR_IF_LOAN_AMOUNT_ZERO = "CreditAgent_LoanAmountZero";
+  const REVERT_ERROR_IF_LOAN_DURATION_ZERO = "CreditAgent_LoanDurationZero";
   const REVERT_ERROR_IF_PROGRAM_ID_ZERO = "CreditAgent_ProgramIdZero";
   const REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCast_OverflowedUintDowncast";
+  const REVERT_ERROR_IF_TX_ID_ZERO = "CreditAgent_TxIdZero";
 
   const EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED = "MockConfigureCashOutHooksCalled";
   const EVENT_NAME_MOCK_REVOKE_LOAN_CALLED = "MockRevokeLoanCalled";
@@ -1075,7 +1075,7 @@ describe("Contract 'CreditAgent'", async () => {
           cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId)
         ).to.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_CASHIER_CASH_OUT_INAPPROPRIATE
+          REVERT_ERROR_IF_CASH_OUT_PARAMETERS_INAPPROPRIATE
         ).withArgs(txId);
       });
 
@@ -1092,7 +1092,7 @@ describe("Contract 'CreditAgent'", async () => {
           cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId)
         ).to.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_CASHIER_CASH_OUT_INAPPROPRIATE
+          REVERT_ERROR_IF_CASH_OUT_PARAMETERS_INAPPROPRIATE
         ).withArgs(txId);
       });
 

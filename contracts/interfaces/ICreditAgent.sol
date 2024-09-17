@@ -84,31 +84,6 @@ interface ICreditAgentErrors is ICreditAgentTypes {
     /// @dev The zero borrower address has been passed as a function argument.
     error CreditAgent_BorrowerAddressZero();
 
-    /// @dev Configuring is prohibited due to at least one unprocessed credit exists or other conditions.
-    error CreditAgent_ConfiguringProhibited();
-
-    /// @dev This agent contract is not configured yet.
-    error CreditAgent_ContractNotConfigured();
-
-    /// @dev The zero loan amount has been passed as a function argument.
-    error CreditAgent_LoanAmountZero();
-
-    /// @dev The zero loan duration has been passed as a function argument.
-    error CreditAgent_LoanDurationZero();
-
-    /**
-     * @dev The related cash-out operation has inappropriate parameters (e.g. account, amount values).
-     * @param txId The off-chain transaction identifiers of the operation.
-     */
-    error CreditAgent_CashierCashOutInappropriate(bytes32 txId);
-
-    /**
-     * @dev The related credit has inappropriate status to execute the requested operation.
-     * @param txId The off-chain transaction identifiers of the operation.
-     * @param status The current status of the credit.
-     */
-    error CreditAgent_CreditStatusInappropriate(bytes32 txId, CreditStatus status);
-
     /**
      * @dev The caller is not allowed to execute the hook function.
      * @param caller The address of the caller.
@@ -123,11 +98,36 @@ interface ICreditAgentErrors is ICreditAgentTypes {
      */
     error CreditAgent_CashierHookIndexUnexpected(uint256 hookIndex, bytes32 txId, address caller);
 
-    /// @dev The zero off-chain transaction identifier has been passed as a function argument.
-    error CreditAgent_TxIdZero();
+    /**
+     * @dev The related cash-out operation has inappropriate parameters (e.g. account, amount values).
+     * @param txId The off-chain transaction identifiers of the operation.
+     */
+    error CreditAgent_CashOutParametersInappropriate(bytes32 txId);
+
+    /// @dev Configuring is prohibited due to at least one unprocessed credit exists or other conditions.
+    error CreditAgent_ConfiguringProhibited();
+
+    /// @dev This agent contract is not configured yet.
+    error CreditAgent_ContractNotConfigured();
+
+    /**
+     * @dev The related credit has inappropriate status to execute the requested operation.
+     * @param txId The off-chain transaction identifiers of the operation.
+     * @param status The current status of the credit.
+     */
+    error CreditAgent_CreditStatusInappropriate(bytes32 txId, CreditStatus status);
+
+    /// @dev The zero loan amount has been passed as a function argument.
+    error CreditAgent_LoanAmountZero();
+
+    /// @dev The zero loan duration has been passed as a function argument.
+    error CreditAgent_LoanDurationZero();
 
     /// @dev The zero program ID has been passed as a function argument.
     error CreditAgent_ProgramIdZero();
+
+    /// @dev The zero off-chain transaction identifier has been passed as a function argument.
+    error CreditAgent_TxIdZero();
 }
 
 /**

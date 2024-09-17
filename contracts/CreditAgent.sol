@@ -462,7 +462,7 @@ contract CreditAgent is
     ) internal view {
         ICashier.CashOutOperation memory operation = ICashier(_cashier).getCashOut(txId);
         if (operation.account != expectedAccount || operation.amount != expectedAmount) {
-            revert CreditAgent_CashierCashOutInappropriate(txId);
+            revert CreditAgent_CashOutParametersInappropriate(txId);
         }
     }
 
