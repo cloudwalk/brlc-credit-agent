@@ -23,10 +23,31 @@ import { ICashierHookableTypes } from "./interfaces/ICashierHookable.sol";
 /**
  * @title CreditAgent contract
  * @author CloudWalk Inc. (See https://cloudwalk.io)
- * @dev Wrapper contract for credit agent operations.
+ * @dev Wrapper contract for credit operations.
  *
- * Only accounts that have {CASHIER_ROLE} role can execute the cash-in operations and process the cash-out operations.
- * About roles see https://docs.openzeppelin.com/contracts/4.x/api/access#AccessControl.
+ * This contract links together a cashier contract with a lending market contract
+ * to provide credits to customers during cash-out operations on the cashier contract
+ * with the help of hooks mechanism.
+ *
+ * When one of cash-out processing functions of the cashier contract is called
+ * the appropriate hook is triggered and the cashier contract calls the `onCashierHook()` function of CreditAgent
+ * just before or after the related token transfers.
+ * The `onCashierHook()` function selects and calls the appropriate internal function to process the hook and
+ * execute the additional actions to provide a credit or revoke it if needed.
+ *
+ * Each credit is represented by a separate structure named {Credit} in the CreditAgent contract and
+ * the related loan with an ID in the lending market contract.
+ * The loan ID can be found in the `Credit` structure and initially equals zero until the related loan is really taken.
+ *
+ * Credits are identified by the off-chain transaction ID `txId` of the related cash-out operations
+ * that happens on the cashier contract.
+ * To initiate a credit, revoke it or get information about it the corresponding `txId` should be passed to
+ * CreditAgent as a function argument. The same for the cashier contract.
+ *
+ * The possible statuses of a credit are defined by the {CreditStatus} enumeration.
+ *
+ * Several roles are used to control access to the CreditAgent contract.
+ * About roles see https://docs.openzeppelin.com/contracts/5.x/api/access#AccessControl.
  */
 contract CreditAgent is
     CreditAgentStorage,
