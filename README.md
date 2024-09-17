@@ -5,8 +5,8 @@
 </p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-![example branch parameter](https://github.com/cloudwalk/brlc-pix-cashier/actions/workflows/build.yml/badge.svg?branch=main)
-![example branch parameter](https://github.com/cloudwalk/brlc-pix-cashier/actions/workflows/test.yml/badge.svg?branch=main)
+![build results](https://github.com/cloudwalk/brlc-pix-credit-agent/actions/workflows/build.yml/badge.svg?branch=main)
+![test results](https://github.com/cloudwalk/brlc-pix-credit-agent/actions/workflows/test.yml/badge.svg?branch=main)
 
 This repository contains smart contracts that are related to the credit agent project.</br>
 
