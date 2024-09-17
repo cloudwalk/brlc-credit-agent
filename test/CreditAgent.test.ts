@@ -272,7 +272,7 @@ describe("Contract 'CreditAgent'", async () => {
     );
   }
 
-  async function checCreditKInitiation(fixture: Fixture, props: {
+  async function checkCreditInitiation(fixture: Fixture, props: {
     tx: Promise<TransactionResponse>;
     txId: string;
     credit: Credit;
@@ -590,7 +590,7 @@ describe("Contract 'CreditAgent'", async () => {
         const credit = defineCredit({ loanAddon: LOAN_ADDON_STUB });
         const txId = TX_ID_STUB;
         const tx = initiateCredit(fixture.creditAgent, { txId, credit });
-        await checCreditKInitiation(fixture, { tx, txId, credit });
+        await checkCreditInitiation(fixture, { tx, txId, credit });
       });
 
       it("The 'loanAddon' value is zero", async () => {
@@ -598,7 +598,7 @@ describe("Contract 'CreditAgent'", async () => {
         const credit = defineCredit({ loanAddon: 0n });
         const txId = TX_ID_STUB;
         const tx = initiateCredit(fixture.creditAgent, { txId, credit });
-        await checCreditKInitiation(fixture, { tx, txId, credit });
+        await checkCreditInitiation(fixture, { tx, txId, credit });
       });
     });
 
@@ -1132,7 +1132,7 @@ describe("Contract 'CreditAgent'", async () => {
       checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
 
       const tx = initiateCredit(creditAgent, { txId, credit });
-      await checCreditKInitiation(fixture, { tx, txId, credit });
+      await checkCreditInitiation(fixture, { tx, txId, credit });
       expectedAgentState.initiatedCreditCounter = 1n;
       checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
     });
@@ -1146,7 +1146,7 @@ describe("Contract 'CreditAgent'", async () => {
       await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutReversalAfter, txId));
 
       const tx = initiateCredit(creditAgent, { txId, credit });
-      await checCreditKInitiation(fixture, { tx, txId, credit });
+      await checkCreditInitiation(fixture, { tx, txId, credit });
       const expectedAgentState: AgentState = {
         initiatedCreditCounter: 1n,
         pendingCreditCounter: 0n,
