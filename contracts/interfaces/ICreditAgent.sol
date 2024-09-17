@@ -44,7 +44,7 @@ interface ICreditAgentTypes {
         Reversed
     }
 
-    /// @dev The credit structure.
+    /// @dev The data of a single credit.
     struct Credit {
         // Slot 1
         address borrower; // --------- The address of the borrower.
@@ -62,7 +62,7 @@ interface ICreditAgentTypes {
         uint256 loanId; // ----------- The unique ID of the related loan on the lending market or zero if not taken.
     }
 
-    /// @dev This agent contract state structure.
+    /// @dev The state of this agent contract.
     struct AgentState {
         // Slot 1
         bool configured; // --------------- True if the agent is properly configured.
