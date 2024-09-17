@@ -1,11 +1,11 @@
 [
   {
-    "name": "PixCreditAgent",
+    "name": "CreditAgent",
     "chainId": 2009,
     "address": ""
   },
   {
-    "name": "PixCreditAgent",
+    "name": "CreditAgent",
     "chainId": 2008,
     "address": ""
   }

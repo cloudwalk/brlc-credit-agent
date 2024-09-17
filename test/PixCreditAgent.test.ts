@@ -7,7 +7,7 @@ import { checkContractUupsUpgrading, connect, getAddress, proveTx } from "../tes
 
 const ADDRESS_ZERO = ethers.ZeroAddress;
 
-enum PixCreditStatus {
+enum CreditStatus {
   Nonexistent = 0,
   Initiated = 1,
   Pending = 2,
@@ -22,11 +22,11 @@ enum HookIndex {
   CashOutReversalAfter = 11
 }
 
-interface PixCredit {
+interface Credit {
   borrower: string;
   programId: number;
   durationInPeriods: number;
-  status: PixCreditStatus;
+  status: CreditStatus;
   loanAmount: bigint;
   loanAddon: bigint;
   loanId: bigint;
@@ -36,7 +36,7 @@ interface PixCredit {
 }
 
 interface Fixture {
-  pixCreditAgent: Contract;
+  creditAgent: Contract;
   cashierMock: Contract;
   lendingMarketMock: Contract;
   loanIdStub: bigint;
@@ -64,11 +64,11 @@ const initialAgentState: AgentState = {
   pendingCreditCounter: 0n
 };
 
-const initialPixCredit: PixCredit = {
+const initialCredit: Credit = {
   borrower: ADDRESS_ZERO,
   programId: 0,
   durationInPeriods: 0,
-  status: PixCreditStatus.Nonexistent,
+  status: CreditStatus.Nonexistent,
   loanAmount: 0n,
   loanAddon: 0n,
   loanId: 0n
@@ -102,7 +102,7 @@ async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
   }
 }
 
-describe("Contract 'PixCreditAgent'", async () => {
+describe("Contract 'CreditAgent'", async () => {
   const TX_ID_STUB = ethers.encodeBytes32String("STUB_TRANSACTION_ID1");
   const TX_ID_ZERO = ethers.ZeroHash;
   const LOAN_PROGRAM_ID_STUB = 0xFFFF_ABCD;
@@ -120,18 +120,18 @@ describe("Contract 'PixCreditAgent'", async () => {
   const REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
 
   // Errors of the contracts under test
-  const REVERT_ERROR_IF_BORROWER_ADDRESS_ZERO = "PixCreditAgent_BorrowerAddressZero";
-  const REVERT_ERROR_IF_ALREADY_CONFIGURED = "PixCreditAgent_AlreadyConfigured";
-  const REVERT_ERROR_IF_CONFIGURING_PROHIBITED = "PixCreditAgent_ConfiguringProhibited";
-  const REVERT_ERROR_IF_CONTRACT_NOT_CONFIGURED = "PixCreditAgent_ContractNotConfigured";
-  const REVERT_ERROR_IF_LOAN_AMOUNT_ZERO = "PixCreditAgent_LoanAmountZero";
-  const REVERT_ERROR_IF_LOAN_DURATION_ZERO = "PixCreditAgent_LoanDurationZero";
-  const REVERT_ERROR_IF_CASHIER_CASH_OUT_INAPPROPRIATE = "PixCreditAgent_CashierCashOutInappropriate";
-  const REVERT_ERROR_IF_PIX_CREDIT_STATUS_INAPPROPRIATE = "PixCreditAgent_PixCreditStatusInappropriate";
-  const REVERT_ERROR_IF_CASHIER_HOOK_CALLER_UNAUTHORIZED = "PixCreditAgent_CashierHookCallerUnauthorized";
-  const REVERT_ERROR_IF_CASHIER_HOOK_INDEX_UNEXPECTED = "PixCreditAgent_CashierHookIndexUnexpected";
-  const REVERT_ERROR_IF_TX_ID_ZERO = "PixCreditAgent_TxIdZero";
-  const REVERT_ERROR_IF_PROGRAM_ID_ZERO = "PixCreditAgent_ProgramIdZero";
+  const REVERT_ERROR_IF_BORROWER_ADDRESS_ZERO = "CreditAgent_BorrowerAddressZero";
+  const REVERT_ERROR_IF_ALREADY_CONFIGURED = "CreditAgent_AlreadyConfigured";
+  const REVERT_ERROR_IF_CONFIGURING_PROHIBITED = "CreditAgent_ConfiguringProhibited";
+  const REVERT_ERROR_IF_CONTRACT_NOT_CONFIGURED = "CreditAgent_ContractNotConfigured";
+  const REVERT_ERROR_IF_LOAN_AMOUNT_ZERO = "CreditAgent_LoanAmountZero";
+  const REVERT_ERROR_IF_LOAN_DURATION_ZERO = "CreditAgent_LoanDurationZero";
+  const REVERT_ERROR_IF_CASHIER_CASH_OUT_INAPPROPRIATE = "CreditAgent_CashierCashOutInappropriate";
+  const REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE = "CreditAgent_CreditStatusInappropriate";
+  const REVERT_ERROR_IF_CASHIER_HOOK_CALLER_UNAUTHORIZED = "CreditAgent_CashierHookCallerUnauthorized";
+  const REVERT_ERROR_IF_CASHIER_HOOK_INDEX_UNEXPECTED = "CreditAgent_CashierHookIndexUnexpected";
+  const REVERT_ERROR_IF_TX_ID_ZERO = "CreditAgent_TxIdZero";
+  const REVERT_ERROR_IF_PROGRAM_ID_ZERO = "CreditAgent_ProgramIdZero";
   const REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCast_OverflowedUintDowncast";
 
   const EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED = "MockConfigureCashOutHooksCalled";
@@ -139,9 +139,9 @@ describe("Contract 'PixCreditAgent'", async () => {
   const EVENT_NAME_MOCK_TAKE_LOAN_FOR_CALLED = "MockTakeLoanForCalled";
   const EVENT_NAME_LENDING_MARKET_CHANGED = "LendingMarketChanged";
   const EVENT_NAME_CASHIER_CHANGED = "CashierChanged";
-  const EVENT_NAME_PIX_CREDIT_STATUS_CHANGED = "PixCreditStatusChanged";
+  const EVENT_NAME_CREDIT_STATUS_CHANGED = "CreditStatusChanged";
 
-  let pixCreditAgentFactory: ContractFactory;
+  let creditAgentFactory: ContractFactory;
   let cashierMockFactory: ContractFactory;
   let lendingMarketMockFactory: ContractFactory;
   let deployer: HardhatEthersSigner;
@@ -156,7 +156,7 @@ describe("Contract 'PixCreditAgent'", async () => {
   const managerRole: string = ethers.id("MANAGER_ROLE");
 
   before(async () => {
-    pixCreditAgentFactory = await ethers.getContractFactory("PixCreditAgent");
+    creditAgentFactory = await ethers.getContractFactory("CreditAgent");
     cashierMockFactory = await ethers.getContractFactory("CashierMock");
     lendingMarketMockFactory = await ethers.getContractFactory("LendingMarketMock");
 
@@ -177,69 +177,69 @@ describe("Contract 'PixCreditAgent'", async () => {
     return lendingMarketMock;
   }
 
-  async function deployPixCreditAgent(): Promise<Contract> {
-    const pixCreditAgent: Contract = await upgrades.deployProxy(pixCreditAgentFactory);
-    await pixCreditAgent.waitForDeployment();
+  async function deployCreditAgent(): Promise<Contract> {
+    const creditAgent: Contract = await upgrades.deployProxy(creditAgentFactory);
+    await creditAgent.waitForDeployment();
 
-    return pixCreditAgent;
+    return creditAgent;
   }
 
-  async function deployAndConfigurePixCreditAgent(): Promise<Contract> {
-    const pixCreditAgent: Contract = await deployPixCreditAgent();
-    await proveTx(pixCreditAgent.grantRole(adminRole, admin.address));
-    await proveTx(pixCreditAgent.grantRole(managerRole, manager.address));
-    await proveTx(pixCreditAgent.grantRole(pauserRole, deployer.address));
+  async function deployAndConfigureCreditAgent(): Promise<Contract> {
+    const creditAgent: Contract = await deployCreditAgent();
+    await proveTx(creditAgent.grantRole(adminRole, admin.address));
+    await proveTx(creditAgent.grantRole(managerRole, manager.address));
+    await proveTx(creditAgent.grantRole(pauserRole, deployer.address));
 
-    return pixCreditAgent;
+    return creditAgent;
   }
 
   async function deployAndConfigureContracts(): Promise<Fixture> {
     const cashierMock = await deployCashierMock();
     const lendingMarketMock = await deployLendingMarketMock();
-    const pixCreditAgent = await deployAndConfigurePixCreditAgent();
+    const creditAgent = await deployAndConfigureCreditAgent();
 
-    await proveTx(pixCreditAgent.setCashier(getAddress(cashierMock)));
-    await proveTx(pixCreditAgent.setLendingMarket(getAddress(lendingMarketMock)));
+    await proveTx(creditAgent.setCashier(getAddress(cashierMock)));
+    await proveTx(creditAgent.setLendingMarket(getAddress(lendingMarketMock)));
     const loanIdStub = await lendingMarketMock.LOAN_ID_STAB();
 
-    return { pixCreditAgent, cashierMock, lendingMarketMock, loanIdStub };
+    return { creditAgent, cashierMock, lendingMarketMock, loanIdStub };
   }
 
   async function deployAndConfigureContractsThenInitiateCredit(): Promise<{
     fixture: Fixture;
     txId: string;
-    initPixCredit: PixCredit;
+    initCredit: Credit;
     initCashOut: CashOut;
   }> {
     const fixture = await deployAndConfigureContracts();
-    const { pixCreditAgent, cashierMock } = fixture;
-    const initPixCredit = definePixCredit();
+    const { creditAgent, cashierMock } = fixture;
+    const initCredit = defineCredit();
     const txId = TX_ID_STUB;
     const initCashOut: CashOut = {
       ...initialCashOut,
       account: borrower.address,
-      amount: initPixCredit.loanAmount
+      amount: initCredit.loanAmount
     };
 
-    await proveTx(initiatePixCredit(pixCreditAgent, { txId }));
+    await proveTx(initiateCredit(creditAgent, { txId }));
     await proveTx(cashierMock.setCashOut(txId, initCashOut));
 
-    return { fixture, txId, initPixCredit, initCashOut };
+    return { fixture, txId, initCredit, initCashOut };
   }
 
-  function definePixCredit(props: {
+  function defineCredit(props: {
     borrowerAddress?: string;
     programId?: number;
     durationInPeriods?: number;
-    status?: PixCreditStatus;
+    status?: CreditStatus;
     loanAmount?: bigint;
     loanAddon?: bigint;
     loanId?: bigint;
-  } = {}): PixCredit {
+  } = {}): Credit {
     const borrowerAddress: string = props.borrowerAddress ?? borrower.address;
     const programId: number = props.programId ?? LOAN_PROGRAM_ID_STUB;
     const durationInPeriods: number = props.durationInPeriods ?? LOAN_DURATION_IN_SECONDS_STUB;
-    const status = props.status ?? PixCreditStatus.Nonexistent;
+    const status = props.status ?? CreditStatus.Nonexistent;
     const loanAmount = props.loanAmount ?? LOAN_AMOUNT_STUB;
     const loanAddon = props.loanAddon ?? LOAN_ADDON_STUB;
     const loanId = props.loanId ?? 0n;
@@ -254,223 +254,223 @@ describe("Contract 'PixCreditAgent'", async () => {
     };
   }
 
-  function initiatePixCredit(pixCreditAgent: Contract, props: {
+  function initiateCredit(creditAgent: Contract, props: {
     txId?: string;
-    pixCredit?: PixCredit;
+    credit?: Credit;
     caller?: HardhatEthersSigner;
   } = {}): Promise<TransactionResponse> {
     const caller = props.caller ?? manager;
     const txId = props.txId ?? TX_ID_STUB;
-    const pixCredit = props.pixCredit ?? definePixCredit();
-    return connect(pixCreditAgent, caller).initiatePixCredit(
+    const credit = props.credit ?? defineCredit();
+    return connect(creditAgent, caller).initiateCredit(
       txId,
-      pixCredit.borrower,
-      pixCredit.programId,
-      pixCredit.durationInPeriods,
-      pixCredit.loanAmount,
-      pixCredit.loanAddon
+      credit.borrower,
+      credit.programId,
+      credit.durationInPeriods,
+      credit.loanAmount,
+      credit.loanAddon
     );
   }
 
-  async function checPixCreditKInitiation(fixture: Fixture, props: {
+  async function checCreditKInitiation(fixture: Fixture, props: {
     tx: Promise<TransactionResponse>;
     txId: string;
-    pixCredit: PixCredit;
+    credit: Credit;
   }) {
-    const { pixCreditAgent, cashierMock } = fixture;
-    const { tx, txId, pixCredit } = props;
-    await expect(tx).to.emit(pixCreditAgent, EVENT_NAME_PIX_CREDIT_STATUS_CHANGED).withArgs(
+    const { creditAgent, cashierMock } = fixture;
+    const { tx, txId, credit } = props;
+    await expect(tx).to.emit(creditAgent, EVENT_NAME_CREDIT_STATUS_CHANGED).withArgs(
       txId,
-      pixCredit.borrower,
-      PixCreditStatus.Initiated, // newStatus
-      PixCreditStatus.Nonexistent, // oldStatus
-      pixCredit.loanId,
-      pixCredit.programId,
-      pixCredit.durationInPeriods,
-      pixCredit.loanAmount,
-      pixCredit.loanAddon
+      credit.borrower,
+      CreditStatus.Initiated, // newStatus
+      CreditStatus.Nonexistent, // oldStatus
+      credit.loanId,
+      credit.programId,
+      credit.durationInPeriods,
+      credit.loanAmount,
+      credit.loanAddon
     );
     await expect(tx).to.emit(cashierMock, EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED).withArgs(
       txId,
-      getAddress(pixCreditAgent), // newCallableContract,
+      getAddress(creditAgent), // newCallableContract,
       NEEDED_CASHIER_CASH_OUT_HOOK_FLAGS // newHookFlags
     );
-    pixCredit.status = PixCreditStatus.Initiated;
-    checkEquality(await pixCreditAgent.getPixCredit(txId) as PixCredit, pixCredit);
+    credit.status = CreditStatus.Initiated;
+    checkEquality(await creditAgent.getCredit(txId) as Credit, credit);
   }
 
   describe("Function 'initialize()'", async () => {
     it("Configures the contract as expected", async () => {
-      const pixCreditAgent = await setUpFixture(deployPixCreditAgent);
+      const creditAgent = await setUpFixture(deployCreditAgent);
 
       // Role hashes
-      expect(await pixCreditAgent.OWNER_ROLE()).to.equal(ownerRole);
-      expect(await pixCreditAgent.PAUSER_ROLE()).to.equal(pauserRole);
-      expect(await pixCreditAgent.RESCUER_ROLE()).to.equal(rescuerRole);
-      expect(await pixCreditAgent.ADMIN_ROLE()).to.equal(adminRole);
-      expect(await pixCreditAgent.MANAGER_ROLE()).to.equal(managerRole);
+      expect(await creditAgent.OWNER_ROLE()).to.equal(ownerRole);
+      expect(await creditAgent.PAUSER_ROLE()).to.equal(pauserRole);
+      expect(await creditAgent.RESCUER_ROLE()).to.equal(rescuerRole);
+      expect(await creditAgent.ADMIN_ROLE()).to.equal(adminRole);
+      expect(await creditAgent.MANAGER_ROLE()).to.equal(managerRole);
 
       // The role admins
-      expect(await pixCreditAgent.getRoleAdmin(ownerRole)).to.equal(ownerRole);
-      expect(await pixCreditAgent.getRoleAdmin(pauserRole)).to.equal(ownerRole);
-      expect(await pixCreditAgent.getRoleAdmin(rescuerRole)).to.equal(ownerRole);
-      expect(await pixCreditAgent.getRoleAdmin(adminRole)).to.equal(ownerRole);
-      expect(await pixCreditAgent.getRoleAdmin(managerRole)).to.equal(ownerRole);
+      expect(await creditAgent.getRoleAdmin(ownerRole)).to.equal(ownerRole);
+      expect(await creditAgent.getRoleAdmin(pauserRole)).to.equal(ownerRole);
+      expect(await creditAgent.getRoleAdmin(rescuerRole)).to.equal(ownerRole);
+      expect(await creditAgent.getRoleAdmin(adminRole)).to.equal(ownerRole);
+      expect(await creditAgent.getRoleAdmin(managerRole)).to.equal(ownerRole);
 
       // The deployer should have the owner role and admin role, but not the other roles
-      expect(await pixCreditAgent.hasRole(ownerRole, deployer.address)).to.equal(true);
-      expect(await pixCreditAgent.hasRole(adminRole, deployer.address)).to.equal(true);
-      expect(await pixCreditAgent.hasRole(pauserRole, deployer.address)).to.equal(false);
-      expect(await pixCreditAgent.hasRole(rescuerRole, deployer.address)).to.equal(false);
-      expect(await pixCreditAgent.hasRole(managerRole, deployer.address)).to.equal(false);
+      expect(await creditAgent.hasRole(ownerRole, deployer.address)).to.equal(true);
+      expect(await creditAgent.hasRole(adminRole, deployer.address)).to.equal(true);
+      expect(await creditAgent.hasRole(pauserRole, deployer.address)).to.equal(false);
+      expect(await creditAgent.hasRole(rescuerRole, deployer.address)).to.equal(false);
+      expect(await creditAgent.hasRole(managerRole, deployer.address)).to.equal(false);
 
       // The initial contract state is unpaused
-      expect(await pixCreditAgent.paused()).to.equal(false);
+      expect(await creditAgent.paused()).to.equal(false);
 
       // The initial settings
-      expect(await pixCreditAgent.cashier()).to.equal(ADDRESS_ZERO);
-      expect(await pixCreditAgent.lendingMarket()).to.equal(ADDRESS_ZERO);
-      checkEquality(await pixCreditAgent.agentState() as AgentState, initialAgentState);
+      expect(await creditAgent.cashier()).to.equal(ADDRESS_ZERO);
+      expect(await creditAgent.lendingMarket()).to.equal(ADDRESS_ZERO);
+      checkEquality(await creditAgent.agentState() as AgentState, initialAgentState);
     });
 
     it("Is reverted if it is called a second time", async () => {
-      const pixCreditAgent = await setUpFixture(deployPixCreditAgent);
+      const creditAgent = await setUpFixture(deployCreditAgent);
       await expect(
-        pixCreditAgent.initialize()
-      ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_CONTRACT_INITIALIZATION_IS_INVALID);
+        creditAgent.initialize()
+      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_INITIALIZATION_IS_INVALID);
     });
   });
 
   describe("Function 'upgradeToAndCall()'", async () => {
     it("Executes as expected", async () => {
-      const pixCreditAgent = await setUpFixture(deployPixCreditAgent);
-      await checkContractUupsUpgrading(pixCreditAgent, pixCreditAgentFactory);
+      const creditAgent = await setUpFixture(deployCreditAgent);
+      await checkContractUupsUpgrading(creditAgent, creditAgentFactory);
     });
 
     it("Is reverted if the caller is not the owner", async () => {
-      const pixCreditAgent = await setUpFixture(deployPixCreditAgent);
+      const creditAgent = await setUpFixture(deployCreditAgent);
 
-      await expect(connect(pixCreditAgent, admin).upgradeToAndCall(borrower.address, "0x"))
-        .to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
+      await expect(connect(creditAgent, admin).upgradeToAndCall(borrower.address, "0x"))
+        .to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
     });
   });
 
   describe("Function 'upgradeTo()'", async () => {
     it("Executes as expected", async () => {
-      const pixCreditAgent = await setUpFixture(deployPixCreditAgent);
-      await checkContractUupsUpgrading(pixCreditAgent, pixCreditAgentFactory, "upgradeTo(address)");
+      const creditAgent = await setUpFixture(deployCreditAgent);
+      await checkContractUupsUpgrading(creditAgent, creditAgentFactory, "upgradeTo(address)");
     });
 
     it("Is reverted if the caller is not the owner", async () => {
-      const pixCreditAgent = await setUpFixture(deployPixCreditAgent);
+      const creditAgent = await setUpFixture(deployCreditAgent);
 
-      await expect(connect(pixCreditAgent, admin).upgradeTo(borrower.address))
-        .to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
+      await expect(connect(creditAgent, admin).upgradeTo(borrower.address))
+        .to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
     });
   });
 
   describe("Function 'setCashier()'", async () => {
     it("Executes as expected in different cases", async () => {
-      const pixCreditAgent = await setUpFixture(deployAndConfigurePixCreditAgent);
+      const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
       const cashierStubAddress1 = borrower.address;
       const cashierStubAddress2 = admin.address;
 
-      expect(await pixCreditAgent.cashier()).to.equal(ADDRESS_ZERO);
+      expect(await creditAgent.cashier()).to.equal(ADDRESS_ZERO);
 
       // Change the initial configuration
       await expect(
-        connect(pixCreditAgent, admin).setCashier(cashierStubAddress1)
+        connect(creditAgent, admin).setCashier(cashierStubAddress1)
       ).to.emit(
-        pixCreditAgent,
+        creditAgent,
         EVENT_NAME_CASHIER_CHANGED
       ).withArgs(
         cashierStubAddress1,
         ADDRESS_ZERO
       );
-      expect(await pixCreditAgent.cashier()).to.equal(cashierStubAddress1);
-      checkEquality(await pixCreditAgent.agentState() as AgentState, initialAgentState);
+      expect(await creditAgent.cashier()).to.equal(cashierStubAddress1);
+      checkEquality(await creditAgent.agentState() as AgentState, initialAgentState);
 
       // Change to a new non-zero address
       await expect(
-        connect(pixCreditAgent, admin).setCashier(cashierStubAddress2)
+        connect(creditAgent, admin).setCashier(cashierStubAddress2)
       ).to.emit(
-        pixCreditAgent,
+        creditAgent,
         EVENT_NAME_CASHIER_CHANGED
       ).withArgs(
         cashierStubAddress2,
         cashierStubAddress1
       );
-      expect(await pixCreditAgent.cashier()).to.equal(cashierStubAddress2);
-      checkEquality(await pixCreditAgent.agentState() as AgentState, initialAgentState);
+      expect(await creditAgent.cashier()).to.equal(cashierStubAddress2);
+      checkEquality(await creditAgent.agentState() as AgentState, initialAgentState);
 
       // Set the zero address
       await expect(
-        connect(pixCreditAgent, admin).setCashier(ADDRESS_ZERO)
+        connect(creditAgent, admin).setCashier(ADDRESS_ZERO)
       ).to.emit(
-        pixCreditAgent,
+        creditAgent,
         EVENT_NAME_CASHIER_CHANGED
       ).withArgs(
         ADDRESS_ZERO,
         cashierStubAddress2
       );
-      expect(await pixCreditAgent.cashier()).to.equal(ADDRESS_ZERO);
-      checkEquality(await pixCreditAgent.agentState() as AgentState, initialAgentState);
+      expect(await creditAgent.cashier()).to.equal(ADDRESS_ZERO);
+      checkEquality(await creditAgent.agentState() as AgentState, initialAgentState);
 
       // Set the lending market address, then the cashier address to check the logic of configured status
       const lendingMarketStubAddress = borrower.address;
-      await proveTx(connect(pixCreditAgent, admin).setLendingMarket(lendingMarketStubAddress));
-      await proveTx(connect(pixCreditAgent, admin).setCashier(cashierStubAddress1));
-      expect(await pixCreditAgent.cashier()).to.equal(cashierStubAddress1);
+      await proveTx(connect(creditAgent, admin).setLendingMarket(lendingMarketStubAddress));
+      await proveTx(connect(creditAgent, admin).setCashier(cashierStubAddress1));
+      expect(await creditAgent.cashier()).to.equal(cashierStubAddress1);
       const expectedAgentState = { ...initialAgentState, configured: true };
-      checkEquality(await pixCreditAgent.agentState() as AgentState, expectedAgentState);
+      checkEquality(await creditAgent.agentState() as AgentState, expectedAgentState);
 
       // Set another cashier address must not change the configured status of the agent contract
-      await proveTx(connect(pixCreditAgent, admin).setCashier(cashierStubAddress2));
-      expect(await pixCreditAgent.cashier()).to.equal(cashierStubAddress2);
-      checkEquality(await pixCreditAgent.agentState() as AgentState, expectedAgentState);
+      await proveTx(connect(creditAgent, admin).setCashier(cashierStubAddress2));
+      expect(await creditAgent.cashier()).to.equal(cashierStubAddress2);
+      checkEquality(await creditAgent.agentState() as AgentState, expectedAgentState);
 
       // Resetting the address must change the configured status appropriately
-      await proveTx(connect(pixCreditAgent, admin).setCashier(ADDRESS_ZERO));
+      await proveTx(connect(creditAgent, admin).setCashier(ADDRESS_ZERO));
       expectedAgentState.configured = false;
-      checkEquality(await pixCreditAgent.agentState() as AgentState, expectedAgentState);
+      checkEquality(await creditAgent.agentState() as AgentState, expectedAgentState);
     });
 
     it("Is reverted if the contract is paused", async () => {
-      const pixCreditAgent = await setUpFixture(deployAndConfigurePixCreditAgent);
+      const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
       const cashierMockAddress = borrower.address;
 
-      await proveTx(pixCreditAgent.pause());
+      await proveTx(creditAgent.pause());
       await expect(
-        connect(pixCreditAgent, admin).setCashier(cashierMockAddress)
-      ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_CONTRACT_IS_PAUSED);
+        connect(creditAgent, admin).setCashier(cashierMockAddress)
+      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the admin role", async () => {
-      const pixCreditAgent = await setUpFixture(deployAndConfigurePixCreditAgent);
+      const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
       const cashierMockAddress = borrower.address;
 
       await expect(
-        connect(pixCreditAgent, manager).setCashier(cashierMockAddress)
+        connect(creditAgent, manager).setCashier(cashierMockAddress)
       ).to.be.revertedWithCustomError(
-        pixCreditAgent,
+        creditAgent,
         REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
       ).withArgs(manager.address, adminRole);
     });
 
     it("Is reverted if the configuration is unchanged", async () => {
-      const pixCreditAgent = await setUpFixture(deployAndConfigurePixCreditAgent);
+      const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
       const cashierMockAddress = borrower.address;
 
       // Try to set the default value
       await expect(
-        connect(pixCreditAgent, admin).setCashier(ADDRESS_ZERO)
-      ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_ALREADY_CONFIGURED);
+        connect(creditAgent, admin).setCashier(ADDRESS_ZERO)
+      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_ALREADY_CONFIGURED);
 
       // Try to set the same value twice
-      await proveTx(connect(pixCreditAgent, admin).setCashier(cashierMockAddress));
+      await proveTx(connect(creditAgent, admin).setCashier(cashierMockAddress));
       await expect(
-        connect(pixCreditAgent, admin).setCashier(cashierMockAddress)
-      ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_ALREADY_CONFIGURED);
+        connect(creditAgent, admin).setCashier(cashierMockAddress)
+      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_ALREADY_CONFIGURED);
     });
 
     // Additional more complex checks are in the other sections
@@ -478,345 +478,345 @@ describe("Contract 'PixCreditAgent'", async () => {
 
   describe("Function 'setLendingMarket()'", async () => {
     it("Executes as expected in different cases", async () => {
-      const pixCreditAgent = await setUpFixture(deployAndConfigurePixCreditAgent);
+      const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
       const lendingMarketStubAddress1 = borrower.address;
       const lendingMarketStubAddress2 = admin.address;
 
-      expect(await pixCreditAgent.lendingMarket()).to.equal(ADDRESS_ZERO);
+      expect(await creditAgent.lendingMarket()).to.equal(ADDRESS_ZERO);
 
       // Change the initial configuration
       await expect(
-        connect(pixCreditAgent, admin).setLendingMarket(lendingMarketStubAddress1)
+        connect(creditAgent, admin).setLendingMarket(lendingMarketStubAddress1)
       ).to.emit(
-        pixCreditAgent,
+        creditAgent,
         EVENT_NAME_LENDING_MARKET_CHANGED
       ).withArgs(
         lendingMarketStubAddress1,
         ADDRESS_ZERO
       );
-      expect(await pixCreditAgent.lendingMarket()).to.equal(lendingMarketStubAddress1);
-      checkEquality(await pixCreditAgent.agentState() as AgentState, initialAgentState);
+      expect(await creditAgent.lendingMarket()).to.equal(lendingMarketStubAddress1);
+      checkEquality(await creditAgent.agentState() as AgentState, initialAgentState);
 
       // Change to a new non-zero address
       await expect(
-        connect(pixCreditAgent, admin).setLendingMarket(lendingMarketStubAddress2)
+        connect(creditAgent, admin).setLendingMarket(lendingMarketStubAddress2)
       ).to.emit(
-        pixCreditAgent,
+        creditAgent,
         EVENT_NAME_LENDING_MARKET_CHANGED
       ).withArgs(
         lendingMarketStubAddress2,
         lendingMarketStubAddress1
       );
-      expect(await pixCreditAgent.lendingMarket()).to.equal(lendingMarketStubAddress2);
-      checkEquality(await pixCreditAgent.agentState() as AgentState, initialAgentState);
+      expect(await creditAgent.lendingMarket()).to.equal(lendingMarketStubAddress2);
+      checkEquality(await creditAgent.agentState() as AgentState, initialAgentState);
 
       // Set the zero address
       await expect(
-        connect(pixCreditAgent, admin).setLendingMarket(ADDRESS_ZERO)
+        connect(creditAgent, admin).setLendingMarket(ADDRESS_ZERO)
       ).to.emit(
-        pixCreditAgent,
+        creditAgent,
         EVENT_NAME_LENDING_MARKET_CHANGED
       ).withArgs(
         ADDRESS_ZERO,
         lendingMarketStubAddress2
       );
-      expect(await pixCreditAgent.lendingMarket()).to.equal(ADDRESS_ZERO);
-      checkEquality(await pixCreditAgent.agentState() as AgentState, initialAgentState);
+      expect(await creditAgent.lendingMarket()).to.equal(ADDRESS_ZERO);
+      checkEquality(await creditAgent.agentState() as AgentState, initialAgentState);
 
       // Set the cashier address, then the lending market address to check the logic of configured status
       const cashierStubAddress = borrower.address;
-      await proveTx(connect(pixCreditAgent, admin).setCashier(cashierStubAddress));
-      await proveTx(connect(pixCreditAgent, admin).setLendingMarket(lendingMarketStubAddress1));
-      expect(await pixCreditAgent.lendingMarket()).to.equal(lendingMarketStubAddress1);
+      await proveTx(connect(creditAgent, admin).setCashier(cashierStubAddress));
+      await proveTx(connect(creditAgent, admin).setLendingMarket(lendingMarketStubAddress1));
+      expect(await creditAgent.lendingMarket()).to.equal(lendingMarketStubAddress1);
       const expectedAgentState = { ...initialAgentState, configured: true };
-      checkEquality(await pixCreditAgent.agentState() as AgentState, expectedAgentState);
+      checkEquality(await creditAgent.agentState() as AgentState, expectedAgentState);
 
       // Set another lending market address must not change the configured status of the agent contract
-      await proveTx(connect(pixCreditAgent, admin).setLendingMarket(lendingMarketStubAddress2));
-      expect(await pixCreditAgent.lendingMarket()).to.equal(lendingMarketStubAddress2);
-      checkEquality(await pixCreditAgent.agentState() as AgentState, expectedAgentState);
+      await proveTx(connect(creditAgent, admin).setLendingMarket(lendingMarketStubAddress2));
+      expect(await creditAgent.lendingMarket()).to.equal(lendingMarketStubAddress2);
+      checkEquality(await creditAgent.agentState() as AgentState, expectedAgentState);
 
       // Resetting the address must change the configured status appropriately
-      await proveTx(connect(pixCreditAgent, admin).setLendingMarket(ADDRESS_ZERO));
+      await proveTx(connect(creditAgent, admin).setLendingMarket(ADDRESS_ZERO));
       expectedAgentState.configured = false;
-      checkEquality(await pixCreditAgent.agentState() as AgentState, expectedAgentState);
+      checkEquality(await creditAgent.agentState() as AgentState, expectedAgentState);
     });
 
     it("Is reverted if the contract is paused", async () => {
-      const pixCreditAgent = await setUpFixture(deployAndConfigurePixCreditAgent);
+      const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
       const lendingMarketMockAddress = borrower.address;
 
-      await proveTx(pixCreditAgent.pause());
+      await proveTx(creditAgent.pause());
       await expect(
-        connect(pixCreditAgent, admin).setLendingMarket(lendingMarketMockAddress)
-      ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_CONTRACT_IS_PAUSED);
+        connect(creditAgent, admin).setLendingMarket(lendingMarketMockAddress)
+      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the admin role", async () => {
-      const pixCreditAgent = await setUpFixture(deployAndConfigurePixCreditAgent);
+      const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
       const lendingMarketMockAddress = borrower.address;
 
       await expect(
-        connect(pixCreditAgent, manager).setLendingMarket(lendingMarketMockAddress)
+        connect(creditAgent, manager).setLendingMarket(lendingMarketMockAddress)
       ).to.be.revertedWithCustomError(
-        pixCreditAgent,
+        creditAgent,
         REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
       ).withArgs(manager.address, adminRole);
     });
 
     it("Is reverted if the configuration is unchanged", async () => {
-      const pixCreditAgent = await setUpFixture(deployAndConfigurePixCreditAgent);
+      const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
       const lendingMarketMockAddress = borrower.address;
 
       // Try to set the default value
       await expect(
-        connect(pixCreditAgent, admin).setLendingMarket(ADDRESS_ZERO)
-      ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_ALREADY_CONFIGURED);
+        connect(creditAgent, admin).setLendingMarket(ADDRESS_ZERO)
+      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_ALREADY_CONFIGURED);
 
       // Try to set the same value twice
-      await proveTx(connect(pixCreditAgent, admin).setLendingMarket(lendingMarketMockAddress));
+      await proveTx(connect(creditAgent, admin).setLendingMarket(lendingMarketMockAddress));
       await expect(
-        connect(pixCreditAgent, admin).setLendingMarket(lendingMarketMockAddress)
-      ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_ALREADY_CONFIGURED);
+        connect(creditAgent, admin).setLendingMarket(lendingMarketMockAddress)
+      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_ALREADY_CONFIGURED);
     });
 
     // Additional more complex checks are in the other sections
   });
 
-  describe("Function 'initiatePixCredit()", async () => {
+  describe("Function 'initiateCredit()", async () => {
     describe("Executes as expected if", async () => {
       it("The 'loanAddon' value is not zero", async () => {
         const fixture = await setUpFixture(deployAndConfigureContracts);
-        const pixCredit = definePixCredit({ loanAddon: LOAN_ADDON_STUB });
+        const credit = defineCredit({ loanAddon: LOAN_ADDON_STUB });
         const txId = TX_ID_STUB;
-        const tx = initiatePixCredit(fixture.pixCreditAgent, { txId, pixCredit });
-        await checPixCreditKInitiation(fixture, { tx, txId, pixCredit });
+        const tx = initiateCredit(fixture.creditAgent, { txId, credit });
+        await checCreditKInitiation(fixture, { tx, txId, credit });
       });
 
       it("The 'loanAddon' value is zero", async () => {
         const fixture = await setUpFixture(deployAndConfigureContracts);
-        const pixCredit = definePixCredit({ loanAddon: 0n });
+        const credit = defineCredit({ loanAddon: 0n });
         const txId = TX_ID_STUB;
-        const tx = initiatePixCredit(fixture.pixCreditAgent, { txId, pixCredit });
-        await checPixCreditKInitiation(fixture, { tx, txId, pixCredit });
+        const tx = initiateCredit(fixture.creditAgent, { txId, credit });
+        await checCreditKInitiation(fixture, { tx, txId, credit });
       });
     });
 
     describe("Is reverted if", async () => {
       it("The contract is paused", async () => {
-        const { pixCreditAgent } = await setUpFixture(deployAndConfigureContracts);
-        await proveTx(pixCreditAgent.pause());
+        const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
+        await proveTx(creditAgent.pause());
 
         await expect(
-          initiatePixCredit(pixCreditAgent)
-        ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_CONTRACT_IS_PAUSED);
+          initiateCredit(creditAgent)
+        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_IS_PAUSED);
       });
 
       it("The caller does not have the manager role", async () => {
-        const { pixCreditAgent } = await setUpFixture(deployAndConfigureContracts);
+        const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
 
         await expect(
-          initiatePixCredit(pixCreditAgent, { caller: deployer })
+          initiateCredit(creditAgent, { caller: deployer })
         ).to.be.revertedWithCustomError(
-          pixCreditAgent,
+          creditAgent,
           REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
         ).withArgs(deployer.address, managerRole);
       });
 
       it("The 'Cashier' contract address is not configured", async () => {
-        const { pixCreditAgent } = await setUpFixture(deployAndConfigureContracts);
-        await proveTx(pixCreditAgent.setCashier(ADDRESS_ZERO));
+        const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
+        await proveTx(creditAgent.setCashier(ADDRESS_ZERO));
 
         await expect(
-          initiatePixCredit(pixCreditAgent)
-        ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_CONTRACT_NOT_CONFIGURED);
+          initiateCredit(creditAgent)
+        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_NOT_CONFIGURED);
       });
 
       it("The 'LendingMarket' contract address is not configured", async () => {
-        const { pixCreditAgent } = await setUpFixture(deployAndConfigureContracts);
-        await proveTx(pixCreditAgent.setLendingMarket(ADDRESS_ZERO));
+        const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
+        await proveTx(creditAgent.setLendingMarket(ADDRESS_ZERO));
 
         await expect(
-          initiatePixCredit(pixCreditAgent)
-        ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_CONTRACT_NOT_CONFIGURED);
+          initiateCredit(creditAgent)
+        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_NOT_CONFIGURED);
       });
 
       it("The provided 'txId' value is zero", async () => {
-        const { pixCreditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const pixCredit = definePixCredit({});
+        const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
+        const credit = defineCredit({});
 
         await expect(
-          initiatePixCredit(pixCreditAgent, { txId: TX_ID_ZERO, pixCredit })
-        ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_TX_ID_ZERO);
+          initiateCredit(creditAgent, { txId: TX_ID_ZERO, credit })
+        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_TX_ID_ZERO);
       });
 
       it("The provided borrower address is zero", async () => {
-        const { pixCreditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const pixCredit = definePixCredit({ borrowerAddress: ADDRESS_ZERO });
+        const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
+        const credit = defineCredit({ borrowerAddress: ADDRESS_ZERO });
 
         await expect(
-          initiatePixCredit(pixCreditAgent, { pixCredit })
-        ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_BORROWER_ADDRESS_ZERO);
+          initiateCredit(creditAgent, { credit })
+        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_BORROWER_ADDRESS_ZERO);
       });
 
       it("The provided program ID is zero", async () => {
-        const { pixCreditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const pixCredit = definePixCredit({ programId: 0 });
+        const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
+        const credit = defineCredit({ programId: 0 });
 
         await expect(
-          initiatePixCredit(pixCreditAgent, { pixCredit })
-        ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_PROGRAM_ID_ZERO);
+          initiateCredit(creditAgent, { credit })
+        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_PROGRAM_ID_ZERO);
       });
 
       it("The provided loan duration is zero", async () => {
-        const { pixCreditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const pixCredit = definePixCredit({ durationInPeriods: 0 });
+        const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
+        const credit = defineCredit({ durationInPeriods: 0 });
 
         await expect(
-          initiatePixCredit(pixCreditAgent, { pixCredit })
-        ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_LOAN_DURATION_ZERO);
+          initiateCredit(creditAgent, { credit })
+        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_LOAN_DURATION_ZERO);
       });
 
       it("The provided loan amount is zero", async () => {
-        const { pixCreditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const pixCredit = definePixCredit({ loanAmount: 0n });
+        const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
+        const credit = defineCredit({ loanAmount: 0n });
 
         await expect(
-          initiatePixCredit(pixCreditAgent, { pixCredit })
-        ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_LOAN_AMOUNT_ZERO);
+          initiateCredit(creditAgent, { credit })
+        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_LOAN_AMOUNT_ZERO);
       });
 
-      it("A PIX credit is already initiated for the provided transaction ID", async () => {
-        const { pixCreditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const pixCredit = definePixCredit();
+      it("A credit is already initiated for the provided transaction ID", async () => {
+        const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
+        const credit = defineCredit();
         const txId = TX_ID_STUB;
-        await proveTx(initiatePixCredit(pixCreditAgent, { txId, pixCredit }));
+        await proveTx(initiateCredit(creditAgent, { txId, credit }));
 
         await expect(
-          initiatePixCredit(pixCreditAgent, { txId, pixCredit })
+          initiateCredit(creditAgent, { txId, credit })
         ).to.be.revertedWithCustomError(
-          pixCreditAgent,
-          REVERT_ERROR_IF_PIX_CREDIT_STATUS_INAPPROPRIATE
+          creditAgent,
+          REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
         ).withArgs(
           txId,
-          PixCreditStatus.Initiated // status
+          CreditStatus.Initiated // status
         );
       });
 
       it("The 'programId' argument is greater than unsigned 32-bit integer", async () => {
-        const { pixCreditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const pixCredit = definePixCredit({ programId: Math.pow(2, 32) });
+        const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
+        const credit = defineCredit({ programId: Math.pow(2, 32) });
         await expect(
-          initiatePixCredit(pixCreditAgent, { pixCredit })
+          initiateCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
-          pixCreditAgent,
+          creditAgent,
           REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
-        ).withArgs(32, pixCredit.programId);
+        ).withArgs(32, credit.programId);
       });
 
       it("The 'durationInPeriods' argument is greater than unsigned 32-bit integer", async () => {
-        const { pixCreditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const pixCredit = definePixCredit({ durationInPeriods: Math.pow(2, 32) });
+        const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
+        const credit = defineCredit({ durationInPeriods: Math.pow(2, 32) });
         await expect(
-          initiatePixCredit(pixCreditAgent, { pixCredit })
+          initiateCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
-          pixCreditAgent,
+          creditAgent,
           REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
-        ).withArgs(32, pixCredit.durationInPeriods);
+        ).withArgs(32, credit.durationInPeriods);
       });
 
       it("The 'loanAmount' argument is greater than unsigned 64-bit integer", async () => {
-        const { pixCreditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const pixCredit = definePixCredit({ loanAmount: 2n ** 64n });
+        const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
+        const credit = defineCredit({ loanAmount: 2n ** 64n });
         await expect(
-          initiatePixCredit(pixCreditAgent, { pixCredit })
+          initiateCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
-          pixCreditAgent,
+          creditAgent,
           REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
-        ).withArgs(64, pixCredit.loanAmount);
+        ).withArgs(64, credit.loanAmount);
       });
 
       it("The 'loanAddon' argument is greater than unsigned 64-bit integer", async () => {
-        const { pixCreditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const pixCredit = definePixCredit({ loanAddon: 2n ** 64n });
+        const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
+        const credit = defineCredit({ loanAddon: 2n ** 64n });
         await expect(
-          initiatePixCredit(pixCreditAgent, { pixCredit })
+          initiateCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
-          pixCreditAgent,
+          creditAgent,
           REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
-        ).withArgs(64, pixCredit.loanAddon);
+        ).withArgs(64, credit.loanAddon);
       });
 
       // Additional more complex checks are in the other sections
     });
   });
 
-  describe("Function 'revokePixCredit()", async () => {
+  describe("Function 'revokeCredit()", async () => {
     it("Executes as expected", async () => {
-      const { pixCreditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
-      const pixCredit = definePixCredit();
+      const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
+      const credit = defineCredit();
       const txId = TX_ID_STUB;
-      await proveTx(initiatePixCredit(pixCreditAgent, { txId }));
+      await proveTx(initiateCredit(creditAgent, { txId }));
 
-      const tx = connect(pixCreditAgent, manager).revokePixCredit(txId);
-      await expect(tx).to.emit(pixCreditAgent, EVENT_NAME_PIX_CREDIT_STATUS_CHANGED).withArgs(
+      const tx = connect(creditAgent, manager).revokeCredit(txId);
+      await expect(tx).to.emit(creditAgent, EVENT_NAME_CREDIT_STATUS_CHANGED).withArgs(
         txId,
-        pixCredit.borrower,
-        PixCreditStatus.Nonexistent, // newStatus
-        PixCreditStatus.Initiated, // oldStatus
-        pixCredit.loanId,
-        pixCredit.programId,
-        pixCredit.durationInPeriods,
-        pixCredit.loanAmount,
-        pixCredit.loanAddon
+        credit.borrower,
+        CreditStatus.Nonexistent, // newStatus
+        CreditStatus.Initiated, // oldStatus
+        credit.loanId,
+        credit.programId,
+        credit.durationInPeriods,
+        credit.loanAmount,
+        credit.loanAddon
       );
       await expect(tx).to.emit(cashierMock, EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED).withArgs(
         txId,
         ADDRESS_ZERO, // newCallableContract,
         0 // newHookFlags
       );
-      checkEquality(await pixCreditAgent.getPixCredit(txId) as PixCredit, initialPixCredit);
+      checkEquality(await creditAgent.getCredit(txId) as Credit, initialCredit);
     });
 
     it("Is reverted if the contract is paused", async () => {
-      const { pixCreditAgent } = await setUpFixture(deployAndConfigureContracts);
-      await proveTx(pixCreditAgent.pause());
+      const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
+      await proveTx(creditAgent.pause());
 
       await expect(
-        connect(pixCreditAgent, manager).revokePixCredit(TX_ID_STUB)
-      ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_CONTRACT_IS_PAUSED);
+        connect(creditAgent, manager).revokeCredit(TX_ID_STUB)
+      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the manager role", async () => {
-      const { pixCreditAgent } = await setUpFixture(deployAndConfigureContracts);
+      const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
 
       await expect(
-        connect(pixCreditAgent, deployer).revokePixCredit(TX_ID_STUB)
+        connect(creditAgent, deployer).revokeCredit(TX_ID_STUB)
       ).to.be.revertedWithCustomError(
-        pixCreditAgent,
+        creditAgent,
         REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
       ).withArgs(deployer.address, managerRole);
     });
 
     it("Is reverted if the provided 'txId' value is zero", async () => {
-      const { pixCreditAgent } = await setUpFixture(deployAndConfigureContracts);
+      const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
 
       await expect(
-        connect(pixCreditAgent, manager).revokePixCredit(TX_ID_ZERO)
-      ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_TX_ID_ZERO);
+        connect(creditAgent, manager).revokeCredit(TX_ID_ZERO)
+      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_TX_ID_ZERO);
     });
 
-    it("Is reverted if the PIX credit does not exist", async () => {
-      const { pixCreditAgent } = await setUpFixture(deployAndConfigureContracts);
+    it("Is reverted if the credit does not exist", async () => {
+      const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
 
       await expect(
-        connect(pixCreditAgent, manager).revokePixCredit(TX_ID_STUB)
+        connect(creditAgent, manager).revokeCredit(TX_ID_STUB)
       ).to.be.revertedWithCustomError(
-        pixCreditAgent,
-        REVERT_ERROR_IF_PIX_CREDIT_STATUS_INAPPROPRIATE
+        creditAgent,
+        REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
       ).withArgs(
         TX_ID_STUB,
-        PixCreditStatus.Nonexistent // status
+        CreditStatus.Nonexistent // status
       );
     });
 
@@ -826,108 +826,108 @@ describe("Contract 'PixCreditAgent'", async () => {
   describe("Function 'onCashierHook()", async () => {
     async function checkCashierHookCalling(fixture: Fixture, props: {
       txId: string;
-      pixCredit: PixCredit;
+      credit: Credit;
       hookIndex: HookIndex;
-      newPixCreditStatus: PixCreditStatus;
-      oldPixCreditStatus: PixCreditStatus;
+      newCreditStatus: CreditStatus;
+      oldCreditStatus: CreditStatus;
     }) {
-      const { pixCreditAgent, cashierMock, lendingMarketMock } = fixture;
-      const { pixCredit, txId, hookIndex, newPixCreditStatus, oldPixCreditStatus } = props;
+      const { creditAgent, cashierMock, lendingMarketMock } = fixture;
+      const { credit, txId, hookIndex, newCreditStatus, oldCreditStatus } = props;
 
-      const tx = cashierMock.callCashierHook(getAddress(pixCreditAgent), hookIndex, txId);
+      const tx = cashierMock.callCashierHook(getAddress(creditAgent), hookIndex, txId);
 
-      pixCredit.status = newPixCreditStatus;
+      credit.status = newCreditStatus;
 
-      if (oldPixCreditStatus !== newPixCreditStatus) {
-        await expect(tx).to.emit(pixCreditAgent, EVENT_NAME_PIX_CREDIT_STATUS_CHANGED).withArgs(
+      if (oldCreditStatus !== newCreditStatus) {
+        await expect(tx).to.emit(creditAgent, EVENT_NAME_CREDIT_STATUS_CHANGED).withArgs(
           txId,
-          pixCredit.borrower,
-          newPixCreditStatus,
-          oldPixCreditStatus,
-          pixCredit.loanId,
-          pixCredit.programId,
-          pixCredit.durationInPeriods,
-          pixCredit.loanAmount,
-          pixCredit.loanAddon
+          credit.borrower,
+          newCreditStatus,
+          oldCreditStatus,
+          credit.loanId,
+          credit.programId,
+          credit.durationInPeriods,
+          credit.loanAmount,
+          credit.loanAddon
         );
-        if (newPixCreditStatus == PixCreditStatus.Pending) {
+        if (newCreditStatus == CreditStatus.Pending) {
           await expect(tx).to.emit(lendingMarketMock, EVENT_NAME_MOCK_TAKE_LOAN_FOR_CALLED).withArgs(
-            pixCredit.borrower,
-            pixCredit.programId,
-            pixCredit.loanAmount, // borrowAmount,
-            pixCredit.loanAddon, // addonAmount,
-            pixCredit.durationInPeriods
+            credit.borrower,
+            credit.programId,
+            credit.loanAmount, // borrowAmount,
+            credit.loanAddon, // addonAmount,
+            credit.durationInPeriods
           );
         } else {
           await expect(tx).not.to.emit(lendingMarketMock, EVENT_NAME_MOCK_TAKE_LOAN_FOR_CALLED);
         }
 
-        if (newPixCreditStatus == PixCreditStatus.Reversed) {
-          await expect(tx).to.emit(lendingMarketMock, EVENT_NAME_MOCK_REVOKE_LOAN_CALLED).withArgs(pixCredit.loanId);
+        if (newCreditStatus == CreditStatus.Reversed) {
+          await expect(tx).to.emit(lendingMarketMock, EVENT_NAME_MOCK_REVOKE_LOAN_CALLED).withArgs(credit.loanId);
         } else {
           await expect(tx).not.to.emit(lendingMarketMock, EVENT_NAME_MOCK_REVOKE_LOAN_CALLED);
         }
       } else {
-        await expect(tx).not.to.emit(pixCreditAgent, EVENT_NAME_PIX_CREDIT_STATUS_CHANGED);
+        await expect(tx).not.to.emit(creditAgent, EVENT_NAME_CREDIT_STATUS_CHANGED);
       }
 
-      checkEquality(await pixCreditAgent.getPixCredit(txId) as PixCredit, pixCredit);
+      checkEquality(await creditAgent.getCredit(txId) as Credit, credit);
     }
 
     describe("Executes as expected if", async () => {
       it("A cash-out requested and then confirmed with other proper conditions", async () => {
-        const { fixture, txId, initPixCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
+        const { fixture, txId, initCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
         const expectedAgentState: AgentState = {
           ...initialAgentState,
           initiatedCreditCounter: 1n,
           configured: true
         };
-        checkEquality(await fixture.pixCreditAgent.agentState() as AgentState, expectedAgentState);
-        const pixCredit: PixCredit = { ...initPixCredit, loanId: fixture.loanIdStub };
+        checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
+        const credit: Credit = { ...initCredit, loanId: fixture.loanIdStub };
 
         // Emulate cash-out request
         await checkCashierHookCalling(
           fixture,
           {
             txId,
-            pixCredit,
+            credit,
             hookIndex: HookIndex.CashOutRequestBefore,
-            newPixCreditStatus: PixCreditStatus.Pending,
-            oldPixCreditStatus: PixCreditStatus.Initiated
+            newCreditStatus: CreditStatus.Pending,
+            oldCreditStatus: CreditStatus.Initiated
           }
         );
         expectedAgentState.initiatedCreditCounter = 0n;
         expectedAgentState.pendingCreditCounter = 1n;
-        checkEquality(await fixture.pixCreditAgent.agentState() as AgentState, expectedAgentState);
+        checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
 
         // Emulate cash-out confirmation
         await checkCashierHookCalling(
           fixture,
           {
             txId,
-            pixCredit,
+            credit,
             hookIndex: HookIndex.CashOutConfirmationAfter,
-            newPixCreditStatus: PixCreditStatus.Confirmed,
-            oldPixCreditStatus: PixCreditStatus.Pending
+            newCreditStatus: CreditStatus.Confirmed,
+            oldCreditStatus: CreditStatus.Pending
           }
         );
         expectedAgentState.pendingCreditCounter = 0n;
-        checkEquality(await fixture.pixCreditAgent.agentState() as AgentState, expectedAgentState);
+        checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
       });
 
       it("A cash-out requested and then reversed with other proper conditions", async () => {
-        const { fixture, txId, initPixCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
-        const pixCredit: PixCredit = { ...initPixCredit, loanId: fixture.loanIdStub };
+        const { fixture, txId, initCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
+        const credit: Credit = { ...initCredit, loanId: fixture.loanIdStub };
 
         // Emulate cash-out request
         await checkCashierHookCalling(
           fixture,
           {
             txId,
-            pixCredit,
+            credit,
             hookIndex: HookIndex.CashOutRequestBefore,
-            newPixCreditStatus: PixCreditStatus.Pending,
-            oldPixCreditStatus: PixCreditStatus.Initiated
+            newCreditStatus: CreditStatus.Pending,
+            oldCreditStatus: CreditStatus.Initiated
           }
         );
         const expectedAgentState: AgentState = {
@@ -935,21 +935,21 @@ describe("Contract 'PixCreditAgent'", async () => {
           pendingCreditCounter: 1n,
           configured: true
         };
-        checkEquality(await fixture.pixCreditAgent.agentState() as AgentState, expectedAgentState);
+        checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
 
         // Emulate cash-out reversal
         await checkCashierHookCalling(
           fixture,
           {
             txId,
-            pixCredit,
+            credit,
             hookIndex: HookIndex.CashOutReversalAfter,
-            newPixCreditStatus: PixCreditStatus.Reversed,
-            oldPixCreditStatus: PixCreditStatus.Pending
+            newCreditStatus: CreditStatus.Reversed,
+            oldCreditStatus: CreditStatus.Pending
           }
         );
         expectedAgentState.pendingCreditCounter = 0n;
-        checkEquality(await fixture.pixCreditAgent.agentState() as AgentState, expectedAgentState);
+        checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
       });
     });
 
@@ -957,114 +957,114 @@ describe("Contract 'PixCreditAgent'", async () => {
       async function checkCashierHookInappropriateStatusError(fixture: Fixture, props: {
         txId: string;
         hookIndex: HookIndex;
-        PixCreditStatus: PixCreditStatus;
+        CreditStatus: CreditStatus;
       }) {
-        const { pixCreditAgent, cashierMock } = fixture;
-        const { txId, hookIndex, PixCreditStatus } = props;
+        const { creditAgent, cashierMock } = fixture;
+        const { txId, hookIndex, CreditStatus } = props;
         await expect(
-          cashierMock.callCashierHook(getAddress(pixCreditAgent), hookIndex, TX_ID_STUB)
+          cashierMock.callCashierHook(getAddress(creditAgent), hookIndex, TX_ID_STUB)
         ).to.be.revertedWithCustomError(
-          pixCreditAgent,
-          REVERT_ERROR_IF_PIX_CREDIT_STATUS_INAPPROPRIATE
+          creditAgent,
+          REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
         ).withArgs(
           txId,
-          PixCreditStatus // status
+          CreditStatus // status
         );
       }
 
       it("The contract is paused", async () => {
         const { fixture } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
-        const { pixCreditAgent, cashierMock } = fixture;
+        const { creditAgent, cashierMock } = fixture;
         const hookIndex = HookIndex.CashOutRequestBefore;
-        await proveTx(pixCreditAgent.pause());
+        await proveTx(creditAgent.pause());
 
         await expect(
-          cashierMock.callCashierHook(getAddress(pixCreditAgent), hookIndex, TX_ID_STUB)
-        ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_CONTRACT_IS_PAUSED);
+          cashierMock.callCashierHook(getAddress(creditAgent), hookIndex, TX_ID_STUB)
+        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_IS_PAUSED);
       });
 
       it("The caller is not the configured 'Cashier' contract", async () => {
         const { fixture } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
-        const { pixCreditAgent } = fixture;
+        const { creditAgent } = fixture;
         const hookIndex = HookIndex.CashOutRequestBefore;
 
         await expect(
-          connect(pixCreditAgent, deployer).onCashierHook(hookIndex, TX_ID_STUB)
-        ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_CASHIER_HOOK_CALLER_UNAUTHORIZED);
+          connect(creditAgent, deployer).onCashierHook(hookIndex, TX_ID_STUB)
+        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CASHIER_HOOK_CALLER_UNAUTHORIZED);
       });
 
-      it("The PIX credit status is inappropriate to the provided hook index. Part 1", async () => {
+      it("The credit status is inappropriate to the provided hook index. Part 1", async () => {
         const { fixture, txId } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
-        const { pixCreditAgent, cashierMock } = fixture;
+        const { creditAgent, cashierMock } = fixture;
 
-        // Try for a PIX credit with the initiated status
+        // Try for a credit with the initiated status
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutConfirmationAfter,
-          PixCreditStatus: PixCreditStatus.Initiated
+          CreditStatus: CreditStatus.Initiated
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutReversalAfter,
-          PixCreditStatus: PixCreditStatus.Initiated
+          CreditStatus: CreditStatus.Initiated
         });
 
-        // Try for a PIX credit with the pending status
-        await proveTx(cashierMock.callCashierHook(getAddress(pixCreditAgent), HookIndex.CashOutRequestBefore, txId));
+        // Try for a credit with the pending status
+        await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId));
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutRequestBefore,
-          PixCreditStatus: PixCreditStatus.Pending
+          CreditStatus: CreditStatus.Pending
         });
 
-        // Try for a PIX credit with the confirmed status
+        // Try for a credit with the confirmed status
         await proveTx(
-          cashierMock.callCashierHook(getAddress(pixCreditAgent), HookIndex.CashOutConfirmationAfter, txId)
+          cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutConfirmationAfter, txId)
         );
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutRequestBefore,
-          PixCreditStatus: PixCreditStatus.Confirmed
+          CreditStatus: CreditStatus.Confirmed
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutConfirmationAfter,
-          PixCreditStatus: PixCreditStatus.Confirmed
+          CreditStatus: CreditStatus.Confirmed
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutReversalAfter,
-          PixCreditStatus: PixCreditStatus.Confirmed
+          CreditStatus: CreditStatus.Confirmed
         });
       });
 
-      it("The PIX credit status is inappropriate to the provided hook index. Part 2", async () => {
+      it("The credit status is inappropriate to the provided hook index. Part 2", async () => {
         const { fixture, txId } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
-        const { pixCreditAgent, cashierMock } = fixture;
+        const { creditAgent, cashierMock } = fixture;
 
-        // Try for a PIX credit with the reversed status
-        await proveTx(cashierMock.callCashierHook(getAddress(pixCreditAgent), HookIndex.CashOutRequestBefore, txId));
-        await proveTx(cashierMock.callCashierHook(getAddress(pixCreditAgent), HookIndex.CashOutReversalAfter, txId));
+        // Try for a credit with the reversed status
+        await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId));
+        await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutReversalAfter, txId));
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutRequestBefore,
-          PixCreditStatus: PixCreditStatus.Reversed
+          CreditStatus: CreditStatus.Reversed
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutConfirmationAfter,
-          PixCreditStatus: PixCreditStatus.Reversed
+          CreditStatus: CreditStatus.Reversed
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutReversalAfter,
-          PixCreditStatus: PixCreditStatus.Reversed
+          CreditStatus: CreditStatus.Reversed
         });
       });
 
-      it("The cash-out account is not match the PIX credit borrower before taking a loan", async () => {
+      it("The cash-out account is not match the credit borrower before taking a loan", async () => {
         const { fixture, txId, initCashOut } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
-        const { pixCreditAgent, cashierMock } = fixture;
+        const { creditAgent, cashierMock } = fixture;
         const cashOut: CashOut = {
           ...initCashOut,
           account: deployer.address
@@ -1072,16 +1072,16 @@ describe("Contract 'PixCreditAgent'", async () => {
         await proveTx(cashierMock.setCashOut(txId, cashOut));
 
         await expect(
-          cashierMock.callCashierHook(getAddress(pixCreditAgent), HookIndex.CashOutRequestBefore, txId)
+          cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId)
         ).to.revertedWithCustomError(
-          pixCreditAgent,
+          creditAgent,
           REVERT_ERROR_IF_CASHIER_CASH_OUT_INAPPROPRIATE
         ).withArgs(txId);
       });
 
-      it("The cash-out amount is not match the PIX credit amount before taking a loan", async () => {
+      it("The cash-out amount is not match the credit amount before taking a loan", async () => {
         const { fixture, txId, initCashOut } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
-        const { pixCreditAgent, cashierMock } = fixture;
+        const { creditAgent, cashierMock } = fixture;
         const cashOut: CashOut = {
           ...initCashOut,
           amount: initCashOut.amount + 1n
@@ -1089,22 +1089,22 @@ describe("Contract 'PixCreditAgent'", async () => {
         await proveTx(cashierMock.setCashOut(txId, cashOut));
 
         await expect(
-          cashierMock.callCashierHook(getAddress(pixCreditAgent), HookIndex.CashOutRequestBefore, txId)
+          cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId)
         ).to.revertedWithCustomError(
-          pixCreditAgent,
+          creditAgent,
           REVERT_ERROR_IF_CASHIER_CASH_OUT_INAPPROPRIATE
         ).withArgs(txId);
       });
 
       it("The provided hook index is unexpected", async () => {
         const { fixture } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
-        const { pixCreditAgent, cashierMock } = fixture;
+        const { creditAgent, cashierMock } = fixture;
         const hookIndex = HookIndex.Unused;
 
         await expect(
-          cashierMock.callCashierHook(getAddress(pixCreditAgent), hookIndex, TX_ID_STUB)
+          cashierMock.callCashierHook(getAddress(creditAgent), hookIndex, TX_ID_STUB)
         ).to.be.revertedWithCustomError(
-          pixCreditAgent,
+          creditAgent,
           REVERT_ERROR_IF_CASHIER_HOOK_INDEX_UNEXPECTED
         ).withArgs(
           hookIndex,
@@ -1116,168 +1116,168 @@ describe("Contract 'PixCreditAgent'", async () => {
   });
 
   describe("Complex scenarios", async () => {
-    it("A revoked PIX credit can be re-initiated", async () => {
-      const { fixture, txId, initPixCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
-      const { pixCreditAgent } = fixture;
+    it("A revoked credit can be re-initiated", async () => {
+      const { fixture, txId, initCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
+      const { creditAgent } = fixture;
       const expectedAgentState: AgentState = {
         ...initialAgentState,
         initiatedCreditCounter: 1n,
         configured: true
       };
-      const pixCredit: PixCredit = { ...initPixCredit };
-      checkEquality(await fixture.pixCreditAgent.agentState() as AgentState, expectedAgentState);
+      const credit: Credit = { ...initCredit };
+      checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
 
-      await proveTx(connect(pixCreditAgent, manager).revokePixCredit(txId));
+      await proveTx(connect(creditAgent, manager).revokeCredit(txId));
       expectedAgentState.initiatedCreditCounter = 0n;
-      checkEquality(await fixture.pixCreditAgent.agentState() as AgentState, expectedAgentState);
+      checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
 
-      const tx = initiatePixCredit(pixCreditAgent, { txId, pixCredit });
-      await checPixCreditKInitiation(fixture, { tx, txId, pixCredit });
+      const tx = initiateCredit(creditAgent, { txId, credit });
+      await checCreditKInitiation(fixture, { tx, txId, credit });
       expectedAgentState.initiatedCreditCounter = 1n;
-      checkEquality(await fixture.pixCreditAgent.agentState() as AgentState, expectedAgentState);
+      checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
     });
 
-    it("A reversed PIX credit can be re-initiated", async () => {
-      const { fixture, txId, initPixCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
-      const { pixCreditAgent, cashierMock } = fixture;
-      const pixCredit: PixCredit = { ...initPixCredit };
+    it("A reversed credit can be re-initiated", async () => {
+      const { fixture, txId, initCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
+      const { creditAgent, cashierMock } = fixture;
+      const credit: Credit = { ...initCredit };
 
-      await proveTx(cashierMock.callCashierHook(getAddress(pixCreditAgent), HookIndex.CashOutRequestBefore, txId));
-      await proveTx(cashierMock.callCashierHook(getAddress(pixCreditAgent), HookIndex.CashOutReversalAfter, txId));
+      await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId));
+      await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutReversalAfter, txId));
 
-      const tx = initiatePixCredit(pixCreditAgent, { txId, pixCredit });
-      await checPixCreditKInitiation(fixture, { tx, txId, pixCredit });
+      const tx = initiateCredit(creditAgent, { txId, credit });
+      await checCreditKInitiation(fixture, { tx, txId, credit });
       const expectedAgentState: AgentState = {
         initiatedCreditCounter: 1n,
         pendingCreditCounter: 0n,
         configured: true
       };
-      checkEquality(await fixture.pixCreditAgent.agentState() as AgentState, expectedAgentState);
+      checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
     });
 
-    it("A pending or confirmed PIX credit cannot be re-initiated", async () => {
-      const { fixture, txId, initPixCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
-      const { pixCreditAgent, cashierMock } = fixture;
-      const pixCredit: PixCredit = { ...initPixCredit };
+    it("A pending or confirmed credit cannot be re-initiated", async () => {
+      const { fixture, txId, initCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
+      const { creditAgent, cashierMock } = fixture;
+      const credit: Credit = { ...initCredit };
 
-      // Try for a PIX credit with the pending status
-      await proveTx(cashierMock.callCashierHook(getAddress(pixCreditAgent), HookIndex.CashOutRequestBefore, txId));
+      // Try for a credit with the pending status
+      await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId));
       await expect(
-        initiatePixCredit(pixCreditAgent, { txId, pixCredit })
+        initiateCredit(creditAgent, { txId, credit })
       ).to.be.revertedWithCustomError(
-        pixCreditAgent,
-        REVERT_ERROR_IF_PIX_CREDIT_STATUS_INAPPROPRIATE
+        creditAgent,
+        REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
       ).withArgs(
         txId,
-        PixCreditStatus.Pending // status
+        CreditStatus.Pending // status
       );
 
-      // Try for a PIX credit with the confirmed status
+      // Try for a credit with the confirmed status
       await proveTx(
-        cashierMock.callCashierHook(getAddress(pixCreditAgent), HookIndex.CashOutConfirmationAfter, txId)
+        cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutConfirmationAfter, txId)
       );
       await expect(
-        initiatePixCredit(pixCreditAgent, { txId, pixCredit })
+        initiateCredit(creditAgent, { txId, credit })
       ).to.be.revertedWithCustomError(
-        pixCreditAgent,
-        REVERT_ERROR_IF_PIX_CREDIT_STATUS_INAPPROPRIATE
+        creditAgent,
+        REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
       ).withArgs(
         txId,
-        PixCreditStatus.Confirmed // status
+        CreditStatus.Confirmed // status
       );
     });
 
-    it("A PIX credit with any status except initiated cannot be revoked", async () => {
-      const { fixture, txId, initPixCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
-      const { pixCreditAgent, cashierMock } = fixture;
-      const pixCredit: PixCredit = { ...initPixCredit };
+    it("A credit with any status except initiated cannot be revoked", async () => {
+      const { fixture, txId, initCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
+      const { creditAgent, cashierMock } = fixture;
+      const credit: Credit = { ...initCredit };
 
-      // Try for a PIX credit with the pending status
-      await proveTx(cashierMock.callCashierHook(getAddress(pixCreditAgent), HookIndex.CashOutRequestBefore, txId));
+      // Try for a credit with the pending status
+      await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId));
       await expect(
-        connect(pixCreditAgent, manager).revokePixCredit(txId)
+        connect(creditAgent, manager).revokeCredit(txId)
       ).to.be.revertedWithCustomError(
-        pixCreditAgent,
-        REVERT_ERROR_IF_PIX_CREDIT_STATUS_INAPPROPRIATE
+        creditAgent,
+        REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
       ).withArgs(
         txId,
-        PixCreditStatus.Pending // status
+        CreditStatus.Pending // status
       );
 
-      // Try for a PIX credit with the reversed status
-      await proveTx(cashierMock.callCashierHook(getAddress(pixCreditAgent), HookIndex.CashOutReversalAfter, txId));
+      // Try for a credit with the reversed status
+      await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutReversalAfter, txId));
       await expect(
-        connect(pixCreditAgent, manager).revokePixCredit(txId)
+        connect(creditAgent, manager).revokeCredit(txId)
       ).to.be.revertedWithCustomError(
-        pixCreditAgent,
-        REVERT_ERROR_IF_PIX_CREDIT_STATUS_INAPPROPRIATE
+        creditAgent,
+        REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
       ).withArgs(
         txId,
-        PixCreditStatus.Reversed // status
+        CreditStatus.Reversed // status
       );
 
-      // Try for a PIX credit with the confirmed status
-      await proveTx(initiatePixCredit(pixCreditAgent, { txId, pixCredit }));
-      await proveTx(cashierMock.callCashierHook(getAddress(pixCreditAgent), HookIndex.CashOutRequestBefore, txId));
+      // Try for a credit with the confirmed status
+      await proveTx(initiateCredit(creditAgent, { txId, credit }));
+      await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId));
       await proveTx(
-        cashierMock.callCashierHook(getAddress(pixCreditAgent), HookIndex.CashOutConfirmationAfter, txId)
+        cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutConfirmationAfter, txId)
       );
       await expect(
-        connect(pixCreditAgent, manager).revokePixCredit(txId)
+        connect(creditAgent, manager).revokeCredit(txId)
       ).to.be.revertedWithCustomError(
-        pixCreditAgent,
-        REVERT_ERROR_IF_PIX_CREDIT_STATUS_INAPPROPRIATE
+        creditAgent,
+        REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
       ).withArgs(
         txId,
-        PixCreditStatus.Confirmed // status
+        CreditStatus.Confirmed // status
       );
     });
 
-    it("Configuring is prohibited when not all PIX credits are processed", async () => {
-      const { fixture, txId, initPixCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
-      const { pixCreditAgent, cashierMock, lendingMarketMock } = fixture;
-      const pixCredit: PixCredit = { ...initPixCredit };
+    it("Configuring is prohibited when not all credits are processed", async () => {
+      const { fixture, txId, initCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
+      const { creditAgent, cashierMock, lendingMarketMock } = fixture;
+      const credit: Credit = { ...initCredit };
 
       async function checkConfiguringProhibition() {
         await expect(
-          connect(pixCreditAgent, admin).setCashier(ADDRESS_ZERO)
-        ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_CONFIGURING_PROHIBITED);
+          connect(creditAgent, admin).setCashier(ADDRESS_ZERO)
+        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONFIGURING_PROHIBITED);
         await expect(
-          connect(pixCreditAgent, admin).setLendingMarket(ADDRESS_ZERO)
-        ).to.be.revertedWithCustomError(pixCreditAgent, REVERT_ERROR_IF_CONFIGURING_PROHIBITED);
+          connect(creditAgent, admin).setLendingMarket(ADDRESS_ZERO)
+        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONFIGURING_PROHIBITED);
       }
 
       async function checkConfiguringAllowance() {
-        await proveTx(connect(pixCreditAgent, admin).setCashier(ADDRESS_ZERO));
-        await proveTx(connect(pixCreditAgent, admin).setLendingMarket(ADDRESS_ZERO));
-        await proveTx(connect(pixCreditAgent, admin).setCashier(getAddress(cashierMock)));
-        await proveTx(connect(pixCreditAgent, admin).setLendingMarket(getAddress(lendingMarketMock)));
+        await proveTx(connect(creditAgent, admin).setCashier(ADDRESS_ZERO));
+        await proveTx(connect(creditAgent, admin).setLendingMarket(ADDRESS_ZERO));
+        await proveTx(connect(creditAgent, admin).setCashier(getAddress(cashierMock)));
+        await proveTx(connect(creditAgent, admin).setLendingMarket(getAddress(lendingMarketMock)));
       }
 
-      // Configuring is prohibited if a PIX credit is initiated
+      // Configuring is prohibited if a credit is initiated
       await checkConfiguringProhibition();
 
-      // Configuring is allowed when no PIX credit is initiated
-      await proveTx(connect(pixCreditAgent, manager).revokePixCredit(txId));
+      // Configuring is allowed when no credit is initiated
+      await proveTx(connect(creditAgent, manager).revokeCredit(txId));
       await checkConfiguringAllowance();
 
-      // Configuring is prohibited if a PIX credit is pending
-      await proveTx(initiatePixCredit(pixCreditAgent, { txId, pixCredit }));
-      await proveTx(cashierMock.callCashierHook(getAddress(pixCreditAgent), HookIndex.CashOutRequestBefore, txId));
+      // Configuring is prohibited if a credit is pending
+      await proveTx(initiateCredit(creditAgent, { txId, credit }));
+      await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId));
       await checkConfiguringProhibition();
 
-      // Configuring is allowed if a PIX credit is reversed and no more active PIX credits exist
-      await proveTx(cashierMock.callCashierHook(getAddress(pixCreditAgent), HookIndex.CashOutReversalAfter, txId));
+      // Configuring is allowed if a credit is reversed and no more active credits exist
+      await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutReversalAfter, txId));
       await checkConfiguringAllowance();
 
-      // Configuring is prohibited if a PIX credit is initiated
-      await proveTx(initiatePixCredit(pixCreditAgent, { txId, pixCredit }));
+      // Configuring is prohibited if a credit is initiated
+      await proveTx(initiateCredit(creditAgent, { txId, credit }));
       await checkConfiguringProhibition();
 
-      // Configuring is allowed if PIX credits are reversed or confirmed and no more active PIX credits exist
-      await proveTx(cashierMock.callCashierHook(getAddress(pixCreditAgent), HookIndex.CashOutRequestBefore, txId));
+      // Configuring is allowed if credits are reversed or confirmed and no more active credits exist
+      await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId));
       await proveTx(
-        cashierMock.callCashierHook(getAddress(pixCreditAgent), HookIndex.CashOutConfirmationAfter, txId)
+        cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutConfirmationAfter, txId)
       );
       await checkConfiguringAllowance();
     });

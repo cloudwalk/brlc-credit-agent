@@ -1,4 +1,4 @@
-# Pix Credit Agent
+# Credit Agent
 
 <p align="center">
   <img src="./docs/media/brlc-cover.png">
@@ -8,7 +8,7 @@
 ![example branch parameter](https://github.com/cloudwalk/brlc-pix-cashier/actions/workflows/build.yml/badge.svg?branch=main)
 ![example branch parameter](https://github.com/cloudwalk/brlc-pix-cashier/actions/workflows/test.yml/badge.svg?branch=main)
 
-This repository contains smart contracts that are related to PIX credit project.</br>
+This repository contains smart contracts that are related to the credit agent project.</br>
 
 ## Project Setup
 1. Clone the repo.

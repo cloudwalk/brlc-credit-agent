@@ -3,13 +3,13 @@
 pragma solidity ^0.8.20;
 
 /**
- * @title IPixCreditAgentTypes interface
+ * @title ICreditAgentTypes interface
  * @author CloudWalk Inc. (See https://cloudwalk.io)
- * @dev Defines the types used in the PIX credit agent contract.
+ * @dev Defines the types used in the credit agent contract.
  */
-interface IPixCreditAgentTypes {
+interface ICreditAgentTypes {
     /**
-     * @dev The status of a PIX credit.
+     * @dev The status of a credit.
      *
      * The possible values:
      *
@@ -36,7 +36,7 @@ interface IPixCreditAgentTypes {
      * - Confirmed: The loan is taken and cannot be revoked.
      * - Reversed: The loan is revoked.
      */
-    enum PixCreditStatus {
+    enum CreditStatus {
         Nonexistent,
         Initiated,
         Pending,
@@ -44,13 +44,13 @@ interface IPixCreditAgentTypes {
         Reversed
     }
 
-    /// @dev The PIX credit structure.
-    struct PixCredit {
+    /// @dev The credit structure.
+    struct Credit {
         // Slot 1
         address borrower; // --------- The address of the borrower.
         uint32 programId; // --------- The unique identifier of a lending program for the credit.
         uint32 durationInPeriods; // - The duration of the credit in periods. The period length is defined outside.
-        PixCreditStatus status; // --- The status of the credit, see {PixCreditStatus}.
+        CreditStatus status; // ------ The status of the credit, see {CreditStatus}.
         // uint24 __reserved; // ----- Reserved for future use until the end of the storage slot.
 
         // Slot 2
@@ -73,47 +73,47 @@ interface IPixCreditAgentTypes {
 }
 
 /**
- * @title IPixCreditAgentErrors interface
+ * @title ICreditAgentErrors interface
  * @author CloudWalk Inc. (See https://cloudwalk.io)
- * @dev Defines the custom errors used in the PIX credit agent contract.
+ * @dev Defines the custom errors used in the credit agent contract.
  */
-interface IPixCreditAgentErrors is IPixCreditAgentTypes {
+interface ICreditAgentErrors is ICreditAgentTypes {
     /// @dev The value of a configuration parameter is the same as previously set one.
-    error PixCreditAgent_AlreadyConfigured();
+    error CreditAgent_AlreadyConfigured();
 
     /// @dev The zero borrower address has been passed as a function argument.
-    error PixCreditAgent_BorrowerAddressZero();
+    error CreditAgent_BorrowerAddressZero();
 
-    /// @dev Configuring is prohibited due to at least one unprocessed PIX credit exists or other conditions.
-    error PixCreditAgent_ConfiguringProhibited();
+    /// @dev Configuring is prohibited due to at least one unprocessed credit exists or other conditions.
+    error CreditAgent_ConfiguringProhibited();
 
     /// @dev This agent contract is not configured yet.
-    error PixCreditAgent_ContractNotConfigured();
+    error CreditAgent_ContractNotConfigured();
 
     /// @dev The zero loan amount has been passed as a function argument.
-    error PixCreditAgent_LoanAmountZero();
+    error CreditAgent_LoanAmountZero();
 
     /// @dev The zero loan duration has been passed as a function argument.
-    error PixCreditAgent_LoanDurationZero();
+    error CreditAgent_LoanDurationZero();
 
     /**
      * @dev The related cash-out operation has inappropriate parameters (e.g. account, amount values).
      * @param txId The off-chain transaction identifiers of the operation.
      */
-    error PixCreditAgent_CashierCashOutInappropriate(bytes32 txId);
+    error CreditAgent_CashierCashOutInappropriate(bytes32 txId);
 
     /**
-     * @dev The related PIX credit has inappropriate status to execute the requested operation.
+     * @dev The related credit has inappropriate status to execute the requested operation.
      * @param txId The off-chain transaction identifiers of the operation.
      * @param status The current status of the credit.
      */
-    error PixCreditAgent_PixCreditStatusInappropriate(bytes32 txId, PixCreditStatus status);
+    error CreditAgent_CreditStatusInappropriate(bytes32 txId, CreditStatus status);
 
     /**
      * @dev The caller is not allowed to execute the hook function.
      * @param caller The address of the caller.
      */
-    error PixCreditAgent_CashierHookCallerUnauthorized(address caller);
+    error CreditAgent_CashierHookCallerUnauthorized(address caller);
 
     /**
      * @dev The the hook function is called with unexpected hook index.
@@ -121,25 +121,25 @@ interface IPixCreditAgentErrors is IPixCreditAgentTypes {
      * @param txId The off-chain transaction identifier of the operation.
      * @param caller The address of the caller.
      */
-    error PixCreditAgent_CashierHookIndexUnexpected(uint256 hookIndex, bytes32 txId, address caller);
+    error CreditAgent_CashierHookIndexUnexpected(uint256 hookIndex, bytes32 txId, address caller);
 
     /// @dev The zero off-chain transaction identifier has been passed as a function argument.
-    error PixCreditAgent_TxIdZero();
+    error CreditAgent_TxIdZero();
 
     /// @dev The zero program ID has been passed as a function argument.
-    error PixCreditAgent_ProgramIdZero();
+    error CreditAgent_ProgramIdZero();
 }
 
 /**
- * @title IPixCreditAgentPrimary interface
+ * @title ICreditAgentPrimary interface
  * @author CloudWalk Inc. (See https://cloudwalk.io)
- * @dev The main part of the contract interface for PIX credit operations.
+ * @dev The main part of the contract interface for credit operations.
  */
-interface IPixCreditAgentPrimary is IPixCreditAgentTypes {
+interface ICreditAgentPrimary is ICreditAgentTypes {
     // ------------------ Events ---------------------------------- //
 
     /**
-     * @dev Emitted when the status of a PIX credit is changed.
+     * @dev Emitted when the status of a credit is changed.
      * @param txId The unique identifier of the related cash-out operation.
      * @param borrower The address of the borrower.
      * @param newStatus The current status of the credit.
@@ -150,11 +150,11 @@ interface IPixCreditAgentPrimary is IPixCreditAgentTypes {
      * @param loanAmount The amount of the related loan.
      * @param loanAddon The addon amount of the related loan.
      */
-    event PixCreditStatusChanged(
+    event CreditStatusChanged(
         bytes32 indexed txId,
         address indexed borrower,
-        PixCreditStatus newStatus,
-        PixCreditStatus oldStatus,
+        CreditStatus newStatus,
+        CreditStatus oldStatus,
         uint256 loanId,
         uint256 programId,
         uint256 durationInPeriods,
@@ -165,7 +165,7 @@ interface IPixCreditAgentPrimary is IPixCreditAgentTypes {
     // ------------------ Functions ------------------------------- //
 
     /**
-     * @dev Initiates a PIX credit.
+     * @dev Initiates a credit.
      *
      * This function is expected to be called by a limited number of accounts.
      *
@@ -176,7 +176,7 @@ interface IPixCreditAgentPrimary is IPixCreditAgentTypes {
      * @param loanAmount The amount of the related loan.
      * @param loanAddon The addon amount (extra charges or fees) of the related loan.
      */
-    function initiatePixCredit(
+    function initiateCredit(
         bytes32 txId, // Tools: this comment prevents Prettier from formatting into a single line.
         address borrower,
         uint256 programId,
@@ -186,20 +186,20 @@ interface IPixCreditAgentPrimary is IPixCreditAgentTypes {
     ) external;
 
     /**
-     * @dev Revokes a PIX credit.
+     * @dev Revokes a credit.
      *
      * This function is expected to be called by a limited number of accounts.
      *
      * @param txId The unique identifier of the related cash-out operation.
      */
-    function revokePixCredit(bytes32 txId) external;
+    function revokeCredit(bytes32 txId) external;
 
     /**
-     * @dev Returns a PIX credit structure by its unique identifier.
+     * @dev Returns a credit structure by its unique identifier.
      * @param txId The unique identifier of the related cash-out operation.
-     * @return The PIX credit structure.
+     * @return The credit structure.
      */
-    function getPixCredit(bytes32 txId) external view returns (PixCredit memory);
+    function getCredit(bytes32 txId) external view returns (Credit memory);
 
     /**
      * @dev Returns the state of this agent contract.
@@ -208,11 +208,11 @@ interface IPixCreditAgentPrimary is IPixCreditAgentTypes {
 }
 
 /**
- * @title IPixCreditAgentConfiguration interface
+ * @title ICreditAgentConfiguration interface
  * @author CloudWalk Inc. (See https://cloudwalk.io)
- * @dev The configuration part of the contract interface for PIX credit operations.
+ * @dev The configuration part of the contract interface for credit operations.
  */
-interface IPixCreditAgentConfiguration is IPixCreditAgentTypes {
+interface ICreditAgentConfiguration is ICreditAgentTypes {
     // ------------------ Events ---------------------------------- //
 
     /**
@@ -255,8 +255,8 @@ interface IPixCreditAgentConfiguration is IPixCreditAgentTypes {
 }
 
 /**
- * @title IPixCreditAgent interface
+ * @title ICreditAgent interface
  * @author CloudWalk Inc. (See https://cloudwalk.io)
- * @dev The full interface of the contract for PIX credit operations.
+ * @dev The full interface of the contract for credit operations.
  */
-interface IPixCreditAgent is IPixCreditAgentErrors, IPixCreditAgentPrimary, IPixCreditAgentConfiguration {}
+interface ICreditAgent is ICreditAgentErrors, ICreditAgentPrimary, ICreditAgentConfiguration {}
