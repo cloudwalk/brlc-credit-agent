@@ -13,11 +13,11 @@ interface ICreditAgentTypes {
      *
      * The possible values:
      *
-     * - Nonexistent = 0 - The credit does not exist. The default value.
-     * - Initiated = 1 --- The credit is initiated by a manager, waiting for the related cash-out operation request.
-     * - Pending = 2 ----- The credit is pending due to the related operation request, waiting for further actions.
-     * - Confirmed = 3 --- The credit is confirmed as the related operation was confirmed.
-     * - Reversed = 4 ---- The credit is reversed as the related operation was reversed.
+     * - Nonexistent = 0 -- The credit does not exist. The default value.
+     * - Initiated = 1 ---- The credit is initiated by a manager, waiting for the related cash-out operation request.
+     * - Pending = 2 ------ The credit is pending due to the related operation request, waiting for further actions.
+     * - Confirmed = 3 ---- The credit is confirmed as the related operation was confirmed.
+     * - Reversed = 4 ----- The credit is reversed as the related operation was reversed.
      *
      * The possible status transitions are:
      *
@@ -47,28 +47,28 @@ interface ICreditAgentTypes {
     /// @dev The data of a single credit.
     struct Credit {
         // Slot 1
-        address borrower; // --------- The address of the borrower.
-        uint32 programId; // --------- The unique identifier of a lending program for the credit.
-        uint32 durationInPeriods; // - The duration of the credit in periods. The period length is defined outside.
-        CreditStatus status; // ------ The status of the credit, see {CreditStatus}.
-        // uint24 __reserved; // ----- Reserved for future use until the end of the storage slot.
+        address borrower; // ---------- The address of the borrower.
+        uint32 programId; // ---------- The unique identifier of a lending program for the credit.
+        uint32 durationInPeriods; // -- The duration of the credit in periods. The period length is defined outside.
+        CreditStatus status; // ------- The status of the credit, see {CreditStatus}.
+        // uint24 __reserved; // ------ Reserved for future use until the end of the storage slot.
 
         // Slot 2
-        uint64 loanAmount; // -------- The amount of the related loan.
-        uint64 loanAddon; // --------- The addon amount (extra charges or fees) of the related loan.
-        // uint128 __reserved; // ---- Reserved for future use until the end of the storage slot.
+        uint64 loanAmount; // --------- The amount of the related loan.
+        uint64 loanAddon; // ---------- The addon amount (extra charges or fees) of the related loan.
+        // uint128 __reserved; // ----- Reserved for future use until the end of the storage slot.
 
         // Slot 3
-        uint256 loanId; // ----------- The unique ID of the related loan on the lending market or zero if not taken.
+        uint256 loanId; // ------------ The unique ID of the related loan on the lending market or zero if not taken.
     }
 
     /// @dev The state of this agent contract.
     struct AgentState {
         // Slot 1
-        bool configured; // --------------- True if the agent is properly configured.
-        uint64 initiatedCreditCounter; // - The counter of initiated credits.
-        uint64 pendingCreditCounter; // --- The counter of pending credits.
-        // uint120 __reserved; // --------- Reserved for future use until the end of the storage slot.
+        bool configured; // ---------------- True if the agent is properly configured.
+        uint64 initiatedCreditCounter; // -- The counter of initiated credits.
+        uint64 pendingCreditCounter; // ---- The counter of pending credits.
+        // uint120 __reserved; // ---------- Reserved for future use until the end of the storage slot.
     }
 }
 
