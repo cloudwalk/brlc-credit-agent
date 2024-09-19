@@ -2,7 +2,7 @@ import { ethers, upgrades } from "hardhat";
 import { getAddress } from "../test-utils/eth";
 
 async function main() {
-  const CONTRACT_NAME: string = "PixCreditAgent"; // TBD: Enter contract name
+  const CONTRACT_NAME: string = "CreditAgent"; // TBD: Enter contract name
 
   const factory = await ethers.getContractFactory(CONTRACT_NAME);
   const proxy = await upgrades.deployProxy(
