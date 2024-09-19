@@ -2,9 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-/// @title SafeCast library
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
-/// @dev Defines safe casting functions from uint256 to other sizes.
+/**
+ * @title SafeCast library
+ * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @dev Defines safe casting functions from uint256 to other sizes.
+ */
 library SafeCast {
     /**
      * @dev Thrown when the value doesn't fit in an uint of `bits` size.
