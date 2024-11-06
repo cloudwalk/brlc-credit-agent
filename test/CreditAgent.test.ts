@@ -58,6 +58,14 @@ interface CashOut {
   flags: number;
 }
 
+interface Version {
+  major: number;
+  minor: number;
+  patch: number;
+
+  [key: string]: number; // Indexing signature to ensure that fields are iterated over in a key-value style
+}
+
 const initialAgentState: AgentState = {
   configured: false,
   initiatedCreditCounter: 0n,
@@ -113,6 +121,11 @@ describe("Contract 'CreditAgent'", async () => {
     (1 << HookIndex.CashOutRequestBefore) +
     (1 << HookIndex.CashOutConfirmationAfter) +
     (1 << HookIndex.CashOutReversalAfter);
+  const EXPECTED_VERSION: Version = {
+    major: 1,
+    minor: 0,
+    patch: 0
+  };
 
   // Errors of the lib contracts
   const REVERT_ERROR_IF_CONTRACT_INITIALIZATION_IS_INVALID = "InvalidInitialization";
@@ -338,6 +351,14 @@ describe("Contract 'CreditAgent'", async () => {
       await expect(
         creditAgent.initialize()
       ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_INITIALIZATION_IS_INVALID);
+    });
+  });
+
+  describe("Function '$__VERSION()'", async () => {
+    it("Returns expected values", async () => {
+      const creditAgent = await setUpFixture(deployCreditAgent);
+      const creditAgentVersion = await creditAgent.$__VERSION();
+      checkEquality(creditAgentVersion, EXPECTED_VERSION);
     });
   });
 
