@@ -7,6 +7,7 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { RescuableUpgradeable } from "./base/RescuableUpgradeable.sol";
 import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
+import { Versionable } from "./base/Versionable.sol";
 
 import { CreditAgentStorage } from "./CreditAgentStorage.sol";
 import { SafeCast } from "./libraries/SafeCast.sol";
@@ -56,7 +57,8 @@ contract CreditAgent is
     RescuableUpgradeable,
     UUPSUpgradeable,
     ICreditAgent,
-    ICashierHook
+    ICashierHook,
+    Versionable
 {
     using SafeCast for uint256;
 
