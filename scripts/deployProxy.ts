@@ -1,8 +1,7 @@
 import { ethers, upgrades } from "hardhat";
-import { getAddress } from "../test-utils/eth";
 
 async function main() {
-  const CONTRACT_NAME: string = "CreditAgent"; // TBD: Enter contract name
+  const CONTRACT_NAME: string = ""; // TODO: Enter contract name
 
   const factory = await ethers.getContractFactory(CONTRACT_NAME);
   const proxy = await upgrades.deployProxy(
@@ -10,9 +9,10 @@ async function main() {
     [],
     { kind: "uups" }
   );
+
   await proxy.waitForDeployment();
 
-  console.log("Proxy deployed to:", getAddress(proxy));
+  console.log("Proxy deployed to:", await proxy.getAddress());
 }
 
 main().then().catch(err => {
