@@ -141,6 +141,7 @@ describe("Contract 'CreditAgent'", async () => {
   const REVERT_ERROR_IF_CONFIGURING_PROHIBITED = "CreditAgent_ConfiguringProhibited";
   const REVERT_ERROR_IF_CONTRACT_NOT_CONFIGURED = "CreditAgent_ContractNotConfigured";
   const REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE = "CreditAgent_CreditStatusInappropriate";
+  const REVERT_ERROR_IF_IMPLEMENTATION_ADDRESS_INVALID = "CreditAgent_ImplementationAddressInvalid";
   const REVERT_ERROR_IF_LOAN_AMOUNT_ZERO = "CreditAgent_LoanAmountZero";
   const REVERT_ERROR_IF_LOAN_DURATION_ZERO = "CreditAgent_LoanDurationZero";
   const REVERT_ERROR_IF_PROGRAM_ID_ZERO = "CreditAgent_ProgramIdZero";
@@ -387,6 +388,13 @@ describe("Contract 'CreditAgent'", async () => {
 
       await expect(connect(creditAgent, admin).upgradeTo(borrower.address))
         .to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
+    });
+
+    it("Is reverted if the provided implementation address is not a balance freezer contract", async () => {
+      const creditAgent = await setUpFixture(deployCreditAgent);
+
+      await expect(creditAgent.upgradeTo(deployer.address))
+        .to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_IMPLEMENTATION_ADDRESS_INVALID);
     });
   });
 
