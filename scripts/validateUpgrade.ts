@@ -2,17 +2,15 @@ import { ethers, upgrades } from "hardhat";
 
 async function main() {
   const CONTRACT_NAME: string = ""; // TBD: Enter contract name
+  const PROXY_ADDRESS: string = ""; // TBD: Enter proxy address
 
   const factory = await ethers.getContractFactory(CONTRACT_NAME);
-  const proxy = await upgrades.deployProxy(
-    factory,
-    [],
-    { kind: "uups" }
-  );
+  await upgrades.validateUpgrade(PROXY_ADDRESS, factory, {
+    unsafeAllowRenames: false,
+    unsafeSkipStorageCheck: false
+  });
 
-  await proxy.waitForDeployment();
-
-  console.log("Proxy deployed:", await proxy.getAddress());
+  console.log("Successfully validated");
 }
 
 main().then().catch(err => {

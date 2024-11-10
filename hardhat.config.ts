@@ -29,12 +29,6 @@ const config: HardhatUserConfig = {
         mnemonic: process.env.GANACHE_MNEMONIC
       }
     },
-    stratus: {
-      url: process.env.STRATUS_RPC,
-      accounts: {
-        mnemonic: process.env.STRATUS_MNEMONIC
-      }
-    },
     cw_testnet: {
       url: process.env.CW_TESTNET_RPC,
       accounts: process.env.CW_TESTNET_PK
@@ -54,6 +48,9 @@ const config: HardhatUserConfig = {
   },
   gasReporter: {
     enabled: process.env.GAS_REPORTER_ENABLED === "true"
+  },
+  contractSizer: {
+    runOnCompile: process.env.CONTRACT_SIZER_ENABLED === "true"
   }
 };
 
