@@ -498,7 +498,8 @@ contract CreditAgent is
     }
 
     /**
-     * @dev The upgrade authorization function for UUPSProxy.
+     * @dev The upgrade validation function for the UUPSExtUpgradeable contract.
+     * @param newImplementation The address of the new implementation.
      */
     function _validateUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
         try ICreditAgentPrimary(newImplementation).proveCreditAgent() {} catch {
