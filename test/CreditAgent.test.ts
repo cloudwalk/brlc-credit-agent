@@ -372,7 +372,7 @@ describe("Contract 'CreditAgent'", async () => {
     it("Is reverted if the caller is not the owner", async () => {
       const creditAgent = await setUpFixture(deployCreditAgent);
 
-      await expect(connect(creditAgent, admin).upgradeToAndCall(borrower.address, "0x"))
+      await expect(connect(creditAgent, admin).upgradeToAndCall(creditAgent, "0x"))
         .to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
     });
   });
@@ -386,14 +386,14 @@ describe("Contract 'CreditAgent'", async () => {
     it("Is reverted if the caller is not the owner", async () => {
       const creditAgent = await setUpFixture(deployCreditAgent);
 
-      await expect(connect(creditAgent, admin).upgradeTo(borrower.address))
+      await expect(connect(creditAgent, admin).upgradeTo(creditAgent))
         .to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
     });
 
     it("Is reverted if the provided implementation address is not a balance freezer contract", async () => {
-      const creditAgent = await setUpFixture(deployCreditAgent);
+      const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
 
-      await expect(creditAgent.upgradeTo(deployer.address))
+      await expect(creditAgent.upgradeTo(cashierMock))
         .to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_IMPLEMENTATION_ADDRESS_INVALID);
     });
   });
