@@ -390,7 +390,7 @@ describe("Contract 'CreditAgent'", async () => {
         .to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
     });
 
-    it("Is reverted if the provided implementation address is not a balance freezer contract", async () => {
+    it("Is reverted if the provided implementation address is not a credit agent contract", async () => {
       const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
 
       await expect(creditAgent.upgradeTo(cashierMock))
