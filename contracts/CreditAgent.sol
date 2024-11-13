@@ -505,7 +505,6 @@ contract CreditAgent is
         try ICreditAgentPrimary(newImplementation).proveCreditAgent() {} catch {
             revert CreditAgent_ImplementationAddressInvalid();
         }
-        newImplementation; // Suppresses a compiler warning about the unused variable
     }
 
     // ------------------ Service functions ----------------------- //
