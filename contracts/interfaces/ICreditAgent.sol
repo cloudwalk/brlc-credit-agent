@@ -84,6 +84,9 @@ interface ICreditAgentErrors is ICreditAgentTypes {
     /// @dev The zero borrower address has been passed as a function argument.
     error CreditAgent_BorrowerAddressZero();
 
+    /// @dev Thrown if the provided new implementation address is not of a credit agent contract.
+    error CreditAgent_ImplementationAddressInvalid();
+
     /**
      * @dev The caller is not allowed to execute the hook function.
      * @param caller The address of the caller.
@@ -205,6 +208,11 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
      * @dev Returns the state of this agent contract.
      */
     function agentState() external view returns (AgentState memory);
+
+    /**
+     * @dev Proves that the contract is the credit agent contract.
+     */
+    function proveCreditAgent() external pure;
 }
 
 /**

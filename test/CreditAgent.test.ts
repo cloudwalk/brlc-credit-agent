@@ -123,7 +123,7 @@ describe("Contract 'CreditAgent'", async () => {
     (1 << HookIndex.CashOutReversalAfter);
   const EXPECTED_VERSION: Version = {
     major: 1,
-    minor: 0,
+    minor: 1,
     patch: 0
   };
 
@@ -141,6 +141,7 @@ describe("Contract 'CreditAgent'", async () => {
   const REVERT_ERROR_IF_CONFIGURING_PROHIBITED = "CreditAgent_ConfiguringProhibited";
   const REVERT_ERROR_IF_CONTRACT_NOT_CONFIGURED = "CreditAgent_ContractNotConfigured";
   const REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE = "CreditAgent_CreditStatusInappropriate";
+  const REVERT_ERROR_IF_IMPLEMENTATION_ADDRESS_INVALID = "CreditAgent_ImplementationAddressInvalid";
   const REVERT_ERROR_IF_LOAN_AMOUNT_ZERO = "CreditAgent_LoanAmountZero";
   const REVERT_ERROR_IF_LOAN_DURATION_ZERO = "CreditAgent_LoanDurationZero";
   const REVERT_ERROR_IF_PROGRAM_ID_ZERO = "CreditAgent_ProgramIdZero";
@@ -371,7 +372,7 @@ describe("Contract 'CreditAgent'", async () => {
     it("Is reverted if the caller is not the owner", async () => {
       const creditAgent = await setUpFixture(deployCreditAgent);
 
-      await expect(connect(creditAgent, admin).upgradeToAndCall(borrower.address, "0x"))
+      await expect(connect(creditAgent, admin).upgradeToAndCall(creditAgent, "0x"))
         .to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
     });
   });
@@ -385,8 +386,15 @@ describe("Contract 'CreditAgent'", async () => {
     it("Is reverted if the caller is not the owner", async () => {
       const creditAgent = await setUpFixture(deployCreditAgent);
 
-      await expect(connect(creditAgent, admin).upgradeTo(borrower.address))
+      await expect(connect(creditAgent, admin).upgradeTo(creditAgent))
         .to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
+    });
+
+    it("Is reverted if the provided implementation address is not a credit agent contract", async () => {
+      const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
+
+      await expect(creditAgent.upgradeTo(cashierMock))
+        .to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_IMPLEMENTATION_ADDRESS_INVALID);
     });
   });
 

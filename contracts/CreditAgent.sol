@@ -7,6 +7,7 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { RescuableUpgradeable } from "./base/RescuableUpgradeable.sol";
 import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
+import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 import { Versionable } from "./base/Versionable.sol";
 
 import { CreditAgentStorage } from "./CreditAgentStorage.sol";
@@ -55,7 +56,7 @@ contract CreditAgent is
     AccessControlExtUpgradeable,
     PausableExtUpgradeable,
     RescuableUpgradeable,
-    UUPSUpgradeable,
+    UUPSExtUpgradeable,
     ICreditAgent,
     ICashierHook,
     Versionable
@@ -327,6 +328,13 @@ contract CreditAgent is
         return _agentState;
     }
 
+    // ------------------ Pure functions -------------------------- //
+
+    /**
+     * @inheritdoc ICreditAgentPrimary
+     */
+    function proveCreditAgent() external pure {}
+
     // ------------------ Internal functions ---------------------- //
 
     /**
@@ -490,10 +498,13 @@ contract CreditAgent is
     }
 
     /**
-     * @dev The upgrade authorization function for UUPSProxy.
+     * @dev The upgrade validation function for the UUPSExtUpgradeable contract.
+     * @param newImplementation The address of the new implementation.
      */
-    function _authorizeUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
-        newImplementation; // Suppresses a compiler warning about the unused variable
+    function _validateUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
+        try ICreditAgentPrimary(newImplementation).proveCreditAgent() {} catch {
+            revert CreditAgent_ImplementationAddressInvalid();
+        }
     }
 
     // ------------------ Service functions ----------------------- //
