@@ -196,6 +196,10 @@ describe("Contract 'CreditAgent'", async () => {
   const REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCast_OverflowedUintDowncast";
   const REVERT_ERROR_IF_TX_ID_ZERO = "CreditAgent_TxIdZero";
   const REVERT_ERROR_IF_INVALID_INPUT_ARRAYS = "CreditAgent_InvalidInputArrays";
+  const REVERT_ERROR_IF_TX_ID_ALREADY_USED = "CreditAgent_TxIdAlreadyUsed";
+  const REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_REQUEST_BEFORE = "CreditAgent_FailedToProcessCashOutRequestBefore";
+  const REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_CONFIRMATION_AFTER = "CreditAgent_FailedToProcessCashOutConfirmationAfter";
+  const REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_REVERSAL_AFTER = "CreditAgent_FailedToProcessCashOutReversalAfter";
 
   const EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED = "MockConfigureCashOutHooksCalled";
   const EVENT_NAME_MOCK_REVOKE_LOAN_CALLED = "MockRevokeLoanCalled";
@@ -897,6 +901,17 @@ describe("Contract 'CreditAgent'", async () => {
         ).withArgs(64, credit.loanAddon);
       });
 
+      it("The 'txId' argument is already used", async () => {
+        const { fixture, txId } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
+        const commonCredit = defineCredit();
+        await expect(
+          initiateCredit(fixture.creditAgent, { txId, credit: commonCredit })
+        ).to.be.revertedWithCustomError(
+          fixture.creditAgent,
+          REVERT_ERROR_IF_TX_ID_ALREADY_USED
+        );
+      });
+
       // Additional more complex checks are in the other sections
     });
   });
@@ -1564,7 +1579,7 @@ describe("Contract 'CreditAgent'", async () => {
         ).withArgs(32, credit.programId);
       });
 
-      it("The 'durationInPeriods' argument is greater than unsigned 32-bit integer", async () => {
+      it("The 'durationsInPeriods' array contains a value greater than unsigned 32-bit integer", async () => {
         const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
         const credit = defineInstallmentCredit({ durationsInPeriods: [Math.pow(2, 32), 20] });
         await expect(
@@ -1575,7 +1590,7 @@ describe("Contract 'CreditAgent'", async () => {
         ).withArgs(32, credit.durationsInPeriods[0]);
       });
 
-      it("The 'loanAmount' argument is greater than unsigned 64-bit integer", async () => {
+      it("The 'borrowAmounts' array contains a value greater than unsigned 64-bit integer", async () => {
         const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
         const credit = defineInstallmentCredit({ borrowAmounts: [100n, 2n ** 64n] });
         await expect(
@@ -1586,7 +1601,7 @@ describe("Contract 'CreditAgent'", async () => {
         ).withArgs(64, credit.borrowAmounts[1]);
       });
 
-      it("The 'loanAddon' argument is greater than unsigned 64-bit integer", async () => {
+      it("The 'addonAmounts' array contains a value greater than unsigned 64-bit integer", async () => {
         const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
         const credit = defineInstallmentCredit({ addonAmounts: [100n, 2n ** 64n] });
         await expect(
@@ -1595,6 +1610,19 @@ describe("Contract 'CreditAgent'", async () => {
           creditAgent,
           REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
         ).withArgs(64, credit.addonAmounts[1]);
+      });
+
+      it("The 'durationsInPeriods' array is empty", async () => {
+        const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
+        const credit = defineInstallmentCredit({
+          durationsInPeriods: [],
+          borrowAmounts: [1000n, 2000n],
+          addonAmounts: [100n, 200n]
+        });
+        await expect(initiateInstallmentCredit(creditAgent, { credit })).to.be.revertedWithCustomError(
+          creditAgent,
+          REVERT_ERROR_IF_INVALID_INPUT_ARRAYS
+        );
       });
 
       it("The 'durationsInPeriods' array has different length than other arrays", async () => {
@@ -1633,6 +1661,17 @@ describe("Contract 'CreditAgent'", async () => {
         await expect(initiateInstallmentCredit(creditAgent, { credit })).to.be.revertedWithCustomError(
           creditAgent,
           REVERT_ERROR_IF_INVALID_INPUT_ARRAYS
+        );
+      });
+
+      it("The 'txId' argument is already used", async () => {
+        const { fixture, txId } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
+        const installmentCredit = defineInstallmentCredit();
+        await expect(
+          initiateInstallmentCredit(fixture.creditAgent, { txId, credit: installmentCredit })
+        ).to.be.revertedWithCustomError(
+          fixture.creditAgent,
+          REVERT_ERROR_IF_TX_ID_ALREADY_USED
         );
       });
 
@@ -2172,6 +2211,41 @@ describe("Contract 'CreditAgent'", async () => {
         cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutConfirmationAfter, txId)
       );
       await checkConfiguringAllowance();
+    });
+  });
+
+  describe("Function 'onCashierHook()'", async () => {
+    it("Reverts if failed to process the cash-out request hook", async () => {
+      const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
+      const txId = TX_ID_STUB;
+      await expect(
+        cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId)
+      ).to.be.revertedWithCustomError(
+        creditAgent,
+        REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_REQUEST_BEFORE
+      ).withArgs(txId);
+    });
+
+    it("Reverts if failed to process the cash-out confirmation hook", async () => {
+      const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
+      const txId = TX_ID_STUB;
+      await expect(
+        cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutConfirmationAfter, txId)
+      ).to.be.revertedWithCustomError(
+        creditAgent,
+        REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_CONFIRMATION_AFTER
+      ).withArgs(txId);
+    });
+
+    it("Reverts if failed to process the cash-out reversal hook", async () => {
+      const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
+      const txId = TX_ID_STUB;
+      await expect(
+        cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutReversalAfter, txId)
+      ).to.be.revertedWithCustomError(
+        creditAgent,
+        REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_REVERSAL_AFTER
+      ).withArgs(txId);
     });
   });
 });
