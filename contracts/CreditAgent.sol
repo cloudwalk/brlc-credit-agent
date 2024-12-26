@@ -77,8 +77,8 @@ contract CreditAgent is
     /// @dev The bit flags that represent the required hooks for cash-out operations.
     uint256 private constant REQUIRED_CASHIER_CASH_OUT_HOOK_FLAGS =
         (1 << uint256(ICashierHookableTypes.HookIndex.CashOutRequestBefore)) +
-            (1 << uint256(ICashierHookableTypes.HookIndex.CashOutConfirmationAfter)) +
-            (1 << uint256(ICashierHookableTypes.HookIndex.CashOutReversalAfter));
+        (1 << uint256(ICashierHookableTypes.HookIndex.CashOutConfirmationAfter)) +
+        (1 << uint256(ICashierHookableTypes.HookIndex.CashOutReversalAfter));
 
     // ------------------ Modifiers ------------------------------- //
 
