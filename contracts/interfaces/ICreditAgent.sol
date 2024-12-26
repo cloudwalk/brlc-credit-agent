@@ -220,9 +220,9 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
      * @param oldStatus The previous status of the credit.
      * @param firstInstallmentId The unique ID of the related first installment loan on the lending market or zero if not taken.
      * @param programId The unique identifier of the lending program for the credit.
-     * @param durationsInPeriods The duration of each installment in periods.
-     * @param borrowAmounts The amounts of each installment.
-     * @param addonAmounts The addon amounts of each installment.
+     * @param installmentCount The number of installments.
+     * @param totalBorrowAmount The total amount of all installments.
+     * @param totalAddonAmount The total addon amount of all installments.
      */
     event InstallmentCreditStatusChanged(
         bytes32 indexed txId,
@@ -231,9 +231,9 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
         CreditStatus oldStatus,
         uint256 firstInstallmentId,
         uint256 programId,
-        uint256[] durationsInPeriods,
-        uint256[] borrowAmounts,
-        uint256[] addonAmounts
+        uint256 installmentCount,
+        uint256 totalBorrowAmount,
+        uint256 totalAddonAmount
     );
 
     // ------------------ Functions ------------------------------- //

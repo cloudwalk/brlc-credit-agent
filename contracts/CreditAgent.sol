@@ -557,9 +557,9 @@ contract CreditAgent is
             oldStatus,
             installmentCredit.firstInstallmentId,
             installmentCredit.programId,
-            _toUint256Array(installmentCredit.durationsInPeriods),
-            _toUint256Array(installmentCredit.borrowAmounts),
-            _toUint256Array(installmentCredit.addonAmounts)
+            installmentCredit.durationsInPeriods.length,
+            _sumArray(installmentCredit.borrowAmounts),
+            _sumArray(installmentCredit.addonAmounts)
         );
 
         unchecked {

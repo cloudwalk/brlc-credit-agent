@@ -425,9 +425,9 @@ describe("Contract 'CreditAgent'", async () => {
       CreditStatus.Nonexistent, // oldStatus
       credit.firstInstallmentId,
       credit.programId,
-      credit.durationsInPeriods,
-      credit.borrowAmounts,
-      credit.addonAmounts
+      credit.durationsInPeriods.length,
+      _sumArray(credit.borrowAmounts),
+      _sumArray(credit.addonAmounts)
     );
     await expect(tx).to.emit(cashierMock, EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED).withArgs(
       txId,
@@ -436,6 +436,10 @@ describe("Contract 'CreditAgent'", async () => {
     );
     credit.status = CreditStatus.Initiated;
     checkEquality(await creditAgent.getInstallmentCredit(txId) as InstallmentCredit, credit);
+  }
+
+  function _sumArray(array: bigint[]): bigint {
+    return array.reduce((acc, val) => acc + val, 0n);
   }
 
   describe("Function 'initialize()'", async () => {
@@ -1694,9 +1698,9 @@ describe("Contract 'CreditAgent'", async () => {
         CreditStatus.Initiated, // oldStatus
         credit.firstInstallmentId,
         credit.programId,
-        credit.durationsInPeriods,
-        credit.borrowAmounts,
-        credit.addonAmounts
+        credit.durationsInPeriods.length,
+        _sumArray(credit.borrowAmounts),
+        _sumArray(credit.addonAmounts)
       );
       await expect(tx).to.emit(cashierMock, EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED).withArgs(
         txId,
@@ -1774,9 +1778,9 @@ describe("Contract 'CreditAgent'", async () => {
           oldCreditStatus,
           credit.firstInstallmentId,
           credit.programId,
-          credit.durationsInPeriods,
-          credit.borrowAmounts,
-          credit.addonAmounts
+          credit.durationsInPeriods.length,
+          _sumArray(credit.borrowAmounts),
+          _sumArray(credit.addonAmounts)
         );
         if (newCreditStatus == CreditStatus.Pending) {
           await expect(tx).to.emit(lendingMarketMock, EVENT_NAME_MOCK_TAKE_INSTALLMENT_LOAN_FOR_CALLED).withArgs(
