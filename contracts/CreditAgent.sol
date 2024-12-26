@@ -465,7 +465,12 @@ contract CreditAgent is
      * @dev Checks the permission to configure this agent contract.
      */
     function _checkConfiguringPermission() internal view {
-        if (_agentState.initiatedCreditCounter > 0 || _agentState.pendingCreditCounter > 0) {
+        if (
+            _agentState.initiatedCreditCounter > 0 ||
+            _agentState.pendingCreditCounter > 0 ||
+            _agentState.initiatedInstallmentCreditCounter > 0 ||
+            _agentState.pendingInstallmentCreditCounter > 0
+        ) {
             revert CreditAgent_ConfiguringProhibited();
         }
     }
@@ -759,7 +764,7 @@ contract CreditAgent is
     function _processTakeInstallmentLoanFor(bytes32 txId) internal returns (bool) {
         InstallmentCredit storage installmentCredit = _installmentCredits[txId];
 
-        if (installmentCredit.status != CreditStatus.Initiated) {
+        if (installmentCredit.status == CreditStatus.Nonexistent) {
             return false;
         }
 
