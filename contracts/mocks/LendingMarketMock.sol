@@ -20,8 +20,20 @@ contract LendingMarketMock {
         uint256 durationInPeriods
     );
 
+    /// @dev Emitted when the `takeInstallmentLoanFor()` function is called with the parameters of the function.
+    event MockTakeInstallmentLoanForCalled(
+        address borrower, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 programId,
+        uint256[] durationsInPeriods,
+        uint256[] borrowAmounts,
+        uint256[] addonAmounts
+    );
+
     /// @dev Emitted when the `revokeLoan()` function is called with the parameters of the function.
     event MockRevokeLoanCalled(uint256 loanId);
+
+    /// @dev Emitted when the `revokeInstallmentLoan()` function is called with the parameters of the function.
+    event MockRevokeInstallmentLoanCalled(uint256 loanId);
 
     /**
      * @dev Imitates the same-name function a lending market contracts.
@@ -40,6 +52,27 @@ contract LendingMarketMock {
             borrowAmount,
             addonAmount,
             durationInPeriods
+        );
+        return LOAN_ID_STAB;
+    }
+
+    /**
+     * @dev Imitates the same-name function a lending market contracts.
+     *      Just emits an event about the call and returns a constant.
+     */
+    function takeInstallmentLoanFor(
+        address borrower, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint32 programId,
+        uint256[] memory borrowAmounts,
+        uint256[] memory addonAmounts,
+        uint256[] memory durationsInPeriods
+    ) external returns (uint256) {
+        emit MockTakeInstallmentLoanForCalled(
+            borrower, // Tools: this comment prevents Prettier from formatting into a single line.
+            programId,
+            durationsInPeriods,
+            borrowAmounts,
+            addonAmounts
         );
         return LOAN_ID_STAB;
     }

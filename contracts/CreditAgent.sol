@@ -77,8 +77,8 @@ contract CreditAgent is
     /// @dev The bit flags that represent the required hooks for cash-out operations.
     uint256 private constant REQUIRED_CASHIER_CASH_OUT_HOOK_FLAGS =
         (1 << uint256(ICashierHookableTypes.HookIndex.CashOutRequestBefore)) +
-        (1 << uint256(ICashierHookableTypes.HookIndex.CashOutConfirmationAfter)) +
-        (1 << uint256(ICashierHookableTypes.HookIndex.CashOutReversalAfter));
+            (1 << uint256(ICashierHookableTypes.HookIndex.CashOutConfirmationAfter)) +
+            (1 << uint256(ICashierHookableTypes.HookIndex.CashOutReversalAfter));
 
     // ------------------ Modifiers ------------------------------- //
 
@@ -190,6 +190,7 @@ contract CreditAgent is
      * - The contract must not be paused.
      * - The caller must have the {MANAGER_ROLE} role.
      * - The contract must be configured.
+     * - The provided `txId` must not be used for any other credit.
      * - The provided `txId`, `borrower`, `programId`, `durationInPeriods`, `loanAmount` must not be zeros.
      * - The credit with the provided `txId` must have the `Nonexistent` or `Reversed` status.
      */
@@ -218,6 +219,10 @@ contract CreditAgent is
         }
         if (loanAmount == 0) {
             revert CreditAgent_LoanAmountZero();
+        }
+
+        if (_installmentCredits[txId].status != CreditStatus.Nonexistent) {
+            revert CreditAgent_TxIdAlreadyUsed();
         }
 
         Credit storage credit = _credits[txId];
@@ -253,6 +258,86 @@ contract CreditAgent is
      *
      * - The contract must not be paused.
      * - The caller must have the {MANAGER_ROLE} role.
+     * - The contract must be configured.
+     * - The provided `txId` must not be used for any other credit.
+     * - The provided `txId`, `borrower`, `programId` must not be zeros.
+     * - The provided `durationsInPeriods`, `borrowAmounts`, `addonAmounts` arrays must have the same length.
+     * - The provided `durationsInPeriods` and `borrowAmounts` arrays must contain only non-zero values.
+     * - The credit with the provided `txId` must have the `Nonexistent` or `Reversed` status.
+     */
+    function initiateInstallmentCredit(
+        bytes32 txId, // Tools: this comment prevents Prettier from formatting into a single line.
+        address borrower,
+        uint256 programId,
+        uint256[] calldata durationsInPeriods,
+        uint256[] calldata borrowAmounts,
+        uint256[] calldata addonAmounts
+    ) external whenNotPaused onlyRole(MANAGER_ROLE) {
+        if (!_agentState.configured) {
+            revert CreditAgent_ContractNotConfigured();
+        }
+        if (txId == bytes32(0)) {
+            revert CreditAgent_TxIdZero();
+        }
+        if (borrower == address(0)) {
+            revert CreditAgent_BorrowerAddressZero();
+        }
+        if (programId == 0) {
+            revert CreditAgent_ProgramIdZero();
+        }
+        if (
+            durationsInPeriods.length == 0 ||
+            durationsInPeriods.length != borrowAmounts.length ||
+            durationsInPeriods.length != addonAmounts.length
+        ) {
+            revert CreditAgent_InvalidInputArrays();
+        }
+        for (uint256 i = 0; i < borrowAmounts.length; i++) {
+            if (durationsInPeriods[i] == 0) {
+                revert CreditAgent_LoanDurationZero();
+            }
+            if (borrowAmounts[i] == 0) {
+                revert CreditAgent_LoanAmountZero();
+            }
+        }
+
+        if (_credits[txId].status != CreditStatus.Nonexistent) {
+            revert CreditAgent_TxIdAlreadyUsed();
+        }
+
+        InstallmentCredit storage installmentCredit = _installmentCredits[txId];
+        CreditStatus oldStatus = installmentCredit.status;
+        if (oldStatus != CreditStatus.Nonexistent && oldStatus != CreditStatus.Reversed) {
+            revert CreditAgent_CreditStatusInappropriate(txId, oldStatus);
+        }
+
+        installmentCredit.borrower = borrower;
+        installmentCredit.programId = programId.toUint32();
+        installmentCredit.durationsInPeriods = _toUint32Array(durationsInPeriods);
+        installmentCredit.borrowAmounts = _toUint64Array(borrowAmounts);
+        installmentCredit.addonAmounts = _toUint64Array(addonAmounts);
+
+        if (oldStatus != CreditStatus.Nonexistent) {
+            installmentCredit.firstInstallmentId = 0;
+        }
+
+        _changeInstallmentCreditStatus(
+            txId,
+            installmentCredit,
+            CreditStatus.Initiated, // newStatus
+            CreditStatus.Nonexistent // oldStatus
+        );
+
+        ICashierHookable(_cashier).configureCashOutHooks(txId, address(this), REQUIRED_CASHIER_CASH_OUT_HOOK_FLAGS);
+    }
+
+    /**
+     * @inheritdoc ICreditAgentPrimary
+     *
+     * @dev Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {MANAGER_ROLE} role.
      * - The provided `txId` must not be zero.
      * - The credit with the provided `txId` must have the `Initiated` status.
      */
@@ -274,6 +359,38 @@ contract CreditAgent is
         );
 
         delete _credits[txId];
+
+        ICashierHookable(_cashier).configureCashOutHooks(txId, address(0), 0);
+    }
+
+    /**
+     * @inheritdoc ICreditAgentPrimary
+     *
+     * @dev Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {MANAGER_ROLE} role.
+     * - The provided `txId` must not be zero.
+     * - The credit with the provided `txId` must have the `Initiated` status.
+     */
+    function revokeInstallmentCredit(bytes32 txId) external whenNotPaused onlyRole(MANAGER_ROLE) {
+        if (txId == bytes32(0)) {
+            revert CreditAgent_TxIdZero();
+        }
+
+        InstallmentCredit storage installmentCredit = _installmentCredits[txId];
+        if (installmentCredit.status != CreditStatus.Initiated) {
+            revert CreditAgent_CreditStatusInappropriate(txId, installmentCredit.status);
+        }
+
+        _changeInstallmentCreditStatus(
+            txId,
+            installmentCredit,
+            CreditStatus.Nonexistent, // newStatus
+            CreditStatus.Initiated // oldStatus
+        );
+
+        delete _installmentCredits[txId];
 
         ICashierHookable(_cashier).configureCashOutHooks(txId, address(0), 0);
     }
@@ -319,6 +436,13 @@ contract CreditAgent is
      */
     function getCredit(bytes32 txId) external view returns (Credit memory) {
         return _credits[txId];
+    }
+
+    /**
+     * @inheritdoc ICreditAgentPrimary
+     */
+    function getInstallmentCredit(bytes32 txId) external view returns (InstallmentCredit memory) {
+        return _installmentCredits[txId];
     }
 
     /**
@@ -391,14 +515,14 @@ contract CreditAgent is
             if (oldStatus == CreditStatus.Initiated) {
                 _agentState.initiatedCreditCounter -= uint64(1);
             } else if (oldStatus == CreditStatus.Pending) {
-                _agentState.pendingCreditCounter -= uint64(1);
+                _agentState.pendingCreditCounter -= uint56(1);
             }
         }
 
         if (newStatus == CreditStatus.Initiated) {
             _agentState.initiatedCreditCounter += uint64(1);
         } else if (newStatus == CreditStatus.Pending) {
-            _agentState.pendingCreditCounter += uint64(1);
+            _agentState.pendingCreditCounter += uint56(1);
         } else if (newStatus == CreditStatus.Nonexistent) {
             // Skip the other actions because the Credit structure will be deleted
             return;
@@ -408,12 +532,197 @@ contract CreditAgent is
     }
 
     /**
+     * @dev Changes the status of an installment credit with event emitting and counters updating.
+     *
+     * @param txId The unique identifier of the related cash-out operation.
+     * @param installmentCredit The storage reference to the installment credit to be updated.
+     * @param newStatus The current status of the credit.
+     * @param oldStatus The previous status of the credit.
+     */
+    function _changeInstallmentCreditStatus(
+        bytes32 txId, // Tools: this comment prevents Prettier from formatting into a single line.
+        InstallmentCredit storage installmentCredit,
+        CreditStatus newStatus,
+        CreditStatus oldStatus
+    ) internal {
+        emit InstallmentCreditStatusChanged(
+            txId,
+            installmentCredit.borrower,
+            newStatus,
+            oldStatus,
+            installmentCredit.firstInstallmentId,
+            installmentCredit.programId,
+            _toUint256Array(installmentCredit.durationsInPeriods),
+            _toUint256Array(installmentCredit.borrowAmounts),
+            _toUint256Array(installmentCredit.addonAmounts)
+        );
+
+        unchecked {
+            if (oldStatus == CreditStatus.Initiated) {
+                _agentState.initiatedInstallmentCreditCounter -= uint64(1);
+            } else if (oldStatus == CreditStatus.Pending) {
+                _agentState.pendingInstallmentCreditCounter -= uint56(1);
+            }
+        }
+
+        if (newStatus == CreditStatus.Initiated) {
+            _agentState.initiatedInstallmentCreditCounter += uint64(1);
+        } else if (newStatus == CreditStatus.Pending) {
+            _agentState.pendingInstallmentCreditCounter += uint56(1);
+        } else if (newStatus == CreditStatus.Nonexistent) {
+            // Skip the other actions because the Credit structure will be deleted
+            return;
+        }
+
+        installmentCredit.status = newStatus;
+    }
+
+    /**
      * @dev Processes the cash-out request before hook.
      *
      * @param txId The unique identifier of the related cash-out operation.
      */
     function _processCashierHookCashOutRequestBefore(bytes32 txId) internal {
+        if (_processTakeLoanFor(txId)) {
+            return;
+        }
+
+        if (_processTakeInstallmentLoanFor(txId)) {
+            return;
+        }
+
+        revert CreditAgent_FailedToProcessCashOutRequestBefore(txId);
+    }
+
+    /**
+     * @dev Processes the cash-out confirmation after hook.
+     *
+     * @param txId The unique identifier of the related cash-out operation.
+     */
+    function _processCashierHookCashOutConfirmationAfter(bytes32 txId) internal {
+        if (_processChangeCreditStatus(txId)) {
+            return;
+        }
+
+        if (_processChangeInstallmentCreditStatus(txId)) {
+            return;
+        }
+
+        revert CreditAgent_FailedToProcessCashOutConfirmationAfter(txId);
+    }
+
+    /**
+     * @dev Processes the cash-out reversal after hook.
+     *
+     * @param txId The unique identifier of the related cash-out operation.
+     */
+    function _processCashierHookCashOutReversalAfter(bytes32 txId) internal {
+        if (_processRevokeLoan(txId)) {
+            return;
+        }
+
+        if (_processRevokeInstallmentLoan(txId)) {
+            return;
+        }
+
+        revert CreditAgent_FailedToProcessCashOutReversalAfter(txId);
+    }
+
+    /// @dev Calculates the sum of all elements in an memory array.
+    /// @param values Array of amounts to sum.
+    /// @return The total sum of all array elements.
+    function _sumArray(uint64[] memory values) internal pure returns (uint256) {
+        uint256 len = values.length;
+        uint256 sum = 0;
+        for (uint256 i = 0; i < len; ++i) {
+            sum += values[i];
+        }
+        return sum;
+    }
+
+    /**
+     * @dev Converts an array of uint256 values to an array of uint64 values.
+     * @param values The array of uint256 values to convert.
+     * @return The array of uint64 values.
+     */
+    function _toUint64Array(uint256[] memory values) internal pure returns (uint64[] memory) {
+        uint64[] memory result = new uint64[](values.length);
+        for (uint256 i = 0; i < values.length; ++i) {
+            result[i] = values[i].toUint64();
+        }
+        return result;
+    }
+
+    /**
+     * @dev Converts an array of uint256 values to an array of uint32 values.
+     * @param values The array of uint256 values to convert.
+     * @return The array of uint32 values.
+     */
+    function _toUint32Array(uint256[] memory values) internal pure returns (uint32[] memory) {
+        uint32[] memory result = new uint32[](values.length);
+        for (uint256 i = 0; i < values.length; ++i) {
+            result[i] = values[i].toUint32();
+        }
+        return result;
+    }
+
+    /**
+     * @dev Converts an array of uint64 values to an array of uint256 values.
+     * @param values The array of uint64 values to convert.
+     * @return The array of uint256 values.
+     */
+    function _toUint256Array(uint64[] memory values) internal pure returns (uint256[] memory) {
+        uint256[] memory result = new uint256[](values.length);
+        for (uint256 i = 0; i < values.length; ++i) {
+            result[i] = uint256(values[i]);
+        }
+        return result;
+    }
+
+    /**
+     * @dev Converts an array of uint32 values to an array of uint256 values.
+     * @param values The array of uint32 values to convert.
+     * @return The array of uint256 values.
+     */
+    function _toUint256Array(uint32[] memory values) internal pure returns (uint256[] memory) {
+        uint256[] memory result = new uint256[](values.length);
+        for (uint256 i = 0; i < values.length; ++i) {
+            result[i] = uint256(values[i]);
+        }
+        return result;
+    }
+
+    /**
+     * @dev Checks the state of a related cash-out operation to be matched with the expected values.
+     *
+     * @param txId The unique identifier of the related cash-out operation.
+     * @param expectedAccount The expected account of the operation.
+     * @param expectedAmount The expected amount of the operation.
+     */
+    function _checkCashierCashOutState(
+        bytes32 txId, // Tools: this comment prevents Prettier from formatting into a single line.
+        address expectedAccount,
+        uint256 expectedAmount
+    ) internal view {
+        ICashier.CashOutOperation memory operation = ICashier(_cashier).getCashOut(txId);
+        if (operation.account != expectedAccount || operation.amount != expectedAmount) {
+            revert CreditAgent_CashOutParametersInappropriate(txId);
+        }
+    }
+
+    /**
+     * @dev Tries to process the cash-out request before hook by taking a common loan.
+     *
+     * @param txId The unique identifier of the related cash-out operation.
+     * @return true if the operation was successful, false otherwise.
+     */
+    function _processTakeLoanFor(bytes32 txId) internal returns (bool) {
         Credit storage credit = _credits[txId];
+
+        if (credit.status == CreditStatus.Nonexistent) {
+            return false;
+        }
+
         if (credit.status != CreditStatus.Initiated) {
             revert CreditAgent_CreditStatusInappropriate(txId, credit.status);
         }
@@ -437,15 +746,64 @@ contract CreditAgent is
             CreditStatus.Pending, // newStatus
             CreditStatus.Initiated // oldStatus
         );
+
+        return true;
     }
 
     /**
-     * @dev Processes the cash-out confirmation after hook.
+     * @dev Tries to process the cash-out request before hook by taking an installment loan.
      *
      * @param txId The unique identifier of the related cash-out operation.
+     * @return true if the operation was successful, false otherwise.
      */
-    function _processCashierHookCashOutConfirmationAfter(bytes32 txId) internal {
+    function _processTakeInstallmentLoanFor(bytes32 txId) internal returns (bool) {
+        InstallmentCredit storage installmentCredit = _installmentCredits[txId];
+
+        if (installmentCredit.status != CreditStatus.Initiated) {
+            return false;
+        }
+
+        if (installmentCredit.status != CreditStatus.Initiated) {
+            revert CreditAgent_CreditStatusInappropriate(txId, installmentCredit.status);
+        }
+
+        address borrower = installmentCredit.borrower;
+
+        _checkCashierCashOutState(txId, borrower, _sumArray(installmentCredit.borrowAmounts));
+
+        (uint256 firstInstallmentId, ) = ILendingMarket(_lendingMarket).takeInstallmentLoanFor(
+            borrower,
+            installmentCredit.programId,
+            _toUint256Array(installmentCredit.borrowAmounts),
+            _toUint256Array(installmentCredit.addonAmounts),
+            _toUint256Array(installmentCredit.durationsInPeriods)
+        );
+
+        installmentCredit.firstInstallmentId = firstInstallmentId;
+
+        _changeInstallmentCreditStatus(
+            txId,
+            installmentCredit,
+            CreditStatus.Pending, // newStatus
+            CreditStatus.Initiated // oldStatus
+        );
+
+        return true;
+    }
+
+    /**
+     * @dev Tries to process the cash-out confirmation after hook by changing the credit status to Confirmed.
+     *
+     * @param txId The unique identifier of the related cash-out operation.
+     * @return true if the operation was successful, false otherwise.
+     */
+    function _processChangeCreditStatus(bytes32 txId) internal returns (bool) {
         Credit storage credit = _credits[txId];
+
+        if (credit.status == CreditStatus.Nonexistent) {
+            return false;
+        }
+
         if (credit.status != CreditStatus.Pending) {
             revert CreditAgent_CreditStatusInappropriate(txId, credit.status);
         }
@@ -456,15 +814,50 @@ contract CreditAgent is
             CreditStatus.Confirmed, // newStatus
             CreditStatus.Pending // oldStatus
         );
+
+        return true;
     }
 
     /**
-     * @dev Processes the cash-out reversal after hook.
+     * @dev Tries to process the cash-out confirmation after hook by changing the installment credit status to Confirmed.
      *
      * @param txId The unique identifier of the related cash-out operation.
+     * @return true if the operation was successful, false otherwise.
      */
-    function _processCashierHookCashOutReversalAfter(bytes32 txId) internal {
+    function _processChangeInstallmentCreditStatus(bytes32 txId) internal returns (bool) {
+        InstallmentCredit storage installmentCredit = _installmentCredits[txId];
+
+        if (installmentCredit.status == CreditStatus.Nonexistent) {
+            return false;
+        }
+
+        if (installmentCredit.status != CreditStatus.Pending) {
+            revert CreditAgent_CreditStatusInappropriate(txId, installmentCredit.status);
+        }
+
+        _changeInstallmentCreditStatus(
+            txId,
+            installmentCredit,
+            CreditStatus.Confirmed, // newStatus
+            CreditStatus.Pending // oldStatus
+        );
+
+        return true;
+    }
+
+    /**
+     * @dev Tries to process the cash-out reversal after hook by revoking a common loan.
+     *
+     * @param txId The unique identifier of the related cash-out operation.
+     * @return true if the operation was successful, false otherwise.
+     */
+    function _processRevokeLoan(bytes32 txId) internal returns (bool) {
         Credit storage credit = _credits[txId];
+
+        if (credit.status == CreditStatus.Nonexistent) {
+            return false;
+        }
+
         if (credit.status != CreditStatus.Pending) {
             revert CreditAgent_CreditStatusInappropriate(txId, credit.status);
         }
@@ -477,24 +870,37 @@ contract CreditAgent is
             CreditStatus.Reversed, // newStatus
             CreditStatus.Pending // oldStatus
         );
+
+        return true;
     }
 
     /**
-     * @dev Checks the state of a related cash-out operation to be matched with the expected values.
+     * @dev Tries to process the cash-out reversal after hook by revoking an installment loan.
      *
      * @param txId The unique identifier of the related cash-out operation.
-     * @param expectedAccount The expected account of the operation.
-     * @param expectedAmount The expected amount of the operation.
+     * @return true if the operation was successful, false otherwise.
      */
-    function _checkCashierCashOutState(
-        bytes32 txId, // Tools: this comment prevents Prettier from formatting into a single line.
-        address expectedAccount,
-        uint256 expectedAmount
-    ) internal view {
-        ICashier.CashOutOperation memory operation = ICashier(_cashier).getCashOut(txId);
-        if (operation.account != expectedAccount || operation.amount != expectedAmount) {
-            revert CreditAgent_CashOutParametersInappropriate(txId);
+    function _processRevokeInstallmentLoan(bytes32 txId) internal returns (bool) {
+        InstallmentCredit storage installmentCredit = _installmentCredits[txId];
+
+        if (installmentCredit.status == CreditStatus.Nonexistent) {
+            return false;
         }
+
+        if (installmentCredit.status != CreditStatus.Pending) {
+            revert CreditAgent_CreditStatusInappropriate(txId, installmentCredit.status);
+        }
+
+        ILendingMarket(_lendingMarket).revokeInstallmentLoan(installmentCredit.firstInstallmentId);
+
+        _changeInstallmentCreditStatus(
+            txId,
+            installmentCredit,
+            CreditStatus.Reversed, // newStatus
+            CreditStatus.Pending // oldStatus
+        );
+
+        return true;
     }
 
     /**
