@@ -678,9 +678,10 @@ contract CreditAgent is
      * @param values The array of uint64 values to convert.
      * @return The array of uint256 values.
      */
-    function _toUint256Array(uint64[] memory values) internal pure returns (uint256[] memory) {
-        uint256[] memory result = new uint256[](values.length);
-        for (uint256 i = 0; i < values.length; ++i) {
+    function _toUint256Array(uint64[] storage values) internal view returns (uint256[] memory) {
+        uint256 len = values.length;
+        uint256[] memory result = new uint256[](len);
+        for (uint256 i = 0; i < len; ++i) {
             result[i] = uint256(values[i]);
         }
         return result;
@@ -691,9 +692,10 @@ contract CreditAgent is
      * @param values The array of uint32 values to convert.
      * @return The array of uint256 values.
      */
-    function _toUint256Array(uint32[] memory values) internal pure returns (uint256[] memory) {
-        uint256[] memory result = new uint256[](values.length);
-        for (uint256 i = 0; i < values.length; ++i) {
+    function _toUint256Array(uint32[] storage values) internal view returns (uint256[] memory) {
+        uint256 len = values.length;
+        uint256[] memory result = new uint256[](len);
+        for (uint256 i = 0; i < len; ++i) {
             result[i] = uint256(values[i]);
         }
         return result;
