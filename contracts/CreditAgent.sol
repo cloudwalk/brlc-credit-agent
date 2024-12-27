@@ -553,6 +553,7 @@ contract CreditAgent is
         CreditStatus newStatus,
         CreditStatus oldStatus
     ) internal {
+        uint256 installmentCount = installmentCredit.durationsInPeriods.length;
         emit InstallmentCreditStatusChanged(
             txId,
             installmentCredit.borrower,
@@ -560,10 +561,10 @@ contract CreditAgent is
             oldStatus,
             installmentCredit.firstInstallmentId,
             installmentCredit.programId,
-            installmentCredit.durationsInPeriods.length,
-            installmentCredit.durationsInPeriods[installmentCredit.durationsInPeriods.length - 1],
-            _sumArray(installmentCredit.borrowAmounts),
-            _sumArray(installmentCredit.addonAmounts)
+            installmentCredit.durationsInPeriods[installmentCount - 1], // lastDurationInPeriods
+            _sumArray(installmentCredit.borrowAmounts), // totalBorrowAmount
+            _sumArray(installmentCredit.addonAmounts), // totalAddonAmount
+            installmentCount
         );
 
         unchecked {
