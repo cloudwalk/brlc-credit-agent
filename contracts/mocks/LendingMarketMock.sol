@@ -11,6 +11,9 @@ contract LendingMarketMock {
     /// @dev A constant value to return as a fake loan identifier.
     uint256 public constant LOAN_ID_STAB = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDE;
 
+    /// @dev A constant value to return as a fake installment loan count.
+    uint256 public constant INSTALLMENT_COUNT_STAB = 12;
+
     /// @dev Emitted when the `takeLoanFor()` function is called with the parameters of the function.
     event MockTakeLoanForCalled(
         address borrower, // Tools: this comment prevents Prettier from formatting into a single line.
@@ -74,7 +77,7 @@ contract LendingMarketMock {
             addonAmounts,
             durationsInPeriods
         );
-        return (LOAN_ID_STAB, 1);
+        return (LOAN_ID_STAB, INSTALLMENT_COUNT_STAB);
     }
 
     /// @dev Imitates the same-name function a lending market contracts. Just emits an event about the call.
