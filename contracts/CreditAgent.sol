@@ -637,7 +637,7 @@ contract CreditAgent is
     /// @dev Calculates the sum of all elements in an memory array.
     /// @param values Array of amounts to sum.
     /// @return The total sum of all array elements.
-    function _sumArray(uint64[] memory values) internal pure returns (uint256) {
+    function _sumArray(uint64[] storage values) internal view returns (uint256) {
         uint256 len = values.length;
         uint256 sum = 0;
         for (uint256 i = 0; i < len; ++i) {
