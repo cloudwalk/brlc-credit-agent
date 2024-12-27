@@ -124,23 +124,21 @@ function checkEquality<T extends Record<string, unknown>>(actualObject: T, expec
       throw Error(`Property "${property}" is not found`);
     }
 
-    // If the expected property is an array, compare arrays deeply
     if (Array.isArray(expectedValue)) {
+      // If the expected property is an array, compare arrays deeply
       expect(Array.isArray(actualValue), `Property "${property}" is expected to be an array`).to.be.true;
       expect(actualValue).to.deep.equal(
         expectedValue,
         `Mismatch in the "${property}" array property`
       );
-    }
-    // If the expected property is an object (and not an array), handle nested object comparison
-    else if (typeof expectedValue === "object" && expectedValue !== null) {
+    } else if (typeof expectedValue === "object" && expectedValue !== null) {
+      // If the expected property is an object (and not an array), handle nested object comparison
       expect(actualValue).to.deep.equal(
         expectedValue,
         `Mismatch in the "${property}" object property`
       );
-    }
-    // Otherwise compare as primitive values
-    else {
+    } else {
+      // Otherwise compare as primitive values
       expect(actualValue).to.eq(
         expectedValue,
         `Mismatch in the "${property}" property`
@@ -189,27 +187,28 @@ describe("Contract 'CreditAgent'", async () => {
   const REVERT_ERROR_IF_CONFIGURING_PROHIBITED = "CreditAgent_ConfiguringProhibited";
   const REVERT_ERROR_IF_CONTRACT_NOT_CONFIGURED = "CreditAgent_ContractNotConfigured";
   const REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE = "CreditAgent_CreditStatusInappropriate";
+  const REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_CONFIRMATION_AFTER =
+    "CreditAgent_FailedToProcessCashOutConfirmationAfter";
+  const REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_REQUEST_BEFORE = "CreditAgent_FailedToProcessCashOutRequestBefore";
+  const REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_REVERSAL_AFTER = "CreditAgent_FailedToProcessCashOutReversalAfter";
   const REVERT_ERROR_IF_IMPLEMENTATION_ADDRESS_INVALID = "CreditAgent_ImplementationAddressInvalid";
+  const REVERT_ERROR_IF_INPUT_ARRAYS_INVALID = "CreditAgent_InputArraysInvalid";
   const REVERT_ERROR_IF_LOAN_AMOUNT_ZERO = "CreditAgent_LoanAmountZero";
   const REVERT_ERROR_IF_LOAN_DURATION_ZERO = "CreditAgent_LoanDurationZero";
   const REVERT_ERROR_IF_PROGRAM_ID_ZERO = "CreditAgent_ProgramIdZero";
   const REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCast_OverflowedUintDowncast";
   const REVERT_ERROR_IF_TX_ID_ZERO = "CreditAgent_TxIdZero";
-  const REVERT_ERROR_IF_INPUT_ARRAYS_INVALID = "CreditAgent_InputArraysInvalid";
   const REVERT_ERROR_IF_TX_ID_ALREADY_USED = "CreditAgent_TxIdAlreadyUsed";
-  const REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_REQUEST_BEFORE = "CreditAgent_FailedToProcessCashOutRequestBefore";
-  const REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_CONFIRMATION_AFTER = "CreditAgent_FailedToProcessCashOutConfirmationAfter";
-  const REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_REVERSAL_AFTER = "CreditAgent_FailedToProcessCashOutReversalAfter";
 
-  const EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED = "MockConfigureCashOutHooksCalled";
-  const EVENT_NAME_MOCK_REVOKE_LOAN_CALLED = "MockRevokeLoanCalled";
-  const EVENT_NAME_MOCK_TAKE_LOAN_FOR_CALLED = "MockTakeLoanForCalled";
-  const EVENT_NAME_MOCK_TAKE_INSTALLMENT_LOAN_FOR_CALLED = "MockTakeInstallmentLoanForCalled";
-  const EVENT_NAME_MOCK_REVOKE_INSTALLMENT_LOAN_CALLED = "MockRevokeInstallmentLoanCalled";
-  const EVENT_NAME_LENDING_MARKET_CHANGED = "LendingMarketChanged";
   const EVENT_NAME_CASHIER_CHANGED = "CashierChanged";
   const EVENT_NAME_CREDIT_STATUS_CHANGED = "CreditStatusChanged";
   const EVENT_NAME_INSTALLMENT_CREDIT_STATUS_CHANGED = "InstallmentCreditStatusChanged";
+  const EVENT_NAME_LENDING_MARKET_CHANGED = "LendingMarketChanged";
+  const EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED = "MockConfigureCashOutHooksCalled";
+  const EVENT_NAME_MOCK_REVOKE_INSTALLMENT_LOAN_CALLED = "MockRevokeInstallmentLoanCalled";
+  const EVENT_NAME_MOCK_REVOKE_LOAN_CALLED = "MockRevokeLoanCalled";
+  const EVENT_NAME_MOCK_TAKE_INSTALLMENT_LOAN_FOR_CALLED = "MockTakeInstallmentLoanForCalled";
+  const EVENT_NAME_MOCK_TAKE_LOAN_FOR_CALLED = "MockTakeLoanForCalled";
 
   let creditAgentFactory: ContractFactory;
   let cashierMockFactory: ContractFactory;
@@ -1798,7 +1797,9 @@ describe("Contract 'CreditAgent'", async () => {
         }
 
         if (newCreditStatus == CreditStatus.Reversed) {
-          await expect(tx).to.emit(lendingMarketMock, EVENT_NAME_MOCK_REVOKE_INSTALLMENT_LOAN_CALLED).withArgs(credit.firstInstallmentId);
+          await expect(tx)
+            .to.emit(lendingMarketMock, EVENT_NAME_MOCK_REVOKE_INSTALLMENT_LOAN_CALLED)
+            .withArgs(credit.firstInstallmentId);
         } else {
           await expect(tx).not.to.emit(lendingMarketMock, EVENT_NAME_MOCK_REVOKE_INSTALLMENT_LOAN_CALLED);
         }
@@ -1811,7 +1812,11 @@ describe("Contract 'CreditAgent'", async () => {
 
     describe("Executes as expected if", async () => {
       it("A cash-out requested and then confirmed with other proper conditions", async () => {
-        const { fixture, txId, initCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
+        const {
+          fixture,
+          txId,
+          initCredit
+        } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
         const expectedAgentState: AgentState = {
           ...initialAgentState,
           initiatedInstallmentCreditCounter: 1n,
@@ -1851,7 +1856,11 @@ describe("Contract 'CreditAgent'", async () => {
       });
 
       it("A cash-out requested and then reversed with other proper conditions", async () => {
-        const { fixture, txId, initCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
+        const {
+          fixture,
+          txId,
+          initCredit
+        } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
         const credit: InstallmentCredit = { ...initCredit, firstInstallmentId: fixture.loanIdStub };
 
         // Emulate cash-out request
@@ -1998,7 +2007,11 @@ describe("Contract 'CreditAgent'", async () => {
       });
 
       it("The cash-out account is not match the credit borrower before taking a loan", async () => {
-        const { fixture, txId, initCashOut } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
+        const {
+          fixture,
+          txId,
+          initCashOut
+        } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
         const { creditAgent, cashierMock } = fixture;
         const cashOut: CashOut = {
           ...initCashOut,
@@ -2015,7 +2028,11 @@ describe("Contract 'CreditAgent'", async () => {
       });
 
       it("The cash-out amount is not match the credit amount before taking a loan", async () => {
-        const { fixture, txId, initCashOut } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
+        const {
+          fixture,
+          txId,
+          initCashOut
+        } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
         const { creditAgent, cashierMock } = fixture;
         const cashOut: CashOut = {
           ...initCashOut,
@@ -2052,7 +2069,11 @@ describe("Contract 'CreditAgent'", async () => {
 
   describe("Complex scenarios for installment credit", async () => {
     it("A revoked credit can be re-initiated", async () => {
-      const { fixture, txId, initCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
+      const {
+        fixture,
+        txId,
+        initCredit
+      } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
       const { creditAgent } = fixture;
       const expectedAgentState: AgentState = {
         ...initialAgentState,
@@ -2073,7 +2094,11 @@ describe("Contract 'CreditAgent'", async () => {
     });
 
     it("A reversed credit can be re-initiated", async () => {
-      const { fixture, txId, initCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
+      const {
+        fixture,
+        txId,
+        initCredit
+      } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
       const { creditAgent, cashierMock } = fixture;
       const credit: InstallmentCredit = { ...initCredit };
 
@@ -2092,7 +2117,11 @@ describe("Contract 'CreditAgent'", async () => {
     });
 
     it("A pending or confirmed credit cannot be re-initiated", async () => {
-      const { fixture, txId, initCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
+      const {
+        fixture,
+        txId,
+        initCredit
+      } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
       const { creditAgent, cashierMock } = fixture;
       const credit: InstallmentCredit = { ...initCredit };
 
@@ -2126,7 +2155,11 @@ describe("Contract 'CreditAgent'", async () => {
     });
 
     it("A credit with any status except initiated cannot be revoked", async () => {
-      const { fixture, txId, initCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
+      const {
+        fixture,
+        txId,
+        initCredit
+      } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
       const { creditAgent, cashierMock } = fixture;
       const credit: InstallmentCredit = { ...initCredit };
 
@@ -2172,7 +2205,11 @@ describe("Contract 'CreditAgent'", async () => {
     });
 
     it("Configuring is prohibited when not all credits are processed", async () => {
-      const { fixture, txId, initCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
+      const {
+        fixture,
+        txId,
+        initCredit
+      } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
       const { creditAgent, cashierMock, lendingMarketMock } = fixture;
       const credit: InstallmentCredit = { ...initCredit };
 
