@@ -20,6 +20,9 @@ abstract contract CreditAgentStorageV1 is ICreditAgentTypes {
 
     /// @dev The state of this agent contract.
     AgentState internal _agentState;
+
+    /// @dev The mapping of the installment credit structure for a related operation identifier.
+    mapping(bytes32 => InstallmentCredit) internal _installmentCredits;
 }
 
 /**
@@ -38,5 +41,5 @@ abstract contract CreditAgentStorage is CreditAgentStorageV1 {
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      */
-    uint256[46] private __gap;
+    uint256[45] private __gap;
 }

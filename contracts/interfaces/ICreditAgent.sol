@@ -62,13 +62,36 @@ interface ICreditAgentTypes {
         uint256 loanId; // ------------ The unique ID of the related loan on the lending market or zero if not taken.
     }
 
+    /// @dev The data of a single installment credit.
+    struct InstallmentCredit {
+        // Slot 1
+        address borrower; // ------------- The address of the borrower.
+        uint32 programId; // ------------- The unique identifier of a lending program for the credit.
+        CreditStatus status; // ---------- The status of the credit, see {CreditStatus}.
+        // uint56 __reserved; // --------- Reserved for future use until the end of the storage slot.
+
+        // Slot 2
+        uint32[] durationsInPeriods; // -- The duration of each installment in periods.
+
+        // Slot 3
+        uint64[] borrowAmounts; // ------- The amounts of each installment.
+
+        // Slot 4
+        uint64[] addonAmounts; // -------- The addon amounts of each installment.
+
+        // Slot 5
+        uint256 firstInstallmentId; // --- The unique ID of the related first installment loan on the lending market or zero if not taken.
+    }
+
     /// @dev The state of this agent contract.
     struct AgentState {
         // Slot 1
-        bool configured; // ---------------- True if the agent is properly configured.
-        uint64 initiatedCreditCounter; // -- The counter of initiated credits.
-        uint64 pendingCreditCounter; // ---- The counter of pending credits.
-        // uint120 __reserved; // ---------- Reserved for future use until the end of the storage slot.
+        bool configured; // --------------------------- True if the agent is properly configured.
+        uint32 initiatedCreditCounter; // ------------- The counter of initiated credits.
+        uint32 pendingCreditCounter; // --------------- The counter of pending credits.
+        uint32 initiatedInstallmentCreditCounter; // -- The counter of initiated installment credits.
+        uint32 pendingInstallmentCreditCounter; // ---- The counter of pending installment credits.
+        // uint120 __reserved; // --------------------- Reserved for future use until the end of the storage slot.
     }
 }
 
@@ -126,11 +149,35 @@ interface ICreditAgentErrors is ICreditAgentTypes {
     /// @dev The zero loan duration has been passed as a function argument.
     error CreditAgent_LoanDurationZero();
 
+    /// @dev The input arrays are empty or have different lengths.
+    error CreditAgent_InputArraysInvalid();
+
     /// @dev The zero program ID has been passed as a function argument.
     error CreditAgent_ProgramIdZero();
 
     /// @dev The zero off-chain transaction identifier has been passed as a function argument.
     error CreditAgent_TxIdZero();
+
+    /// @dev The transaction identifier is already used.
+    error CreditAgent_TxIdAlreadyUsed();
+
+    /**
+     * @dev The related cash-out operation has failed to be processed by the cashier hook.
+     * @param txId The off-chain transaction identifier of the operation.
+     */
+    error CreditAgent_FailedToProcessCashOutRequestBefore(bytes32 txId);
+
+    /**
+     * @dev The related cash-out operation has failed to be processed by the cashier hook.
+     * @param txId The off-chain transaction identifier of the operation.
+     */
+    error CreditAgent_FailedToProcessCashOutConfirmationAfter(bytes32 txId);
+
+    /**
+     * @dev The related cash-out operation has failed to be processed by the cashier hook.
+     * @param txId The off-chain transaction identifier of the operation.
+     */
+    error CreditAgent_FailedToProcessCashOutReversalAfter(bytes32 txId);
 }
 
 /**
@@ -165,6 +212,32 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
         uint256 loanAddon
     );
 
+    /**
+     * @dev Emitted when the status of an installment credit is changed.
+     * @param txId The unique identifier of the related cash-out operation.
+     * @param borrower The address of the borrower.
+     * @param newStatus The current status of the credit.
+     * @param oldStatus The previous status of the credit.
+     * @param firstInstallmentId The unique ID of the related first installment loan on the lending market or zero if not taken.
+     * @param programId The unique identifier of the lending program for the credit.
+     * @param lastDurationInPeriods The duration of the last installment in periods.
+     * @param totalBorrowAmount The total amount of all installments.
+     * @param totalAddonAmount The total addon amount of all installments.
+     * @param installmentCount The number of installments.
+     */
+    event InstallmentCreditStatusChanged(
+        bytes32 indexed txId,
+        address indexed borrower,
+        CreditStatus newStatus,
+        CreditStatus oldStatus,
+        uint256 firstInstallmentId,
+        uint256 programId,
+        uint256 lastDurationInPeriods,
+        uint256 totalBorrowAmount,
+        uint256 totalAddonAmount,
+        uint256 installmentCount
+    );
+
     // ------------------ Functions ------------------------------- //
 
     /**
@@ -189,6 +262,27 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
     ) external;
 
     /**
+     * @dev Initiates an installment credit.
+     *
+     * This function is expected to be called by a limited number of accounts.
+     *
+     * @param txId The unique identifier of the related cash-out operation.
+     * @param borrower The address of the borrower.
+     * @param programId The unique identifier of the lending program for the credit.
+     * @param durationsInPeriods The duration of each installment in periods.
+     * @param borrowAmounts The amounts of each installment.
+     * @param addonAmounts The addon amounts of each installment.
+     */
+    function initiateInstallmentCredit(
+        bytes32 txId,
+        address borrower,
+        uint256 programId,
+        uint256[] calldata durationsInPeriods,
+        uint256[] calldata borrowAmounts,
+        uint256[] calldata addonAmounts
+    ) external;
+
+    /**
      * @dev Revokes a credit.
      *
      * This function is expected to be called by a limited number of accounts.
@@ -198,11 +292,27 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
     function revokeCredit(bytes32 txId) external;
 
     /**
+     * @dev Revokes an installment credit.
+     *
+     * This function is expected to be called by a limited number of accounts.
+     *
+     * @param txId The unique identifier of the related cash-out operation.
+     */
+    function revokeInstallmentCredit(bytes32 txId) external;
+
+    /**
      * @dev Returns a credit structure by its unique identifier.
      * @param txId The unique identifier of the related cash-out operation.
      * @return The credit structure.
      */
     function getCredit(bytes32 txId) external view returns (Credit memory);
+
+    /**
+     * @dev Returns an installment credit structure by its unique identifier.
+     * @param txId The unique identifier of the related cash-out operation.
+     * @return The installment credit structure.
+     */
+    function getInstallmentCredit(bytes32 txId) external view returns (InstallmentCredit memory);
 
     /**
      * @dev Returns the state of this agent contract.
