@@ -221,6 +221,7 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
      * @param firstInstallmentId The unique ID of the related first installment loan on the lending market or zero if not taken.
      * @param programId The unique identifier of the lending program for the credit.
      * @param installmentCount The number of installments.
+     * @param lastDurationInPeriods The duration of the last installment in periods.
      * @param totalBorrowAmount The total amount of all installments.
      * @param totalAddonAmount The total addon amount of all installments.
      */
@@ -232,6 +233,7 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
         uint256 firstInstallmentId,
         uint256 programId,
         uint256 installmentCount,
+        uint256 lastDurationInPeriods,
         uint256 totalBorrowAmount,
         uint256 totalAddonAmount
     );

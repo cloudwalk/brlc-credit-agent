@@ -426,6 +426,7 @@ describe("Contract 'CreditAgent'", async () => {
       credit.firstInstallmentId,
       credit.programId,
       credit.durationsInPeriods.length,
+      credit.durationsInPeriods[credit.durationsInPeriods.length - 1],
       _sumArray(credit.borrowAmounts),
       _sumArray(credit.addonAmounts)
     );
@@ -1699,6 +1700,7 @@ describe("Contract 'CreditAgent'", async () => {
         credit.firstInstallmentId,
         credit.programId,
         credit.durationsInPeriods.length,
+        credit.durationsInPeriods[credit.durationsInPeriods.length - 1],
         _sumArray(credit.borrowAmounts),
         _sumArray(credit.addonAmounts)
       );
@@ -1779,6 +1781,7 @@ describe("Contract 'CreditAgent'", async () => {
           credit.firstInstallmentId,
           credit.programId,
           credit.durationsInPeriods.length,
+          credit.durationsInPeriods[credit.durationsInPeriods.length - 1],
           _sumArray(credit.borrowAmounts),
           _sumArray(credit.addonAmounts)
         );

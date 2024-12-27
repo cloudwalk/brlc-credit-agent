@@ -558,6 +558,7 @@ contract CreditAgent is
             installmentCredit.firstInstallmentId,
             installmentCredit.programId,
             installmentCredit.durationsInPeriods.length,
+            installmentCredit.durationsInPeriods[installmentCredit.durationsInPeriods.length - 1],
             _sumArray(installmentCredit.borrowAmounts),
             _sumArray(installmentCredit.addonAmounts)
         );
