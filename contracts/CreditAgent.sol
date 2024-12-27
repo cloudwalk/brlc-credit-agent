@@ -226,9 +226,13 @@ contract CreditAgent is
         }
 
         Credit storage credit = _credits[txId];
+
         CreditStatus oldStatus = credit.status;
         if (oldStatus != CreditStatus.Nonexistent && oldStatus != CreditStatus.Reversed) {
             revert CreditAgent_CreditStatusInappropriate(txId, oldStatus);
+        }
+        if (oldStatus != CreditStatus.Nonexistent) {
+            credit.loanId = 0;
         }
 
         credit.borrower = borrower;
@@ -236,10 +240,6 @@ contract CreditAgent is
         credit.loanAmount = loanAmount.toUint64();
         credit.loanAddon = loanAddon.toUint64();
         credit.durationInPeriods = durationInPeriods.toUint32();
-
-        if (oldStatus != CreditStatus.Nonexistent) {
-            credit.loanId = 0;
-        }
 
         _changeCreditStatus(
             txId,
@@ -306,20 +306,23 @@ contract CreditAgent is
         }
 
         InstallmentCredit storage installmentCredit = _installmentCredits[txId];
+
         CreditStatus oldStatus = installmentCredit.status;
         if (oldStatus != CreditStatus.Nonexistent && oldStatus != CreditStatus.Reversed) {
             revert CreditAgent_CreditStatusInappropriate(txId, oldStatus);
         }
+        if (oldStatus != CreditStatus.Nonexistent) {
+            installmentCredit.firstInstallmentId = 0;
+            delete installmentCredit.durationsInPeriods;
+            delete installmentCredit.borrowAmounts;
+            delete installmentCredit.addonAmounts;
+        }
 
         installmentCredit.borrower = borrower;
         installmentCredit.programId = programId.toUint32();
-        installmentCredit.durationsInPeriods = _toUint32Array(durationsInPeriods);
-        installmentCredit.borrowAmounts = _toUint64Array(borrowAmounts);
-        installmentCredit.addonAmounts = _toUint64Array(addonAmounts);
-
-        if (oldStatus != CreditStatus.Nonexistent) {
-            installmentCredit.firstInstallmentId = 0;
-        }
+        _storeToUint32Array(durationsInPeriods, installmentCredit.durationsInPeriods);
+        _storeToUint64Array(borrowAmounts, installmentCredit.borrowAmounts);
+        _storeToUint64Array(addonAmounts, installmentCredit.addonAmounts);
 
         _changeInstallmentCreditStatus(
             txId,
@@ -647,29 +650,27 @@ contract CreditAgent is
     }
 
     /**
-     * @dev Converts an array of uint256 values to an array of uint64 values.
-     * @param values The array of uint256 values to convert.
-     * @return The array of uint64 values.
+     * @dev Stores an array of uint256 values to an array of uint32 values.
+     * @param inputValues The array of uint256 values to convert.
+     * @param storeValues The array of uint32 values to store.
      */
-    function _toUint64Array(uint256[] memory values) internal pure returns (uint64[] memory) {
-        uint64[] memory result = new uint64[](values.length);
-        for (uint256 i = 0; i < values.length; ++i) {
-            result[i] = values[i].toUint64();
+    function _storeToUint32Array(uint256[] calldata inputValues, uint32[] storage storeValues) internal {
+        uint256 len = inputValues.length;
+        for (uint256 i = 0; i < len; ++i) {
+            storeValues.push(inputValues[i].toUint32());
         }
-        return result;
     }
 
     /**
-     * @dev Converts an array of uint256 values to an array of uint32 values.
-     * @param values The array of uint256 values to convert.
-     * @return The array of uint32 values.
+     * @dev Stores an array of uint256 values to an array of uint64 values.
+     * @param inputValues The array of uint256 values to convert.
+     * @param storeValues The array of uint64 values to store.
      */
-    function _toUint32Array(uint256[] memory values) internal pure returns (uint32[] memory) {
-        uint32[] memory result = new uint32[](values.length);
-        for (uint256 i = 0; i < values.length; ++i) {
-            result[i] = values[i].toUint32();
+    function _storeToUint64Array(uint256[] calldata inputValues, uint64[] storage storeValues) internal {
+        uint256 len = inputValues.length;
+        for (uint256 i = 0; i < len; ++i) {
+            storeValues.push(inputValues[i].toUint64());
         }
-        return result;
     }
 
     /**
