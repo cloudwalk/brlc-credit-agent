@@ -150,7 +150,7 @@ interface ICreditAgentErrors is ICreditAgentTypes {
     error CreditAgent_LoanDurationZero();
 
     /// @dev The input arrays are empty or have different lengths.
-    error CreditAgent_InvalidInputArrays();
+    error CreditAgent_InputArraysInvalid();
 
     /// @dev The zero program ID has been passed as a function argument.
     error CreditAgent_ProgramIdZero();

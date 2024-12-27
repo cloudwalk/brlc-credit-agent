@@ -195,7 +195,7 @@ describe("Contract 'CreditAgent'", async () => {
   const REVERT_ERROR_IF_PROGRAM_ID_ZERO = "CreditAgent_ProgramIdZero";
   const REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCast_OverflowedUintDowncast";
   const REVERT_ERROR_IF_TX_ID_ZERO = "CreditAgent_TxIdZero";
-  const REVERT_ERROR_IF_INVALID_INPUT_ARRAYS = "CreditAgent_InvalidInputArrays";
+  const REVERT_ERROR_IF_INPUT_ARRAYS_INVALID = "CreditAgent_InputArraysInvalid";
   const REVERT_ERROR_IF_TX_ID_ALREADY_USED = "CreditAgent_TxIdAlreadyUsed";
   const REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_REQUEST_BEFORE = "CreditAgent_FailedToProcessCashOutRequestBefore";
   const REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_CONFIRMATION_AFTER = "CreditAgent_FailedToProcessCashOutConfirmationAfter";
@@ -1625,7 +1625,7 @@ describe("Contract 'CreditAgent'", async () => {
         });
         await expect(initiateInstallmentCredit(creditAgent, { credit })).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_INVALID_INPUT_ARRAYS
+          REVERT_ERROR_IF_INPUT_ARRAYS_INVALID
         );
       });
 
@@ -1638,7 +1638,7 @@ describe("Contract 'CreditAgent'", async () => {
         });
         await expect(initiateInstallmentCredit(creditAgent, { credit })).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_INVALID_INPUT_ARRAYS
+          REVERT_ERROR_IF_INPUT_ARRAYS_INVALID
         );
       });
 
@@ -1651,7 +1651,7 @@ describe("Contract 'CreditAgent'", async () => {
         });
         await expect(initiateInstallmentCredit(creditAgent, { credit })).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_INVALID_INPUT_ARRAYS
+          REVERT_ERROR_IF_INPUT_ARRAYS_INVALID
         );
       });
 
@@ -1664,7 +1664,7 @@ describe("Contract 'CreditAgent'", async () => {
         });
         await expect(initiateInstallmentCredit(creditAgent, { credit })).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_INVALID_INPUT_ARRAYS
+          REVERT_ERROR_IF_INPUT_ARRAYS_INVALID
         );
       });
 

@@ -290,7 +290,7 @@ contract CreditAgent is
             durationsInPeriods.length != borrowAmounts.length ||
             durationsInPeriods.length != addonAmounts.length
         ) {
-            revert CreditAgent_InvalidInputArrays();
+            revert CreditAgent_InputArraysInvalid();
         }
         for (uint256 i = 0; i < borrowAmounts.length; i++) {
             if (durationsInPeriods[i] == 0) {
