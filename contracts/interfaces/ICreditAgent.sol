@@ -87,11 +87,11 @@ interface ICreditAgentTypes {
     struct AgentState {
         // Slot 1
         bool configured; // --------------------------- True if the agent is properly configured.
-        uint64 initiatedCreditCounter; // ------------- The counter of initiated credits.
-        uint56 pendingCreditCounter; // --------------- The counter of pending credits.
-        uint64 initiatedInstallmentCreditCounter; // -- The counter of initiated installment credits.
-        uint56 pendingInstallmentCreditCounter; // ---- The counter of pending installment credits.
-        // uint8 __reserved; // ----------------------- Reserved for future use until the end of the storage slot.
+        uint32 initiatedCreditCounter; // ------------- The counter of initiated credits.
+        uint32 pendingCreditCounter; // --------------- The counter of pending credits.
+        uint32 initiatedInstallmentCreditCounter; // -- The counter of initiated installment credits.
+        uint32 pendingInstallmentCreditCounter; // ---- The counter of pending installment credits.
+        // uint120 __reserved; // --------------------- Reserved for future use until the end of the storage slot.
     }
 }
 

@@ -521,16 +521,16 @@ contract CreditAgent is
 
         unchecked {
             if (oldStatus == CreditStatus.Initiated) {
-                _agentState.initiatedCreditCounter -= uint64(1);
+                _agentState.initiatedCreditCounter -= uint32(1);
             } else if (oldStatus == CreditStatus.Pending) {
-                _agentState.pendingCreditCounter -= uint56(1);
+                _agentState.pendingCreditCounter -= uint32(1);
             }
         }
 
         if (newStatus == CreditStatus.Initiated) {
-            _agentState.initiatedCreditCounter += uint64(1);
+            _agentState.initiatedCreditCounter += uint32(1);
         } else if (newStatus == CreditStatus.Pending) {
-            _agentState.pendingCreditCounter += uint56(1);
+            _agentState.pendingCreditCounter += uint32(1);
         } else if (newStatus == CreditStatus.Nonexistent) {
             // Skip the other actions because the Credit structure will be deleted
             return;
@@ -568,16 +568,16 @@ contract CreditAgent is
 
         unchecked {
             if (oldStatus == CreditStatus.Initiated) {
-                _agentState.initiatedInstallmentCreditCounter -= uint64(1);
+                _agentState.initiatedInstallmentCreditCounter -= uint32(1);
             } else if (oldStatus == CreditStatus.Pending) {
-                _agentState.pendingInstallmentCreditCounter -= uint56(1);
+                _agentState.pendingInstallmentCreditCounter -= uint32(1);
             }
         }
 
         if (newStatus == CreditStatus.Initiated) {
-            _agentState.initiatedInstallmentCreditCounter += uint64(1);
+            _agentState.initiatedInstallmentCreditCounter += uint32(1);
         } else if (newStatus == CreditStatus.Pending) {
-            _agentState.pendingInstallmentCreditCounter += uint56(1);
+            _agentState.pendingInstallmentCreditCounter += uint32(1);
         } else if (newStatus == CreditStatus.Nonexistent) {
             // Skip the other actions because the Credit structure will be deleted
             return;
