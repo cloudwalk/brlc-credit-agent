@@ -158,7 +158,7 @@ async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
 }
 
 describe("Contract 'CreditAgent'", async () => {
-  const TX_ID_STUB = ethers.encodeBytes32String("STUB_TRANSACTION_ID_COMMON");
+  const TX_ID_STUB = ethers.encodeBytes32String("STUB_TRANSACTION_ID_ORDINARY");
   const TX_ID_STUB_INSTALLMENT = ethers.encodeBytes32String("STUB_TRANSACTION_ID_INSTALLMENT");
   const TX_ID_ZERO = ethers.ZeroHash;
   const LOAN_PROGRAM_ID_STUB = 0xFFFF_ABCD;
@@ -908,9 +908,9 @@ describe("Contract 'CreditAgent'", async () => {
 
       it("The 'txId' argument is already used", async () => {
         const { fixture, txId } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
-        const commonCredit = defineCredit();
+        const credit = defineCredit();
         await expect(
-          initiateCredit(fixture.creditAgent, { txId, credit: commonCredit })
+          initiateCredit(fixture.creditAgent, { txId, credit })
         ).to.be.revertedWithCustomError(
           fixture.creditAgent,
           REVERT_ERROR_IF_TX_ID_ALREADY_USED

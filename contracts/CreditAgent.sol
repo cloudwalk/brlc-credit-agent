@@ -717,7 +717,7 @@ contract CreditAgent is
     }
 
     /**
-     * @dev Tries to process the cash-out request before hook by taking a common loan.
+     * @dev Tries to process the cash-out request before hook by taking a ordinary loan.
      *
      * @param txId The unique identifier of the related cash-out operation.
      * @return true if the operation was successful, false otherwise.
@@ -852,7 +852,7 @@ contract CreditAgent is
     }
 
     /**
-     * @dev Tries to process the cash-out reversal after hook by revoking a common loan.
+     * @dev Tries to process the cash-out reversal after hook by revoking a ordinary loan.
      *
      * @param txId The unique identifier of the related cash-out operation.
      * @return true if the operation was successful, false otherwise.

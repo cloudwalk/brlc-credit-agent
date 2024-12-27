@@ -9,7 +9,7 @@ pragma solidity ^0.8.0;
  */
 interface ILendingMarket {
     /**
-     * @dev Takes a common loan for a provided account.
+     * @dev Takes an ordinary loan for a provided account.
      * @param borrower The account for whom the loan is taken.
      * @param programId The identifier of the program to take the loan from.
      * @param borrowAmount The desired amount of tokens to borrow.
