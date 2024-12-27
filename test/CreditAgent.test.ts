@@ -905,7 +905,7 @@ describe("Contract 'CreditAgent'", async () => {
         ).withArgs(64, credit.loanAddon);
       });
 
-      it("The 'txId' argument is already used", async () => {
+      it("The 'txId' argument is already used for an installment credit", async () => {
         const { fixture, txId } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
         const credit = defineCredit();
         await expect(
@@ -992,7 +992,7 @@ describe("Contract 'CreditAgent'", async () => {
     // Additional more complex checks are in the other sections
   });
 
-  describe("Function 'onCashierHook()'", async () => {
+  describe("Function 'onCashierHook()' for an ordinary credit", async () => {
     async function checkCashierHookCalling(fixture: Fixture, props: {
       txId: string;
       credit: Credit;
@@ -1457,14 +1457,14 @@ describe("Contract 'CreditAgent'", async () => {
     describe("Executes as expected if", async () => {
       it("The 'addonAmounts' values are not zero", async () => {
         const fixture = await setUpFixture(deployAndConfigureContracts);
-        const credit = defineInstallmentCredit({ addonAmounts: [LOAN_ADDON_STUB, LOAN_ADDON_STUB] });
+        const credit = defineInstallmentCredit({ addonAmounts: [LOAN_ADDON_STUB, LOAN_ADDON_STUB / 2n] });
         const txId = TX_ID_STUB_INSTALLMENT;
         const tx = initiateInstallmentCredit(fixture.creditAgent, { txId, credit });
         await checkInstallmentCreditInitiation(fixture, { tx, txId, credit });
       });
-      it("The 'addonAmounts' values are zero", async () => {
+      it("The one of the 'addonAmounts' values is zero", async () => {
         const fixture = await setUpFixture(deployAndConfigureContracts);
-        const credit = defineInstallmentCredit({ addonAmounts: [0n, 0n] });
+        const credit = defineInstallmentCredit({ addonAmounts: [LOAN_ADDON_STUB, 0n] });
         const txId = TX_ID_STUB_INSTALLMENT;
         const tx = initiateInstallmentCredit(fixture.creditAgent, { txId, credit });
         await checkInstallmentCreditInitiation(fixture, { tx, txId, credit });
@@ -1537,16 +1537,16 @@ describe("Contract 'CreditAgent'", async () => {
         ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_PROGRAM_ID_ZERO);
       });
 
-      it("The provided loan duration is zero", async () => {
+      it("The 'durationsInPeriods' array contains a zero value", async () => {
         const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const credit = defineInstallmentCredit({ durationsInPeriods: [0, 20] });
+        const credit = defineInstallmentCredit({ durationsInPeriods: [20, 0] });
 
         await expect(
           initiateInstallmentCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_LOAN_DURATION_ZERO);
       });
 
-      it("The provided loan amount is zero", async () => {
+      it("The 'borrowAmounts' array contains a zero value", async () => {
         const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
         const credit = defineInstallmentCredit({ borrowAmounts: [100n, 0n] });
 
@@ -1668,7 +1668,7 @@ describe("Contract 'CreditAgent'", async () => {
         );
       });
 
-      it("The 'txId' argument is already used", async () => {
+      it("The 'txId' argument is already used for an ordinary credit", async () => {
         const { fixture, txId } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
         const installmentCredit = defineInstallmentCredit();
         await expect(
@@ -1756,7 +1756,7 @@ describe("Contract 'CreditAgent'", async () => {
     // Additional more complex checks are in the other sections
   });
 
-  describe("Function 'onCashierHook()' for installment credit", async () => {
+  describe("Function 'onCashierHook()' for an installment credit", async () => {
     async function checkCashierHookCalling(fixture: Fixture, props: {
       txId: string;
       credit: InstallmentCredit;
@@ -2258,8 +2258,8 @@ describe("Contract 'CreditAgent'", async () => {
     });
   });
 
-  describe("Function 'onCashierHook()'", async () => {
-    it("Reverts if failed to process the cash-out request hook", async () => {
+  describe("Function 'onCashierHook()' is reverted as expected for an unknown credit in the case of", async () => {
+    it("A cash-out request hook", async () => {
       const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
       const txId = TX_ID_STUB;
       await expect(
@@ -2270,7 +2270,7 @@ describe("Contract 'CreditAgent'", async () => {
       ).withArgs(txId);
     });
 
-    it("Reverts if failed to process the cash-out confirmation hook", async () => {
+    it("A cash-out confirmation hook", async () => {
       const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
       const txId = TX_ID_STUB;
       await expect(
@@ -2281,7 +2281,7 @@ describe("Contract 'CreditAgent'", async () => {
       ).withArgs(txId);
     });
 
-    it("Reverts if failed to process the cash-out reversal hook", async () => {
+    it("A cash-out reversal hook", async () => {
       const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
       const txId = TX_ID_STUB;
       await expect(
