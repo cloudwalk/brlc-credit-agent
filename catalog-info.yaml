@@ -2,7 +2,7 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: brlc-credit-agent
-  description: BRLC credit agent smart contracts
+  description: Credit agent smart contracts
   annotations:
     github.com/project-slug: cloudwalk/brlc-credit-agent
     backstage.io/techdocs-ref: dir:.
