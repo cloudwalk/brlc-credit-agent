@@ -97,32 +97,11 @@ contract CreditAgent is
      * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
      */
     function initialize() external initializer {
-        __CreditAgent_init();
-    }
-
-    /**
-     * @dev The internal initializer of the upgradable contract.
-     *
-     * See {CreditAgent-initialize}.
-     */
-    function __CreditAgent_init() internal onlyInitializing {
-        __Context_init_unchained();
-        __ERC165_init_unchained();
-        __AccessControl_init_unchained();
         __AccessControlExt_init_unchained();
-        __Pausable_init_unchained();
         __PausableExt_init_unchained();
         __Rescuable_init_unchained();
+        __UUPSExt_init_unchained(); // This is needed only to avoid errors during coverage assessment
 
-        __CreditAgent_init_unchained();
-    }
-
-    /**
-     * @dev The internal unchained initializer of the upgradable contract.
-     *
-     * See {CreditAgent-initialize}.
-     */
-    function __CreditAgent_init_unchained() internal onlyInitializing {
         _setRoleAdmin(ADMIN_ROLE, GRANTOR_ROLE);
         _setRoleAdmin(MANAGER_ROLE, GRANTOR_ROLE);
 
