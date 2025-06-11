@@ -80,13 +80,13 @@ interface ICreditAgentTypes {
      *
      * The fields:
      *
-     * - borrower -------------- The address of the borrower.
-     * - programId ------------- The unique identifier of a lending program for the credit.
-     * - status ---------------- The status of the credit, see {CreditStatus}.
-     * - durationsInPeriods ---- The duration of each installment in periods.
-     * - borrowAmounts --------- The amounts of each installment.
-     * - addonAmounts ---------- The addon amounts of each installment.
-     * - firstInstallmentId ---- The unique ID of the related first installment loan on the lending market or zero if not taken.
+     * - borrower ------------ The address of the borrower.
+     * - programId ----------- The unique identifier of a lending program for the credit.
+     * - status -------------- The status of the credit, see {CreditStatus}.
+     * - durationsInPeriods -- The duration of each installment in periods.
+     * - borrowAmounts ------- The amounts of each installment.
+     * - addonAmounts -------- The addon amounts of each installment.
+     * - firstInstallmentId -- The unique ID of the related first installment loan on the market or zero if not taken.
      */
     struct InstallmentCredit {
         // Slot 1
@@ -117,11 +117,11 @@ interface ICreditAgentTypes {
      *
      * The fields:
      *
-     * - configured -------------------------- True if the agent is properly configured.
-     * - initiatedCreditCounter -------------- The counter of initiated credits.
-     * - pendingCreditCounter ---------------- The counter of pending credits.
-     * - initiatedInstallmentCreditCounter --- The counter of initiated installment credits.
-     * - pendingInstallmentCreditCounter ----- The counter of pending installment credits.
+     * - configured ------------------------- True if the agent is properly configured.
+     * - initiatedCreditCounter ------------- The counter of initiated credits.
+     * - pendingCreditCounter --------------- The counter of pending credits.
+     * - initiatedInstallmentCreditCounter -- The counter of initiated installment credits.
+     * - pendingInstallmentCreditCounter ---- The counter of pending installment credits.
      */
     struct AgentState {
         // Slot 1
