@@ -44,54 +44,93 @@ interface ICreditAgentTypes {
         Reversed
     }
 
-    /// @dev The data of a single credit.
+    /**
+     * @dev The data of a single credit.
+     *
+     * The fields:
+     *
+     * - borrower ----------- The address of the borrower.
+     * - programId ---------- The unique identifier of a lending program for the credit.
+     * - durationInPeriods -- The duration of the credit in periods. The period length is defined outside.
+     * - status ------------- The status of the credit, see {CreditStatus}.
+     * - loanAmount --------- The amount of the related loan.
+     * - loanAddon ---------- The addon amount (extra charges or fees) of the related loan.
+     * - loanId ------------- The unique ID of the related loan on the lending market or zero if not taken.
+     */
     struct Credit {
         // Slot 1
-        address borrower; // ---------- The address of the borrower.
-        uint32 programId; // ---------- The unique identifier of a lending program for the credit.
-        uint32 durationInPeriods; // -- The duration of the credit in periods. The period length is defined outside.
-        CreditStatus status; // ------- The status of the credit, see {CreditStatus}.
-        // uint24 __reserved; // ------ Reserved for future use until the end of the storage slot.
+        address borrower;
+        uint32 programId;
+        uint32 durationInPeriods;
+        CreditStatus status;
+        // uint24 __reserved; // Reserved until the end of the storage slot
 
         // Slot 2
-        uint64 loanAmount; // --------- The amount of the related loan.
-        uint64 loanAddon; // ---------- The addon amount (extra charges or fees) of the related loan.
-        // uint128 __reserved; // ----- Reserved for future use until the end of the storage slot.
+        uint64 loanAmount;
+        uint64 loanAddon;
+        // uint128 __reserved; // Reserved until the end of the storage slot
 
         // Slot 3
-        uint256 loanId; // ------------ The unique ID of the related loan on the lending market or zero if not taken.
+        uint256 loanId;
+        // No reserve until the end of the storage slot
     }
 
-    /// @dev The data of a single installment credit.
+    /**
+     * @dev The data of a single installment credit.
+     *
+     * The fields:
+     *
+     * - borrower -------------- The address of the borrower.
+     * - programId ------------- The unique identifier of a lending program for the credit.
+     * - status ---------------- The status of the credit, see {CreditStatus}.
+     * - durationsInPeriods ---- The duration of each installment in periods.
+     * - borrowAmounts --------- The amounts of each installment.
+     * - addonAmounts ---------- The addon amounts of each installment.
+     * - firstInstallmentId ---- The unique ID of the related first installment loan on the lending market or zero if not taken.
+     */
     struct InstallmentCredit {
         // Slot 1
-        address borrower; // ------------- The address of the borrower.
-        uint32 programId; // ------------- The unique identifier of a lending program for the credit.
-        CreditStatus status; // ---------- The status of the credit, see {CreditStatus}.
-        // uint56 __reserved; // --------- Reserved for future use until the end of the storage slot.
+        address borrower;
+        uint32 programId;
+        CreditStatus status;
+        // uint56 __reserved; // Reserved until the end of the storage slot
 
         // Slot 2
-        uint32[] durationsInPeriods; // -- The duration of each installment in periods.
+        uint32[] durationsInPeriods;
+        // No reserve until the end of the storage slot
 
         // Slot 3
-        uint64[] borrowAmounts; // ------- The amounts of each installment.
+        uint64[] borrowAmounts;
+        // No reserve until the end of the storage slot
 
         // Slot 4
-        uint64[] addonAmounts; // -------- The addon amounts of each installment.
+        uint64[] addonAmounts;
+        // No reserve until the end of the storage slot
 
         // Slot 5
-        uint256 firstInstallmentId; // --- The unique ID of the related first installment loan on the lending market or zero if not taken.
+        uint256 firstInstallmentId;
+        // No reserve until the end of the storage slot
     }
 
-    /// @dev The state of this agent contract.
+    /**
+     * @dev The state of this agent contract.
+     *
+     * The fields:
+     *
+     * - configured -------------------------- True if the agent is properly configured.
+     * - initiatedCreditCounter -------------- The counter of initiated credits.
+     * - pendingCreditCounter ---------------- The counter of pending credits.
+     * - initiatedInstallmentCreditCounter --- The counter of initiated installment credits.
+     * - pendingInstallmentCreditCounter ----- The counter of pending installment credits.
+     */
     struct AgentState {
         // Slot 1
-        bool configured; // --------------------------- True if the agent is properly configured.
-        uint32 initiatedCreditCounter; // ------------- The counter of initiated credits.
-        uint32 pendingCreditCounter; // --------------- The counter of pending credits.
-        uint32 initiatedInstallmentCreditCounter; // -- The counter of initiated installment credits.
-        uint32 pendingInstallmentCreditCounter; // ---- The counter of pending installment credits.
-        // uint120 __reserved; // --------------------- Reserved for future use until the end of the storage slot.
+        bool configured;
+        uint32 initiatedCreditCounter;
+        uint32 pendingCreditCounter;
+        uint32 initiatedInstallmentCreditCounter;
+        uint32 pendingInstallmentCreditCounter;
+        // uint120 __reserved; // Reserved until the end of the storage slot
     }
 }
 
