@@ -169,7 +169,7 @@ describe("Contract 'CreditAgent'", async () => {
     (1 << HookIndex.CashOutReversalAfter);
   const EXPECTED_VERSION: Version = {
     major: 1,
-    minor: 2,
+    minor: 3,
     patch: 0
   };
 
