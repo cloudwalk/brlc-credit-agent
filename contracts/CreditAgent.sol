@@ -94,7 +94,8 @@ contract CreditAgent is
 
     /**
      * @dev The initialize function of the upgradeable contract.
-     * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
+     *
+     * See details: https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable
      */
     function initialize() external initializer {
         __AccessControlExt_init_unchained();
