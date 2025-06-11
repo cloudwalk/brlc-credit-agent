@@ -219,6 +219,7 @@ describe("Contract 'CreditAgent'", async () => {
   let borrower: HardhatEthersSigner;
 
   const ownerRole: string = ethers.id("OWNER_ROLE");
+  const grantorRole: string = ethers.id("GRANTOR_ROLE");
   const pauserRole: string = ethers.id("PAUSER_ROLE");
   const rescuerRole: string = ethers.id("RESCUER_ROLE");
   const adminRole: string = ethers.id("ADMIN_ROLE");
@@ -255,6 +256,7 @@ describe("Contract 'CreditAgent'", async () => {
 
   async function deployAndConfigureCreditAgent(): Promise<Contract> {
     const creditAgent: Contract = await deployCreditAgent();
+    await proveTx(creditAgent.grantRole(grantorRole, deployer.address));
     await proveTx(creditAgent.grantRole(adminRole, admin.address));
     await proveTx(creditAgent.grantRole(managerRole, manager.address));
     await proveTx(creditAgent.grantRole(pauserRole, deployer.address));
@@ -448,6 +450,7 @@ describe("Contract 'CreditAgent'", async () => {
 
       // Role hashes
       expect(await creditAgent.OWNER_ROLE()).to.equal(ownerRole);
+      expect(await creditAgent.GRANTOR_ROLE()).to.equal(grantorRole);
       expect(await creditAgent.PAUSER_ROLE()).to.equal(pauserRole);
       expect(await creditAgent.RESCUER_ROLE()).to.equal(rescuerRole);
       expect(await creditAgent.ADMIN_ROLE()).to.equal(adminRole);
@@ -455,13 +458,15 @@ describe("Contract 'CreditAgent'", async () => {
 
       // The role admins
       expect(await creditAgent.getRoleAdmin(ownerRole)).to.equal(ownerRole);
-      expect(await creditAgent.getRoleAdmin(pauserRole)).to.equal(ownerRole);
-      expect(await creditAgent.getRoleAdmin(rescuerRole)).to.equal(ownerRole);
-      expect(await creditAgent.getRoleAdmin(adminRole)).to.equal(ownerRole);
-      expect(await creditAgent.getRoleAdmin(managerRole)).to.equal(ownerRole);
+      expect(await creditAgent.getRoleAdmin(grantorRole)).to.equal(ownerRole);
+      expect(await creditAgent.getRoleAdmin(pauserRole)).to.equal(grantorRole);
+      expect(await creditAgent.getRoleAdmin(rescuerRole)).to.equal(grantorRole);
+      expect(await creditAgent.getRoleAdmin(adminRole)).to.equal(grantorRole);
+      expect(await creditAgent.getRoleAdmin(managerRole)).to.equal(grantorRole);
 
       // The deployer should have the owner role and admin role, but not the other roles
       expect(await creditAgent.hasRole(ownerRole, deployer.address)).to.equal(true);
+      expect(await creditAgent.hasRole(grantorRole, deployer.address)).to.equal(false);
       expect(await creditAgent.hasRole(adminRole, deployer.address)).to.equal(true);
       expect(await creditAgent.hasRole(pauserRole, deployer.address)).to.equal(false);
       expect(await creditAgent.hasRole(rescuerRole, deployer.address)).to.equal(false);

@@ -65,13 +65,10 @@ contract CreditAgent is
 
     // ------------------ Constants ------------------------------- //
 
-    /// @dev The role of this contract owner.
-    bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
-
-    /// @dev The role of admin that is allowed to configure the contract.
+    /// @dev The role of an admin that is allowed to configure the contract.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    /// @dev The role of manager that is allowed to initialize and cancel credit operations.
+    /// @dev The role of a manager that is allowed to initialize and cancel credit operations.
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     /// @dev The bit flags that represent the required hooks for cash-out operations.
@@ -114,8 +111,8 @@ contract CreditAgent is
         __AccessControl_init_unchained();
         __AccessControlExt_init_unchained();
         __Pausable_init_unchained();
-        __PausableExt_init_unchained(OWNER_ROLE);
-        __Rescuable_init_unchained(OWNER_ROLE);
+        __PausableExt_init_unchained();
+        __Rescuable_init_unchained();
 
         __CreditAgent_init_unchained();
     }
@@ -126,9 +123,8 @@ contract CreditAgent is
      * See {CreditAgent-initialize}.
      */
     function __CreditAgent_init_unchained() internal onlyInitializing {
-        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
-        _setRoleAdmin(ADMIN_ROLE, OWNER_ROLE);
-        _setRoleAdmin(MANAGER_ROLE, OWNER_ROLE);
+        _setRoleAdmin(ADMIN_ROLE, GRANTOR_ROLE);
+        _setRoleAdmin(MANAGER_ROLE, GRANTOR_ROLE);
 
         _grantRole(OWNER_ROLE, _msgSender());
         _grantRole(ADMIN_ROLE, _msgSender());
