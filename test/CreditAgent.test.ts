@@ -234,28 +234,28 @@ describe("Contract 'CreditAgent'", async () => {
   });
 
   async function deployCashierMock(): Promise<Contract> {
-    const cashierMock: Contract = await cashierMockFactory.deploy() as Contract;
+    const cashierMock = await cashierMockFactory.deploy() as Contract;
     await cashierMock.waitForDeployment();
 
     return cashierMock;
   }
 
   async function deployLendingMarketMock(): Promise<Contract> {
-    const lendingMarketMock: Contract = await lendingMarketMockFactory.deploy() as Contract;
+    const lendingMarketMock = await lendingMarketMockFactory.deploy() as Contract;
     await lendingMarketMock.waitForDeployment();
 
     return lendingMarketMock;
   }
 
   async function deployCreditAgent(): Promise<Contract> {
-    const creditAgent: Contract = await upgrades.deployProxy(creditAgentFactory);
+    const creditAgent = await upgrades.deployProxy(creditAgentFactory) as Contract;
     await creditAgent.waitForDeployment();
 
     return creditAgent;
   }
 
   async function deployAndConfigureCreditAgent(): Promise<Contract> {
-    const creditAgent: Contract = await deployCreditAgent();
+    const creditAgent = await deployCreditAgent();
     await proveTx(creditAgent.grantRole(grantorRole, deployer.address));
     await proveTx(creditAgent.grantRole(adminRole, admin.address));
     await proveTx(creditAgent.grantRole(managerRole, manager.address));
