@@ -173,32 +173,32 @@ describe("Contract 'CreditAgent'", async () => {
     patch: 0
   };
 
-  // Errors of the lib contracts
-  const REVERT_ERROR_IF_CONTRACT_INITIALIZATION_IS_INVALID = "InvalidInitialization";
-  const REVERT_ERROR_IF_CONTRACT_IS_PAUSED = "EnforcedPause";
-  const REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
+  // Errors of the library contracts
+  const ERROR_NAME_CONTRACT_INITIALIZATION_IS_INVALID = "InvalidInitialization";
+  const ERROR_NAME_CONTRACT_IS_PAUSED = "EnforcedPause";
+  const ERROR_NAME_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
 
   // Errors of the contracts under test
-  const REVERT_ERROR_IF_ALREADY_CONFIGURED = "CreditAgent_AlreadyConfigured";
-  const REVERT_ERROR_IF_BORROWER_ADDRESS_ZERO = "CreditAgent_BorrowerAddressZero";
-  const REVERT_ERROR_IF_CASH_OUT_PARAMETERS_INAPPROPRIATE = "CreditAgent_CashOutParametersInappropriate";
-  const REVERT_ERROR_IF_CASHIER_HOOK_CALLER_UNAUTHORIZED = "CreditAgent_CashierHookCallerUnauthorized";
-  const REVERT_ERROR_IF_CASHIER_HOOK_INDEX_UNEXPECTED = "CreditAgent_CashierHookIndexUnexpected";
-  const REVERT_ERROR_IF_CONFIGURING_PROHIBITED = "CreditAgent_ConfiguringProhibited";
-  const REVERT_ERROR_IF_CONTRACT_NOT_CONFIGURED = "CreditAgent_ContractNotConfigured";
-  const REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE = "CreditAgent_CreditStatusInappropriate";
-  const REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_CONFIRMATION_AFTER =
+  const ERROR_NAME_ALREADY_CONFIGURED = "CreditAgent_AlreadyConfigured";
+  const ERROR_NAME_BORROWER_ADDRESS_ZERO = "CreditAgent_BorrowerAddressZero";
+  const ERROR_NAME_CASH_OUT_PARAMETERS_INAPPROPRIATE = "CreditAgent_CashOutParametersInappropriate";
+  const ERROR_NAME_CASHIER_HOOK_CALLER_UNAUTHORIZED = "CreditAgent_CashierHookCallerUnauthorized";
+  const ERROR_NAME_CASHIER_HOOK_INDEX_UNEXPECTED = "CreditAgent_CashierHookIndexUnexpected";
+  const ERROR_NAME_CONFIGURING_PROHIBITED = "CreditAgent_ConfiguringProhibited";
+  const ERROR_NAME_CONTRACT_NOT_CONFIGURED = "CreditAgent_ContractNotConfigured";
+  const ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE = "CreditAgent_CreditStatusInappropriate";
+  const ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_CONFIRMATION_AFTER =
     "CreditAgent_FailedToProcessCashOutConfirmationAfter";
-  const REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_REQUEST_BEFORE = "CreditAgent_FailedToProcessCashOutRequestBefore";
-  const REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_REVERSAL_AFTER = "CreditAgent_FailedToProcessCashOutReversalAfter";
-  const REVERT_ERROR_IF_IMPLEMENTATION_ADDRESS_INVALID = "CreditAgent_ImplementationAddressInvalid";
-  const REVERT_ERROR_IF_INPUT_ARRAYS_INVALID = "CreditAgent_InputArraysInvalid";
-  const REVERT_ERROR_IF_LOAN_AMOUNT_ZERO = "CreditAgent_LoanAmountZero";
-  const REVERT_ERROR_IF_LOAN_DURATION_ZERO = "CreditAgent_LoanDurationZero";
-  const REVERT_ERROR_IF_PROGRAM_ID_ZERO = "CreditAgent_ProgramIdZero";
-  const REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCast_OverflowedUintDowncast";
-  const REVERT_ERROR_IF_TX_ID_ZERO = "CreditAgent_TxIdZero";
-  const REVERT_ERROR_IF_TX_ID_ALREADY_USED = "CreditAgent_TxIdAlreadyUsed";
+  const ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_REQUEST_BEFORE = "CreditAgent_FailedToProcessCashOutRequestBefore";
+  const ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_REVERSAL_AFTER = "CreditAgent_FailedToProcessCashOutReversalAfter";
+  const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "CreditAgent_ImplementationAddressInvalid";
+  const ERROR_NAME_INPUT_ARRAYS_INVALID = "CreditAgent_InputArraysInvalid";
+  const ERROR_NAME_LOAN_AMOUNT_ZERO = "CreditAgent_LoanAmountZero";
+  const ERROR_NAME_LOAN_DURATION_ZERO = "CreditAgent_LoanDurationZero";
+  const ERROR_NAME_PROGRAM_ID_ZERO = "CreditAgent_ProgramIdZero";
+  const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCast_OverflowedUintDowncast";
+  const ERROR_NAME_TX_ID_ZERO = "CreditAgent_TxIdZero";
+  const ERROR_NAME_TX_ID_ALREADY_USED = "CreditAgent_TxIdAlreadyUsed";
 
   const EVENT_NAME_CASHIER_CHANGED = "CashierChanged";
   const EVENT_NAME_CREDIT_STATUS_CHANGED = "CreditStatusChanged";
@@ -485,7 +485,7 @@ describe("Contract 'CreditAgent'", async () => {
       const creditAgent = await setUpFixture(deployCreditAgent);
       await expect(
         creditAgent.initialize()
-      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_INITIALIZATION_IS_INVALID);
+      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_INITIALIZATION_IS_INVALID);
     });
   });
 
@@ -507,7 +507,7 @@ describe("Contract 'CreditAgent'", async () => {
       const creditAgent = await setUpFixture(deployCreditAgent);
 
       await expect(connect(creditAgent, admin).upgradeToAndCall(creditAgent, "0x"))
-        .to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_UNAUTHORIZED_ACCOUNT);
     });
   });
 
@@ -521,14 +521,14 @@ describe("Contract 'CreditAgent'", async () => {
       const creditAgent = await setUpFixture(deployCreditAgent);
 
       await expect(connect(creditAgent, admin).upgradeTo(creditAgent))
-        .to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_UNAUTHORIZED_ACCOUNT);
     });
 
     it("Is reverted if the provided implementation address is not a credit agent contract", async () => {
       const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
 
       await expect(creditAgent.upgradeTo(cashierMock))
-        .to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_IMPLEMENTATION_ADDRESS_INVALID);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID);
     });
   });
 
@@ -605,7 +605,7 @@ describe("Contract 'CreditAgent'", async () => {
       await proveTx(creditAgent.pause());
       await expect(
         connect(creditAgent, admin).setCashier(cashierMockAddress)
-      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_IS_PAUSED);
+      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the admin role", async () => {
@@ -616,7 +616,7 @@ describe("Contract 'CreditAgent'", async () => {
         connect(creditAgent, manager).setCashier(cashierMockAddress)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
+        ERROR_NAME_UNAUTHORIZED_ACCOUNT
       ).withArgs(manager.address, adminRole);
     });
 
@@ -627,13 +627,13 @@ describe("Contract 'CreditAgent'", async () => {
       // Try to set the default value
       await expect(
         connect(creditAgent, admin).setCashier(ADDRESS_ZERO)
-      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_ALREADY_CONFIGURED);
+      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ALREADY_CONFIGURED);
 
       // Try to set the same value twice
       await proveTx(connect(creditAgent, admin).setCashier(cashierMockAddress));
       await expect(
         connect(creditAgent, admin).setCashier(cashierMockAddress)
-      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_ALREADY_CONFIGURED);
+      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ALREADY_CONFIGURED);
     });
 
     // Additional more complex checks are in the other sections
@@ -712,7 +712,7 @@ describe("Contract 'CreditAgent'", async () => {
       await proveTx(creditAgent.pause());
       await expect(
         connect(creditAgent, admin).setLendingMarket(lendingMarketMockAddress)
-      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_IS_PAUSED);
+      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the admin role", async () => {
@@ -723,7 +723,7 @@ describe("Contract 'CreditAgent'", async () => {
         connect(creditAgent, manager).setLendingMarket(lendingMarketMockAddress)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
+        ERROR_NAME_UNAUTHORIZED_ACCOUNT
       ).withArgs(manager.address, adminRole);
     });
 
@@ -734,13 +734,13 @@ describe("Contract 'CreditAgent'", async () => {
       // Try to set the default value
       await expect(
         connect(creditAgent, admin).setLendingMarket(ADDRESS_ZERO)
-      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_ALREADY_CONFIGURED);
+      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ALREADY_CONFIGURED);
 
       // Try to set the same value twice
       await proveTx(connect(creditAgent, admin).setLendingMarket(lendingMarketMockAddress));
       await expect(
         connect(creditAgent, admin).setLendingMarket(lendingMarketMockAddress)
-      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_ALREADY_CONFIGURED);
+      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ALREADY_CONFIGURED);
     });
 
     // Additional more complex checks are in the other sections
@@ -772,7 +772,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           initiateCredit(creditAgent)
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_IS_PAUSED);
       });
 
       it("The caller does not have the manager role", async () => {
@@ -782,7 +782,7 @@ describe("Contract 'CreditAgent'", async () => {
           initiateCredit(creditAgent, { caller: deployer })
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
+          ERROR_NAME_UNAUTHORIZED_ACCOUNT
         ).withArgs(deployer.address, managerRole);
       });
 
@@ -792,7 +792,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           initiateCredit(creditAgent)
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_NOT_CONFIGURED);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_NOT_CONFIGURED);
       });
 
       it("The 'LendingMarket' contract address is not configured", async () => {
@@ -801,7 +801,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           initiateCredit(creditAgent)
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_NOT_CONFIGURED);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_NOT_CONFIGURED);
       });
 
       it("The provided 'txId' value is zero", async () => {
@@ -810,7 +810,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           initiateCredit(creditAgent, { txId: TX_ID_ZERO, credit })
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_TX_ID_ZERO);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_TX_ID_ZERO);
       });
 
       it("The provided borrower address is zero", async () => {
@@ -819,7 +819,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           initiateCredit(creditAgent, { credit })
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_BORROWER_ADDRESS_ZERO);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_BORROWER_ADDRESS_ZERO);
       });
 
       it("The provided program ID is zero", async () => {
@@ -828,7 +828,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           initiateCredit(creditAgent, { credit })
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_PROGRAM_ID_ZERO);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_PROGRAM_ID_ZERO);
       });
 
       it("The provided loan duration is zero", async () => {
@@ -837,7 +837,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           initiateCredit(creditAgent, { credit })
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_LOAN_DURATION_ZERO);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_LOAN_DURATION_ZERO);
       });
 
       it("The provided loan amount is zero", async () => {
@@ -846,7 +846,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           initiateCredit(creditAgent, { credit })
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_LOAN_AMOUNT_ZERO);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_LOAN_AMOUNT_ZERO);
       });
 
       it("A credit is already initiated for the provided transaction ID", async () => {
@@ -859,7 +859,7 @@ describe("Contract 'CreditAgent'", async () => {
           initiateCredit(creditAgent, { txId, credit })
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
+          ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE
         ).withArgs(
           txId,
           CreditStatus.Initiated // status
@@ -873,7 +873,7 @@ describe("Contract 'CreditAgent'", async () => {
           initiateCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
+          ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
         ).withArgs(32, credit.programId);
       });
 
@@ -884,7 +884,7 @@ describe("Contract 'CreditAgent'", async () => {
           initiateCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
+          ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
         ).withArgs(32, credit.durationInPeriods);
       });
 
@@ -895,7 +895,7 @@ describe("Contract 'CreditAgent'", async () => {
           initiateCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
+          ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
         ).withArgs(64, credit.loanAmount);
       });
 
@@ -906,7 +906,7 @@ describe("Contract 'CreditAgent'", async () => {
           initiateCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
+          ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
         ).withArgs(64, credit.loanAddon);
       });
 
@@ -917,7 +917,7 @@ describe("Contract 'CreditAgent'", async () => {
           initiateCredit(fixture.creditAgent, { txId, credit })
         ).to.be.revertedWithCustomError(
           fixture.creditAgent,
-          REVERT_ERROR_IF_TX_ID_ALREADY_USED
+          ERROR_NAME_TX_ID_ALREADY_USED
         );
       });
 
@@ -958,7 +958,7 @@ describe("Contract 'CreditAgent'", async () => {
 
       await expect(
         connect(creditAgent, manager).revokeCredit(TX_ID_STUB)
-      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_IS_PAUSED);
+      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the manager role", async () => {
@@ -968,7 +968,7 @@ describe("Contract 'CreditAgent'", async () => {
         connect(creditAgent, deployer).revokeCredit(TX_ID_STUB)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
+        ERROR_NAME_UNAUTHORIZED_ACCOUNT
       ).withArgs(deployer.address, managerRole);
     });
 
@@ -977,7 +977,7 @@ describe("Contract 'CreditAgent'", async () => {
 
       await expect(
         connect(creditAgent, manager).revokeCredit(TX_ID_ZERO)
-      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_TX_ID_ZERO);
+      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_TX_ID_ZERO);
     });
 
     it("Is reverted if the credit does not exist", async () => {
@@ -987,7 +987,7 @@ describe("Contract 'CreditAgent'", async () => {
         connect(creditAgent, manager).revokeCredit(TX_ID_STUB)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
+        ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE
       ).withArgs(
         TX_ID_STUB,
         CreditStatus.Nonexistent // status
@@ -1139,7 +1139,7 @@ describe("Contract 'CreditAgent'", async () => {
           cashierMock.callCashierHook(getAddress(creditAgent), hookIndex, TX_ID_STUB)
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
+          ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE
         ).withArgs(
           txId,
           CreditStatus // status
@@ -1154,7 +1154,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           cashierMock.callCashierHook(getAddress(creditAgent), hookIndex, TX_ID_STUB)
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_IS_PAUSED);
       });
 
       it("The caller is not the configured 'Cashier' contract", async () => {
@@ -1164,7 +1164,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           connect(creditAgent, deployer).onCashierHook(hookIndex, TX_ID_STUB)
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CASHIER_HOOK_CALLER_UNAUTHORIZED);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CASHIER_HOOK_CALLER_UNAUTHORIZED);
       });
 
       it("The credit status is inappropriate to the provided hook index. Part 1", async () => {
@@ -1249,7 +1249,7 @@ describe("Contract 'CreditAgent'", async () => {
           cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId)
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_CASH_OUT_PARAMETERS_INAPPROPRIATE
+          ERROR_NAME_CASH_OUT_PARAMETERS_INAPPROPRIATE
         ).withArgs(txId);
       });
 
@@ -1266,7 +1266,7 @@ describe("Contract 'CreditAgent'", async () => {
           cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId)
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_CASH_OUT_PARAMETERS_INAPPROPRIATE
+          ERROR_NAME_CASH_OUT_PARAMETERS_INAPPROPRIATE
         ).withArgs(txId);
       });
 
@@ -1279,7 +1279,7 @@ describe("Contract 'CreditAgent'", async () => {
           cashierMock.callCashierHook(getAddress(creditAgent), hookIndex, TX_ID_STUB)
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_CASHIER_HOOK_INDEX_UNEXPECTED
+          ERROR_NAME_CASHIER_HOOK_INDEX_UNEXPECTED
         ).withArgs(
           hookIndex,
           TX_ID_STUB,
@@ -1341,7 +1341,7 @@ describe("Contract 'CreditAgent'", async () => {
         initiateCredit(creditAgent, { txId, credit })
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
+        ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE
       ).withArgs(
         txId,
         CreditStatus.Pending // status
@@ -1355,7 +1355,7 @@ describe("Contract 'CreditAgent'", async () => {
         initiateCredit(creditAgent, { txId, credit })
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
+        ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE
       ).withArgs(
         txId,
         CreditStatus.Confirmed // status
@@ -1373,7 +1373,7 @@ describe("Contract 'CreditAgent'", async () => {
         connect(creditAgent, manager).revokeCredit(txId)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
+        ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE
       ).withArgs(
         txId,
         CreditStatus.Pending // status
@@ -1385,7 +1385,7 @@ describe("Contract 'CreditAgent'", async () => {
         connect(creditAgent, manager).revokeCredit(txId)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
+        ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE
       ).withArgs(
         txId,
         CreditStatus.Reversed // status
@@ -1401,7 +1401,7 @@ describe("Contract 'CreditAgent'", async () => {
         connect(creditAgent, manager).revokeCredit(txId)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
+        ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE
       ).withArgs(
         txId,
         CreditStatus.Confirmed // status
@@ -1416,10 +1416,10 @@ describe("Contract 'CreditAgent'", async () => {
       async function checkConfiguringProhibition() {
         await expect(
           connect(creditAgent, admin).setCashier(ADDRESS_ZERO)
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONFIGURING_PROHIBITED);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONFIGURING_PROHIBITED);
         await expect(
           connect(creditAgent, admin).setLendingMarket(ADDRESS_ZERO)
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONFIGURING_PROHIBITED);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONFIGURING_PROHIBITED);
       }
 
       async function checkConfiguringAllowance() {
@@ -1483,7 +1483,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           initiateInstallmentCredit(creditAgent)
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_IS_PAUSED);
       });
 
       it("The caller does not have the manager role", async () => {
@@ -1493,7 +1493,7 @@ describe("Contract 'CreditAgent'", async () => {
           initiateInstallmentCredit(creditAgent, { caller: deployer })
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
+          ERROR_NAME_UNAUTHORIZED_ACCOUNT
         ).withArgs(deployer.address, managerRole);
       });
 
@@ -1503,7 +1503,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           initiateInstallmentCredit(creditAgent)
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_NOT_CONFIGURED);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_NOT_CONFIGURED);
       });
 
       it("The 'LendingMarket' contract address is not configured", async () => {
@@ -1512,7 +1512,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           initiateInstallmentCredit(creditAgent)
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_NOT_CONFIGURED);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_NOT_CONFIGURED);
       });
 
       it("The provided 'txId' value is zero", async () => {
@@ -1521,7 +1521,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           initiateInstallmentCredit(creditAgent, { txId: TX_ID_ZERO, credit })
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_TX_ID_ZERO);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_TX_ID_ZERO);
       });
 
       it("The provided borrower address is zero", async () => {
@@ -1530,7 +1530,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           initiateInstallmentCredit(creditAgent, { credit })
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_BORROWER_ADDRESS_ZERO);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_BORROWER_ADDRESS_ZERO);
       });
 
       it("The provided program ID is zero", async () => {
@@ -1539,7 +1539,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           initiateInstallmentCredit(creditAgent, { credit })
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_PROGRAM_ID_ZERO);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_PROGRAM_ID_ZERO);
       });
 
       it("The 'durationsInPeriods' array contains a zero value", async () => {
@@ -1548,7 +1548,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           initiateInstallmentCredit(creditAgent, { credit })
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_LOAN_DURATION_ZERO);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_LOAN_DURATION_ZERO);
       });
 
       it("The 'borrowAmounts' array contains a zero value", async () => {
@@ -1557,7 +1557,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           initiateInstallmentCredit(creditAgent, { credit })
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_LOAN_AMOUNT_ZERO);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_LOAN_AMOUNT_ZERO);
       });
 
       it("A credit is already initiated for the provided transaction ID", async () => {
@@ -1570,7 +1570,7 @@ describe("Contract 'CreditAgent'", async () => {
           initiateInstallmentCredit(creditAgent, { txId, credit })
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
+          ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE
         ).withArgs(
           txId,
           CreditStatus.Initiated // status
@@ -1584,7 +1584,7 @@ describe("Contract 'CreditAgent'", async () => {
           initiateInstallmentCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
+          ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
         ).withArgs(32, credit.programId);
       });
 
@@ -1595,7 +1595,7 @@ describe("Contract 'CreditAgent'", async () => {
           initiateInstallmentCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
+          ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
         ).withArgs(32, credit.durationsInPeriods[0]);
       });
 
@@ -1606,7 +1606,7 @@ describe("Contract 'CreditAgent'", async () => {
           initiateInstallmentCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
+          ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
         ).withArgs(64, credit.borrowAmounts[1]);
       });
 
@@ -1617,7 +1617,7 @@ describe("Contract 'CreditAgent'", async () => {
           initiateInstallmentCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
+          ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST
         ).withArgs(64, credit.addonAmounts[1]);
       });
 
@@ -1630,7 +1630,7 @@ describe("Contract 'CreditAgent'", async () => {
         });
         await expect(initiateInstallmentCredit(creditAgent, { credit })).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_INPUT_ARRAYS_INVALID
+          ERROR_NAME_INPUT_ARRAYS_INVALID
         );
       });
 
@@ -1643,7 +1643,7 @@ describe("Contract 'CreditAgent'", async () => {
         });
         await expect(initiateInstallmentCredit(creditAgent, { credit })).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_INPUT_ARRAYS_INVALID
+          ERROR_NAME_INPUT_ARRAYS_INVALID
         );
       });
 
@@ -1656,7 +1656,7 @@ describe("Contract 'CreditAgent'", async () => {
         });
         await expect(initiateInstallmentCredit(creditAgent, { credit })).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_INPUT_ARRAYS_INVALID
+          ERROR_NAME_INPUT_ARRAYS_INVALID
         );
       });
 
@@ -1669,7 +1669,7 @@ describe("Contract 'CreditAgent'", async () => {
         });
         await expect(initiateInstallmentCredit(creditAgent, { credit })).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_INPUT_ARRAYS_INVALID
+          ERROR_NAME_INPUT_ARRAYS_INVALID
         );
       });
 
@@ -1680,7 +1680,7 @@ describe("Contract 'CreditAgent'", async () => {
           initiateInstallmentCredit(fixture.creditAgent, { txId, credit: installmentCredit })
         ).to.be.revertedWithCustomError(
           fixture.creditAgent,
-          REVERT_ERROR_IF_TX_ID_ALREADY_USED
+          ERROR_NAME_TX_ID_ALREADY_USED
         );
       });
 
@@ -1722,7 +1722,7 @@ describe("Contract 'CreditAgent'", async () => {
 
       await expect(
         connect(creditAgent, manager).revokeInstallmentCredit(TX_ID_STUB_INSTALLMENT)
-      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_IS_PAUSED);
+      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the manager role", async () => {
@@ -1732,7 +1732,7 @@ describe("Contract 'CreditAgent'", async () => {
         connect(creditAgent, deployer).revokeInstallmentCredit(TX_ID_STUB_INSTALLMENT)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
+        ERROR_NAME_UNAUTHORIZED_ACCOUNT
       ).withArgs(deployer.address, managerRole);
     });
 
@@ -1741,7 +1741,7 @@ describe("Contract 'CreditAgent'", async () => {
 
       await expect(
         connect(creditAgent, manager).revokeInstallmentCredit(TX_ID_ZERO)
-      ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_TX_ID_ZERO);
+      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_TX_ID_ZERO);
     });
 
     it("Is reverted if the credit does not exist", async () => {
@@ -1751,7 +1751,7 @@ describe("Contract 'CreditAgent'", async () => {
         connect(creditAgent, manager).revokeInstallmentCredit(TX_ID_STUB_INSTALLMENT)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
+        ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE
       ).withArgs(
         TX_ID_STUB_INSTALLMENT,
         CreditStatus.Nonexistent // status
@@ -1914,7 +1914,7 @@ describe("Contract 'CreditAgent'", async () => {
           cashierMock.callCashierHook(getAddress(creditAgent), hookIndex, TX_ID_STUB_INSTALLMENT)
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
+          ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE
         ).withArgs(
           txId,
           CreditStatus // status
@@ -1929,7 +1929,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           cashierMock.callCashierHook(getAddress(creditAgent), hookIndex, TX_ID_STUB)
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_IS_PAUSED);
       });
 
       it("The caller is not the configured 'Cashier' contract (DUPLICATE)", async () => {
@@ -1939,7 +1939,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           connect(creditAgent, deployer).onCashierHook(hookIndex, TX_ID_STUB)
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CASHIER_HOOK_CALLER_UNAUTHORIZED);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CASHIER_HOOK_CALLER_UNAUTHORIZED);
       });
 
       it("The credit status is inappropriate to the provided hook index. Part 1", async () => {
@@ -2028,7 +2028,7 @@ describe("Contract 'CreditAgent'", async () => {
           cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId)
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_CASH_OUT_PARAMETERS_INAPPROPRIATE
+          ERROR_NAME_CASH_OUT_PARAMETERS_INAPPROPRIATE
         ).withArgs(txId);
       });
 
@@ -2049,7 +2049,7 @@ describe("Contract 'CreditAgent'", async () => {
           cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId)
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_CASH_OUT_PARAMETERS_INAPPROPRIATE
+          ERROR_NAME_CASH_OUT_PARAMETERS_INAPPROPRIATE
         ).withArgs(txId);
       });
 
@@ -2062,7 +2062,7 @@ describe("Contract 'CreditAgent'", async () => {
           cashierMock.callCashierHook(getAddress(creditAgent), hookIndex, TX_ID_STUB)
         ).to.be.revertedWithCustomError(
           creditAgent,
-          REVERT_ERROR_IF_CASHIER_HOOK_INDEX_UNEXPECTED
+          ERROR_NAME_CASHIER_HOOK_INDEX_UNEXPECTED
         ).withArgs(
           hookIndex,
           TX_ID_STUB,
@@ -2136,7 +2136,7 @@ describe("Contract 'CreditAgent'", async () => {
         initiateInstallmentCredit(creditAgent, { txId, credit })
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
+        ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE
       ).withArgs(
         txId,
         CreditStatus.Pending // status
@@ -2155,7 +2155,7 @@ describe("Contract 'CreditAgent'", async () => {
         initiateInstallmentCredit(creditAgent, { txId, credit })
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
+        ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE
       ).withArgs(txId, CreditStatus.Confirmed);
     });
 
@@ -2174,7 +2174,7 @@ describe("Contract 'CreditAgent'", async () => {
         connect(creditAgent, manager).revokeInstallmentCredit(txId)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
+        ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE
       ).withArgs(
         txId,
         CreditStatus.Pending // status
@@ -2186,7 +2186,7 @@ describe("Contract 'CreditAgent'", async () => {
         connect(creditAgent, manager).revokeInstallmentCredit(txId)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
+        ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE
       ).withArgs(
         txId,
         CreditStatus.Reversed // status
@@ -2202,7 +2202,7 @@ describe("Contract 'CreditAgent'", async () => {
         connect(creditAgent, manager).revokeInstallmentCredit(txId)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_CREDIT_STATUS_INAPPROPRIATE
+        ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE
       ).withArgs(
         txId,
         CreditStatus.Confirmed // status
@@ -2221,10 +2221,10 @@ describe("Contract 'CreditAgent'", async () => {
       async function checkConfiguringProhibition() {
         await expect(
           connect(creditAgent, admin).setCashier(ADDRESS_ZERO)
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONFIGURING_PROHIBITED);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONFIGURING_PROHIBITED);
         await expect(
           connect(creditAgent, admin).setLendingMarket(ADDRESS_ZERO)
-        ).to.be.revertedWithCustomError(creditAgent, REVERT_ERROR_IF_CONFIGURING_PROHIBITED);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONFIGURING_PROHIBITED);
       }
 
       async function checkConfiguringAllowance() {
@@ -2271,7 +2271,7 @@ describe("Contract 'CreditAgent'", async () => {
         cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_REQUEST_BEFORE
+        ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_REQUEST_BEFORE
       ).withArgs(txId);
     });
 
@@ -2282,7 +2282,7 @@ describe("Contract 'CreditAgent'", async () => {
         cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutConfirmationAfter, txId)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_CONFIRMATION_AFTER
+        ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_CONFIRMATION_AFTER
       ).withArgs(txId);
     });
 
@@ -2293,7 +2293,7 @@ describe("Contract 'CreditAgent'", async () => {
         cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutReversalAfter, txId)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        REVERT_ERROR_IF_FAILED_TO_PROCESS_CASH_OUT_REVERSAL_AFTER
+        ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_REVERSAL_AFTER
       ).withArgs(txId);
     });
   });
