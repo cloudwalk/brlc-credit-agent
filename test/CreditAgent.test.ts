@@ -173,6 +173,17 @@ describe("Contract 'CreditAgent'", async () => {
     patch: 0
   };
 
+  // Events of the contracts under test
+  const EVENT_NAME_CASHIER_CHANGED = "CashierChanged";
+  const EVENT_NAME_CREDIT_STATUS_CHANGED = "CreditStatusChanged";
+  const EVENT_NAME_INSTALLMENT_CREDIT_STATUS_CHANGED = "InstallmentCreditStatusChanged";
+  const EVENT_NAME_LENDING_MARKET_CHANGED = "LendingMarketChanged";
+  const EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED = "MockConfigureCashOutHooksCalled";
+  const EVENT_NAME_MOCK_REVOKE_INSTALLMENT_LOAN_CALLED = "MockRevokeInstallmentLoanCalled";
+  const EVENT_NAME_MOCK_REVOKE_LOAN_CALLED = "MockRevokeLoanCalled";
+  const EVENT_NAME_MOCK_TAKE_INSTALLMENT_LOAN_FOR_CALLED = "MockTakeInstallmentLoanForCalled";
+  const EVENT_NAME_MOCK_TAKE_LOAN_FOR_CALLED = "MockTakeLoanForCalled";
+
   // Errors of the library contracts
   const ERROR_NAME_CONTRACT_INITIALIZATION_IS_INVALID = "InvalidInitialization";
   const ERROR_NAME_CONTRACT_IS_PAUSED = "EnforcedPause";
@@ -197,18 +208,8 @@ describe("Contract 'CreditAgent'", async () => {
   const ERROR_NAME_LOAN_DURATION_ZERO = "CreditAgent_LoanDurationZero";
   const ERROR_NAME_PROGRAM_ID_ZERO = "CreditAgent_ProgramIdZero";
   const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCast_OverflowedUintDowncast";
-  const ERROR_NAME_TX_ID_ZERO = "CreditAgent_TxIdZero";
   const ERROR_NAME_TX_ID_ALREADY_USED = "CreditAgent_TxIdAlreadyUsed";
-
-  const EVENT_NAME_CASHIER_CHANGED = "CashierChanged";
-  const EVENT_NAME_CREDIT_STATUS_CHANGED = "CreditStatusChanged";
-  const EVENT_NAME_INSTALLMENT_CREDIT_STATUS_CHANGED = "InstallmentCreditStatusChanged";
-  const EVENT_NAME_LENDING_MARKET_CHANGED = "LendingMarketChanged";
-  const EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED = "MockConfigureCashOutHooksCalled";
-  const EVENT_NAME_MOCK_REVOKE_INSTALLMENT_LOAN_CALLED = "MockRevokeInstallmentLoanCalled";
-  const EVENT_NAME_MOCK_REVOKE_LOAN_CALLED = "MockRevokeLoanCalled";
-  const EVENT_NAME_MOCK_TAKE_INSTALLMENT_LOAN_FOR_CALLED = "MockTakeInstallmentLoanForCalled";
-  const EVENT_NAME_MOCK_TAKE_LOAN_FOR_CALLED = "MockTakeLoanForCalled";
+  const ERROR_NAME_TX_ID_ZERO = "CreditAgent_TxIdZero";
 
   let creditAgentFactory: ContractFactory;
   let cashierMockFactory: ContractFactory;
