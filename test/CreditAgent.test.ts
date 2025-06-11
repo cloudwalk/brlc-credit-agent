@@ -219,12 +219,12 @@ describe("Contract 'CreditAgent'", async () => {
   let manager: HardhatEthersSigner;
   let borrower: HardhatEthersSigner;
 
-  const ownerRole: string = ethers.id("OWNER_ROLE");
-  const grantorRole: string = ethers.id("GRANTOR_ROLE");
-  const pauserRole: string = ethers.id("PAUSER_ROLE");
-  const rescuerRole: string = ethers.id("RESCUER_ROLE");
-  const adminRole: string = ethers.id("ADMIN_ROLE");
-  const managerRole: string = ethers.id("MANAGER_ROLE");
+  const OWNER_ROLE: string = ethers.id("OWNER_ROLE");
+  const GRANTOR_ROLE: string = ethers.id("GRANTOR_ROLE");
+  const PAUSER_ROLE: string = ethers.id("PAUSER_ROLE");
+  const RESCUER_ROLE: string = ethers.id("RESCUER_ROLE");
+  const ADMIN_ROLE: string = ethers.id("ADMIN_ROLE");
+  const MANAGER_ROLE: string = ethers.id("MANAGER_ROLE");
 
   before(async () => {
     creditAgentFactory = await ethers.getContractFactory("CreditAgent");
@@ -257,10 +257,10 @@ describe("Contract 'CreditAgent'", async () => {
 
   async function deployAndConfigureCreditAgent(): Promise<Contract> {
     const creditAgent = await deployCreditAgent();
-    await proveTx(creditAgent.grantRole(grantorRole, deployer.address));
-    await proveTx(creditAgent.grantRole(adminRole, admin.address));
-    await proveTx(creditAgent.grantRole(managerRole, manager.address));
-    await proveTx(creditAgent.grantRole(pauserRole, deployer.address));
+    await proveTx(creditAgent.grantRole(GRANTOR_ROLE, deployer.address));
+    await proveTx(creditAgent.grantRole(ADMIN_ROLE, admin.address));
+    await proveTx(creditAgent.grantRole(MANAGER_ROLE, manager.address));
+    await proveTx(creditAgent.grantRole(PAUSER_ROLE, deployer.address));
 
     return creditAgent;
   }
@@ -450,28 +450,28 @@ describe("Contract 'CreditAgent'", async () => {
       const creditAgent = await setUpFixture(deployCreditAgent);
 
       // Role hashes
-      expect(await creditAgent.OWNER_ROLE()).to.equal(ownerRole);
-      expect(await creditAgent.GRANTOR_ROLE()).to.equal(grantorRole);
-      expect(await creditAgent.PAUSER_ROLE()).to.equal(pauserRole);
-      expect(await creditAgent.RESCUER_ROLE()).to.equal(rescuerRole);
-      expect(await creditAgent.ADMIN_ROLE()).to.equal(adminRole);
-      expect(await creditAgent.MANAGER_ROLE()).to.equal(managerRole);
+      expect(await creditAgent.OWNER_ROLE()).to.equal(OWNER_ROLE);
+      expect(await creditAgent.GRANTOR_ROLE()).to.equal(GRANTOR_ROLE);
+      expect(await creditAgent.PAUSER_ROLE()).to.equal(PAUSER_ROLE);
+      expect(await creditAgent.RESCUER_ROLE()).to.equal(RESCUER_ROLE);
+      expect(await creditAgent.ADMIN_ROLE()).to.equal(ADMIN_ROLE);
+      expect(await creditAgent.MANAGER_ROLE()).to.equal(MANAGER_ROLE);
 
       // The role admins
-      expect(await creditAgent.getRoleAdmin(ownerRole)).to.equal(ownerRole);
-      expect(await creditAgent.getRoleAdmin(grantorRole)).to.equal(ownerRole);
-      expect(await creditAgent.getRoleAdmin(pauserRole)).to.equal(grantorRole);
-      expect(await creditAgent.getRoleAdmin(rescuerRole)).to.equal(grantorRole);
-      expect(await creditAgent.getRoleAdmin(adminRole)).to.equal(grantorRole);
-      expect(await creditAgent.getRoleAdmin(managerRole)).to.equal(grantorRole);
+      expect(await creditAgent.getRoleAdmin(OWNER_ROLE)).to.equal(OWNER_ROLE);
+      expect(await creditAgent.getRoleAdmin(GRANTOR_ROLE)).to.equal(OWNER_ROLE);
+      expect(await creditAgent.getRoleAdmin(PAUSER_ROLE)).to.equal(GRANTOR_ROLE);
+      expect(await creditAgent.getRoleAdmin(RESCUER_ROLE)).to.equal(GRANTOR_ROLE);
+      expect(await creditAgent.getRoleAdmin(ADMIN_ROLE)).to.equal(GRANTOR_ROLE);
+      expect(await creditAgent.getRoleAdmin(MANAGER_ROLE)).to.equal(GRANTOR_ROLE);
 
       // The deployer should have the owner role and admin role, but not the other roles
-      expect(await creditAgent.hasRole(ownerRole, deployer.address)).to.equal(true);
-      expect(await creditAgent.hasRole(grantorRole, deployer.address)).to.equal(false);
-      expect(await creditAgent.hasRole(adminRole, deployer.address)).to.equal(true);
-      expect(await creditAgent.hasRole(pauserRole, deployer.address)).to.equal(false);
-      expect(await creditAgent.hasRole(rescuerRole, deployer.address)).to.equal(false);
-      expect(await creditAgent.hasRole(managerRole, deployer.address)).to.equal(false);
+      expect(await creditAgent.hasRole(OWNER_ROLE, deployer.address)).to.equal(true);
+      expect(await creditAgent.hasRole(GRANTOR_ROLE, deployer.address)).to.equal(false);
+      expect(await creditAgent.hasRole(ADMIN_ROLE, deployer.address)).to.equal(true);
+      expect(await creditAgent.hasRole(PAUSER_ROLE, deployer.address)).to.equal(false);
+      expect(await creditAgent.hasRole(RESCUER_ROLE, deployer.address)).to.equal(false);
+      expect(await creditAgent.hasRole(MANAGER_ROLE, deployer.address)).to.equal(false);
 
       // The initial contract state is unpaused
       expect(await creditAgent.paused()).to.equal(false);
@@ -618,7 +618,7 @@ describe("Contract 'CreditAgent'", async () => {
       ).to.be.revertedWithCustomError(
         creditAgent,
         ERROR_NAME_UNAUTHORIZED_ACCOUNT
-      ).withArgs(manager.address, adminRole);
+      ).withArgs(manager.address, ADMIN_ROLE);
     });
 
     it("Is reverted if the configuration is unchanged", async () => {
@@ -725,7 +725,7 @@ describe("Contract 'CreditAgent'", async () => {
       ).to.be.revertedWithCustomError(
         creditAgent,
         ERROR_NAME_UNAUTHORIZED_ACCOUNT
-      ).withArgs(manager.address, adminRole);
+      ).withArgs(manager.address, ADMIN_ROLE);
     });
 
     it("Is reverted if the configuration is unchanged", async () => {
@@ -784,7 +784,7 @@ describe("Contract 'CreditAgent'", async () => {
         ).to.be.revertedWithCustomError(
           creditAgent,
           ERROR_NAME_UNAUTHORIZED_ACCOUNT
-        ).withArgs(deployer.address, managerRole);
+        ).withArgs(deployer.address, MANAGER_ROLE);
       });
 
       it("The 'Cashier' contract address is not configured", async () => {
@@ -970,7 +970,7 @@ describe("Contract 'CreditAgent'", async () => {
       ).to.be.revertedWithCustomError(
         creditAgent,
         ERROR_NAME_UNAUTHORIZED_ACCOUNT
-      ).withArgs(deployer.address, managerRole);
+      ).withArgs(deployer.address, MANAGER_ROLE);
     });
 
     it("Is reverted if the provided 'txId' value is zero", async () => {
@@ -1495,7 +1495,7 @@ describe("Contract 'CreditAgent'", async () => {
         ).to.be.revertedWithCustomError(
           creditAgent,
           ERROR_NAME_UNAUTHORIZED_ACCOUNT
-        ).withArgs(deployer.address, managerRole);
+        ).withArgs(deployer.address, MANAGER_ROLE);
       });
 
       it("The 'Cashier' contract address is not configured", async () => {
@@ -1734,7 +1734,7 @@ describe("Contract 'CreditAgent'", async () => {
       ).to.be.revertedWithCustomError(
         creditAgent,
         ERROR_NAME_UNAUTHORIZED_ACCOUNT
-      ).withArgs(deployer.address, managerRole);
+      ).withArgs(deployer.address, MANAGER_ROLE);
     });
 
     it("Is reverted if the provided 'txId' value is zero", async () => {
