@@ -6,7 +6,7 @@ import { ICreditAgentTypes } from "./interfaces/ICreditAgent.sol";
 
 /**
  * @title CreditAgent storage version 1
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  */
 abstract contract CreditAgentStorageV1 is ICreditAgentTypes {
     /// @dev The address of the related Cashier contract.
@@ -27,7 +27,7 @@ abstract contract CreditAgentStorageV1 is ICreditAgentTypes {
 
 /**
  * @title CreditAgent storage
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Contains storage variables of the {CreditAgent} contract.
  *
  * We are following Compound's approach of upgrading new contract implementations.

@@ -24,7 +24,7 @@ import { ICashierHookableTypes } from "./interfaces/ICashierHookable.sol";
 
 /**
  * @title CreditAgent contract
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Wrapper contract for credit operations.
  *
  * This contract links together a cashier contract with a lending market contract

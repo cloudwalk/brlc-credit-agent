@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 
 /**
  * @title ICreditAgentTypes interface
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Defines the types used in the credit agent contract.
  */
 interface ICreditAgentTypes {
@@ -136,7 +136,7 @@ interface ICreditAgentTypes {
 
 /**
  * @title ICreditAgentErrors interface
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Defines the custom errors used in the credit agent contract.
  */
 interface ICreditAgentErrors is ICreditAgentTypes {
@@ -221,7 +221,7 @@ interface ICreditAgentErrors is ICreditAgentTypes {
 
 /**
  * @title ICreditAgentPrimary interface
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev The primary part of the credit agent contract interface.
  */
 interface ICreditAgentPrimary is ICreditAgentTypes {
@@ -366,7 +366,7 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
 
 /**
  * @title ICreditAgentConfiguration interface
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev The configuration part of the credit agent contract interface.
  */
 interface ICreditAgentConfiguration is ICreditAgentTypes {
@@ -413,7 +413,7 @@ interface ICreditAgentConfiguration is ICreditAgentTypes {
 
 /**
  * @title ICreditAgent interface
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev The full interface of the credit agent contract.
  */
 interface ICreditAgent is

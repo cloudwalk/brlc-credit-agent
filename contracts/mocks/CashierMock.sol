@@ -8,7 +8,7 @@ import { ICashier } from "../interfaces/ICashier.sol";
 
 /**
  * @title CashierMock contract
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev A simplified version of the Cashier contract to use in tests for other contracts.
  */
 contract CashierMock is ICashierHookableTypes, ICashier {
