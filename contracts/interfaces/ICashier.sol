@@ -8,6 +8,8 @@ pragma solidity ^0.8.0;
  * @dev Defines the needed functions of the cashier contract.
  */
 interface ICashier {
+    // ------------------ Types ----------------------------------- //
+
     /**
      * @dev Possible statuses of a cash-out operation as an enum.
      *
@@ -34,6 +36,8 @@ interface ICashier {
         uint8 flags; // ----------- The bit field of flags for the operation. See {CashOutFlagIndex}.
         // uint16 __reserved; // -- Reserved for future use until the end of the storage slot.
     }
+
+    // ------------------ View functions -------------------------- //
 
     /**
      * @dev Returns the data of a single cash-out operation.

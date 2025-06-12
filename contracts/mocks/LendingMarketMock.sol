@@ -8,11 +8,15 @@ pragma solidity ^0.8.0;
  * @dev A simplified version of a lending market contract to use in tests for other contracts.
  */
 contract LendingMarketMock {
+    // ------------------ Constants ------------------------------- //
+
     /// @dev A constant value to return as a fake loan identifier.
     uint256 public constant LOAN_ID_STAB = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDE;
 
     /// @dev A constant value to return as a fake installment loan count.
     uint256 public constant INSTALLMENT_COUNT_STAB = 12;
+
+    // ------------------ Events ---------------------------------- //
 
     /// @dev Emitted when the `takeLoanFor()` function is called with the parameters of the function.
     event MockTakeLoanForCalled(
@@ -37,6 +41,8 @@ contract LendingMarketMock {
 
     /// @dev Emitted when the `revokeInstallmentLoan()` function is called with the parameters of the function.
     event MockRevokeInstallmentLoanCalled(uint256 loanId);
+
+    // ------------------ Transactional functions ----------------- //
 
     /**
      * @dev Imitates the same-name function a lending market contracts.

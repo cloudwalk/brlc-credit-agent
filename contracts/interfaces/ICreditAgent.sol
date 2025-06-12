@@ -386,7 +386,7 @@ interface ICreditAgentConfiguration is ICreditAgentTypes {
      */
     event LendingMarketChanged(address newLendingMarket, address oldLendingMarket);
 
-    // ------------------ Functions ------------------------------- //
+    // ------------------ Transactional functions ----------------- //
 
     /**
      * @dev Sets the address of the cashier contract in this contract configuration.

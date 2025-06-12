@@ -110,7 +110,7 @@ contract CreditAgent is
         _grantRole(ADMIN_ROLE, _msgSender());
     }
 
-    // ------------------ Functions ------------------------------- //
+    // ------------------ Transactional functions ----------------- //
 
     /**
      * @inheritdoc ICreditAgentConfiguration
