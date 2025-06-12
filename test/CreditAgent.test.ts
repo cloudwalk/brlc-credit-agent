@@ -488,6 +488,14 @@ describe("Contract 'CreditAgent'", async () => {
         creditAgent.initialize()
       ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_INITIALIZATION_IS_INVALID);
     });
+
+    it("Is reverted for the contract implementation if it is called even for the first time", async () => {
+      const creditAgentImplementation = await creditAgentFactory.deploy() as Contract;
+      await creditAgentImplementation.waitForDeployment();
+
+      await expect(creditAgentImplementation.initialize())
+        .to.be.revertedWithCustomError(creditAgentImplementation, ERROR_NAME_CONTRACT_INITIALIZATION_IS_INVALID);
+    });
   });
 
   describe("Function '$__VERSION()'", async () => {
