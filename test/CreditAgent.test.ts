@@ -187,9 +187,9 @@ describe("Contract 'CreditAgent'", async () => {
   const EVENT_NAME_MOCK_TAKE_LOAN_FOR_CALLED = "MockTakeLoanForCalled";
 
   // Errors of the library contracts
-  const ERROR_NAME_CONTRACT_INITIALIZATION_IS_INVALID = "InvalidInitialization";
-  const ERROR_NAME_CONTRACT_IS_PAUSED = "EnforcedPause";
-  const ERROR_NAME_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
+  const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
+  const ERROR_NAME_ENFORCED_PAUSE = "EnforcedPause";
+  const ERROR_NAME_INVALID_INITIALIZATION = "InvalidInitialization";
 
   // Errors of the contracts under test
   const ERROR_NAME_ALREADY_CONFIGURED = "CreditAgent_AlreadyConfigured";
@@ -487,7 +487,7 @@ describe("Contract 'CreditAgent'", async () => {
       const creditAgent = await setUpFixture(deployCreditAgent);
       await expect(
         creditAgent.initialize()
-      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_INITIALIZATION_IS_INVALID);
+      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_INVALID_INITIALIZATION);
     });
 
     it("Is reverted for the contract implementation if it is called even for the first time", async () => {
@@ -495,7 +495,7 @@ describe("Contract 'CreditAgent'", async () => {
       await creditAgentImplementation.waitForDeployment();
 
       await expect(creditAgentImplementation.initialize())
-        .to.be.revertedWithCustomError(creditAgentImplementation, ERROR_NAME_CONTRACT_INITIALIZATION_IS_INVALID);
+        .to.be.revertedWithCustomError(creditAgentImplementation, ERROR_NAME_INVALID_INITIALIZATION);
     });
   });
 
@@ -517,7 +517,7 @@ describe("Contract 'CreditAgent'", async () => {
       const creditAgent = await setUpFixture(deployCreditAgent);
 
       await expect(connect(creditAgent, admin).upgradeToAndCall(creditAgent, "0x"))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_UNAUTHORIZED_ACCOUNT);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT);
     });
   });
 
@@ -531,7 +531,7 @@ describe("Contract 'CreditAgent'", async () => {
       const creditAgent = await setUpFixture(deployCreditAgent);
 
       await expect(connect(creditAgent, admin).upgradeTo(creditAgent))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_UNAUTHORIZED_ACCOUNT);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT);
     });
 
     it("Is reverted if the provided implementation address is not a credit agent contract", async () => {
@@ -615,7 +615,7 @@ describe("Contract 'CreditAgent'", async () => {
       await proveTx(creditAgent.pause());
       await expect(
         connect(creditAgent, admin).setCashier(cashierMockAddress)
-      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_IS_PAUSED);
+      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ENFORCED_PAUSE);
     });
 
     it("Is reverted if the caller does not have the admin role", async () => {
@@ -626,7 +626,7 @@ describe("Contract 'CreditAgent'", async () => {
         connect(creditAgent, manager).setCashier(cashierMockAddress)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        ERROR_NAME_UNAUTHORIZED_ACCOUNT
+        ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
       ).withArgs(manager.address, ADMIN_ROLE);
     });
 
@@ -722,7 +722,7 @@ describe("Contract 'CreditAgent'", async () => {
       await proveTx(creditAgent.pause());
       await expect(
         connect(creditAgent, admin).setLendingMarket(lendingMarketMockAddress)
-      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_IS_PAUSED);
+      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ENFORCED_PAUSE);
     });
 
     it("Is reverted if the caller does not have the admin role", async () => {
@@ -733,7 +733,7 @@ describe("Contract 'CreditAgent'", async () => {
         connect(creditAgent, manager).setLendingMarket(lendingMarketMockAddress)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        ERROR_NAME_UNAUTHORIZED_ACCOUNT
+        ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
       ).withArgs(manager.address, ADMIN_ROLE);
     });
 
@@ -782,7 +782,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           initiateCredit(creditAgent)
-        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ENFORCED_PAUSE);
       });
 
       it("The caller does not have the manager role", async () => {
@@ -792,7 +792,7 @@ describe("Contract 'CreditAgent'", async () => {
           initiateCredit(creditAgent, { caller: deployer })
         ).to.be.revertedWithCustomError(
           creditAgent,
-          ERROR_NAME_UNAUTHORIZED_ACCOUNT
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
         ).withArgs(deployer.address, MANAGER_ROLE);
       });
 
@@ -968,7 +968,7 @@ describe("Contract 'CreditAgent'", async () => {
 
       await expect(
         connect(creditAgent, manager).revokeCredit(TX_ID_STUB)
-      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_IS_PAUSED);
+      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ENFORCED_PAUSE);
     });
 
     it("Is reverted if the caller does not have the manager role", async () => {
@@ -978,7 +978,7 @@ describe("Contract 'CreditAgent'", async () => {
         connect(creditAgent, deployer).revokeCredit(TX_ID_STUB)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        ERROR_NAME_UNAUTHORIZED_ACCOUNT
+        ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
       ).withArgs(deployer.address, MANAGER_ROLE);
     });
 
@@ -1164,7 +1164,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           cashierMock.callCashierHook(getAddress(creditAgent), hookIndex, TX_ID_STUB)
-        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ENFORCED_PAUSE);
       });
 
       it("The caller is not the configured 'Cashier' contract", async () => {
@@ -1493,7 +1493,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           initiateInstallmentCredit(creditAgent)
-        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ENFORCED_PAUSE);
       });
 
       it("The caller does not have the manager role", async () => {
@@ -1503,7 +1503,7 @@ describe("Contract 'CreditAgent'", async () => {
           initiateInstallmentCredit(creditAgent, { caller: deployer })
         ).to.be.revertedWithCustomError(
           creditAgent,
-          ERROR_NAME_UNAUTHORIZED_ACCOUNT
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
         ).withArgs(deployer.address, MANAGER_ROLE);
       });
 
@@ -1732,7 +1732,7 @@ describe("Contract 'CreditAgent'", async () => {
 
       await expect(
         connect(creditAgent, manager).revokeInstallmentCredit(TX_ID_STUB_INSTALLMENT)
-      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_IS_PAUSED);
+      ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ENFORCED_PAUSE);
     });
 
     it("Is reverted if the caller does not have the manager role", async () => {
@@ -1742,7 +1742,7 @@ describe("Contract 'CreditAgent'", async () => {
         connect(creditAgent, deployer).revokeInstallmentCredit(TX_ID_STUB_INSTALLMENT)
       ).to.be.revertedWithCustomError(
         creditAgent,
-        ERROR_NAME_UNAUTHORIZED_ACCOUNT
+        ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
       ).withArgs(deployer.address, MANAGER_ROLE);
     });
 
@@ -1939,7 +1939,7 @@ describe("Contract 'CreditAgent'", async () => {
 
         await expect(
           cashierMock.callCashierHook(getAddress(creditAgent), hookIndex, TX_ID_STUB)
-        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ENFORCED_PAUSE);
       });
 
       it("The caller is not the configured 'Cashier' contract (DUPLICATE)", async () => {
