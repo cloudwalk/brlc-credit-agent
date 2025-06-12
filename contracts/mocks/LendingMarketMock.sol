@@ -45,7 +45,7 @@ contract LendingMarketMock {
     // ------------------ Transactional functions ----------------- //
 
     /**
-     * @dev Imitates the same-name function a lending market contracts.
+     * @dev Imitates the same-name function of a lending market contract.
      *      Just emits an event about the call and returns a constant.
      */
     function takeLoanFor(
@@ -66,7 +66,7 @@ contract LendingMarketMock {
     }
 
     /**
-     * @dev Imitates the same-name function a lending market contracts.
+     * @dev Imitates the same-name function of a lending market contract.
      *      Just emits an event about the call and returns a constant.
      */
     function takeInstallmentLoanFor(
@@ -86,12 +86,12 @@ contract LendingMarketMock {
         return (LOAN_ID_STAB, INSTALLMENT_COUNT_STAB);
     }
 
-    /// @dev Imitates the same-name function a lending market contracts. Just emits an event about the call.
+    /// @dev Imitates the same-name function of a lending market contract. Just emits an event about the call.
     function revokeLoan(uint256 loanId) external {
         emit MockRevokeLoanCalled(loanId);
     }
 
-    /// @dev Imitates the same-name function a lending market contracts. Just emits an event about the call.
+    /// @dev Imitates the same-name function of a lending market contract. Just emits an event about the call.
     function revokeInstallmentLoan(uint256 loanId) external {
         emit MockRevokeInstallmentLoanCalled(loanId);
     }

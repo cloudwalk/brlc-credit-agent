@@ -628,7 +628,7 @@ contract CreditAgent is
         revert CreditAgent_FailedToProcessCashOutReversalAfter(txId);
     }
 
-    /// @dev Calculates the sum of all elements in an memory array.
+    /// @dev Calculates the sum of all elements in a memory array.
     /// @param values Array of amounts to sum.
     /// @return The total sum of all array elements.
     function _sumArray(uint64[] storage values) internal view returns (uint256) {
@@ -711,7 +711,7 @@ contract CreditAgent is
     }
 
     /**
-     * @dev Tries to process the cash-out request before hook by taking a ordinary loan.
+     * @dev Tries to process the cash-out request before hook by taking an ordinary loan.
      *
      * @param txId The unique identifier of the related cash-out operation.
      * @return true if the operation was successful, false otherwise.
@@ -846,7 +846,7 @@ contract CreditAgent is
     }
 
     /**
-     * @dev Tries to process the cash-out reversal after hook by revoking a ordinary loan.
+     * @dev Tries to process the cash-out reversal after hook by revoking an ordinary loan.
      *
      * @param txId The unique identifier of the related cash-out operation.
      * @return true if the operation was successful, false otherwise.
