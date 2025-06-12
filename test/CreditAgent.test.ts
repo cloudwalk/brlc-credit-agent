@@ -513,7 +513,7 @@ describe("Contract 'CreditAgent'", async () => {
       await checkContractUupsUpgrading(creditAgent, creditAgentFactory);
     });
 
-    it("Is reverted if the caller is not the owner", async () => {
+    it("Is reverted if the caller does not have the owner role", async () => {
       const creditAgent = await setUpFixture(deployCreditAgent);
 
       await expect(connect(creditAgent, admin).upgradeToAndCall(creditAgent, "0x"))
@@ -527,7 +527,7 @@ describe("Contract 'CreditAgent'", async () => {
       await checkContractUupsUpgrading(creditAgent, creditAgentFactory, "upgradeTo(address)");
     });
 
-    it("Is reverted if the caller is not the owner", async () => {
+    it("Is reverted if the caller does not have the owner role", async () => {
       const creditAgent = await setUpFixture(deployCreditAgent);
 
       await expect(connect(creditAgent, admin).upgradeTo(creditAgent))
