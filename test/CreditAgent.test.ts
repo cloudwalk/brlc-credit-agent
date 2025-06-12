@@ -707,7 +707,7 @@ describe("Contract 'CreditAgent'", async () => {
     // Additional more complex checks are in the other sections
   });
 
-  describe("Function 'initiateCredit()", async () => {
+  describe("Function 'initiateCredit()'", async () => {
     describe("Executes as expected if", async () => {
       it("The 'loanAddon' value is not zero", async () => {
         const fixture = await setUpFixture(deployAndConfigureContracts);
@@ -853,7 +853,7 @@ describe("Contract 'CreditAgent'", async () => {
     });
   });
 
-  describe("Function 'revokeCredit()", async () => {
+  describe("Function 'revokeCredit()'", async () => {
     it("Executes as expected", async () => {
       const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
       const credit = defineCredit();
@@ -1331,7 +1331,7 @@ describe("Contract 'CreditAgent'", async () => {
         const tx = initiateInstallmentCredit(fixture.creditAgent, { txId, credit });
         await checkInstallmentCreditInitiation(fixture, { tx, txId, credit });
       });
-      it("The one of the 'addonAmounts' values is zero", async () => {
+      it("One of the 'addonAmounts' values is zero", async () => {
         const fixture = await setUpFixture(deployAndConfigureContracts);
         const credit = defineInstallmentCredit({ addonAmounts: [LOAN_ADDON_STUB, 0n] });
         const txId = TX_ID_STUB_INSTALLMENT;
