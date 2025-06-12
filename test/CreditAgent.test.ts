@@ -163,6 +163,8 @@ describe("Contract 'CreditAgent'", async () => {
   const LOAN_DURATION_IN_SECONDS_STUB = 0xFFFF_DCBA;
   const LOAN_AMOUNT_STUB: bigint = BigInt("0xFFFFFFFFFFFF1234");
   const LOAN_ADDON_STUB: bigint = BigInt("0xFFFFFFFFFFFF4321");
+  const OVERFLOW_UINT32 = 2 ** 32;
+  const OVERFLOW_UINT64 = 2n ** 64n;
   const NEEDED_CASHIER_CASH_OUT_HOOK_FLAGS =
     (1 << HookIndex.CashOutRequestBefore) +
     (1 << HookIndex.CashOutConfirmationAfter) +
@@ -877,7 +879,7 @@ describe("Contract 'CreditAgent'", async () => {
 
       it("The 'programId' argument is greater than unsigned 32-bit integer", async () => {
         const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const credit = defineCredit({ programId: Math.pow(2, 32) });
+        const credit = defineCredit({ programId: OVERFLOW_UINT32 });
         await expect(
           initiateCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
@@ -888,7 +890,7 @@ describe("Contract 'CreditAgent'", async () => {
 
       it("The 'durationInPeriods' argument is greater than unsigned 32-bit integer", async () => {
         const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const credit = defineCredit({ durationInPeriods: Math.pow(2, 32) });
+        const credit = defineCredit({ durationInPeriods: OVERFLOW_UINT32 });
         await expect(
           initiateCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
@@ -899,7 +901,7 @@ describe("Contract 'CreditAgent'", async () => {
 
       it("The 'loanAmount' argument is greater than unsigned 64-bit integer", async () => {
         const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const credit = defineCredit({ loanAmount: 2n ** 64n });
+        const credit = defineCredit({ loanAmount: OVERFLOW_UINT64 });
         await expect(
           initiateCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
@@ -910,7 +912,7 @@ describe("Contract 'CreditAgent'", async () => {
 
       it("The 'loanAddon' argument is greater than unsigned 64-bit integer", async () => {
         const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const credit = defineCredit({ loanAddon: 2n ** 64n });
+        const credit = defineCredit({ loanAddon: OVERFLOW_UINT64 });
         await expect(
           initiateCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
@@ -1588,7 +1590,7 @@ describe("Contract 'CreditAgent'", async () => {
 
       it("The 'programId' argument is greater than unsigned 32-bit integer", async () => {
         const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const credit = defineInstallmentCredit({ programId: Math.pow(2, 32) });
+        const credit = defineInstallmentCredit({ programId: OVERFLOW_UINT32 });
         await expect(
           initiateInstallmentCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
@@ -1599,7 +1601,7 @@ describe("Contract 'CreditAgent'", async () => {
 
       it("The 'durationsInPeriods' array contains a value greater than unsigned 32-bit integer", async () => {
         const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const credit = defineInstallmentCredit({ durationsInPeriods: [Math.pow(2, 32), 20] });
+        const credit = defineInstallmentCredit({ durationsInPeriods: [OVERFLOW_UINT32, 20] });
         await expect(
           initiateInstallmentCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
@@ -1610,7 +1612,7 @@ describe("Contract 'CreditAgent'", async () => {
 
       it("The 'borrowAmounts' array contains a value greater than unsigned 64-bit integer", async () => {
         const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const credit = defineInstallmentCredit({ borrowAmounts: [100n, 2n ** 64n] });
+        const credit = defineInstallmentCredit({ borrowAmounts: [100n, OVERFLOW_UINT64] });
         await expect(
           initiateInstallmentCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
@@ -1621,7 +1623,7 @@ describe("Contract 'CreditAgent'", async () => {
 
       it("The 'addonAmounts' array contains a value greater than unsigned 64-bit integer", async () => {
         const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
-        const credit = defineInstallmentCredit({ addonAmounts: [100n, 2n ** 64n] });
+        const credit = defineInstallmentCredit({ addonAmounts: [100n, OVERFLOW_UINT64] });
         await expect(
           initiateInstallmentCredit(creditAgent, { credit })
         ).to.be.revertedWithCustomError(
