@@ -434,7 +434,7 @@ contract CreditAgent is
     // ------------------ Pure functions -------------------------- //
 
     /**
-     * @inheritdoc ICreditAgentPrimary
+     * @inheritdoc ICreditAgent
      */
     function proveCreditAgent() external pure {}
 
@@ -894,7 +894,7 @@ contract CreditAgent is
      * @param newImplementation The address of the new implementation.
      */
     function _validateUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
-        try ICreditAgentPrimary(newImplementation).proveCreditAgent() {} catch {
+        try ICreditAgent(newImplementation).proveCreditAgent() {} catch {
             revert CreditAgent_ImplementationAddressInvalid();
         }
     }

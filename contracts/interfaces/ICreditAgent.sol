@@ -272,11 +272,6 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
      * @dev Returns the state of this agent contract.
      */
     function agentState() external view returns (AgentState memory);
-
-    /**
-     * @dev Proves that the contract is the credit agent contract.
-     */
-    function proveCreditAgent() external pure;
 }
 
 /**
@@ -416,4 +411,9 @@ interface ICreditAgentErrors is ICreditAgentTypes {
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev The full interface of the credit agent contract.
  */
-interface ICreditAgent is ICreditAgentPrimary, ICreditAgentConfiguration, ICreditAgentErrors {}
+interface ICreditAgent is ICreditAgentPrimary, ICreditAgentConfiguration, ICreditAgentErrors {
+    /**
+     * @dev Proves that the contract is the credit agent contract.
+     */
+    function proveCreditAgent() external pure;
+}
