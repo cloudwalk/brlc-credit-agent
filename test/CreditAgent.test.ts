@@ -214,8 +214,6 @@ describe("Contract 'CreditAgent'", async () => {
   const ERROR_NAME_TX_ID_ZERO = "CreditAgent_TxIdZero";
 
   let creditAgentFactory: ContractFactory;
-  let cashierMockFactory: ContractFactory;
-  let lendingMarketMockFactory: ContractFactory;
   let deployer: HardhatEthersSigner;
   let admin: HardhatEthersSigner;
   let manager: HardhatEthersSigner;
@@ -229,32 +227,33 @@ describe("Contract 'CreditAgent'", async () => {
   const MANAGER_ROLE: string = ethers.id("MANAGER_ROLE");
 
   before(async () => {
-    creditAgentFactory = await ethers.getContractFactory("CreditAgent");
-    cashierMockFactory = await ethers.getContractFactory("CashierMock");
-    lendingMarketMockFactory = await ethers.getContractFactory("LendingMarketMock");
-
     [deployer, admin, manager, borrower] = await ethers.getSigners();
+
+    creditAgentFactory = await ethers.getContractFactory("CreditAgent");
+    creditAgentFactory = creditAgentFactory.connect(deployer); // Explicitly specifying the initial account
   });
 
   async function deployCashierMock(): Promise<Contract> {
+    const cashierMockFactory: ContractFactory = await ethers.getContractFactory("CashierMock");
     const cashierMock = await cashierMockFactory.deploy() as Contract;
     await cashierMock.waitForDeployment();
 
-    return cashierMock;
+    return connect(cashierMock, deployer); // Explicitly specifying the initial account
   }
 
   async function deployLendingMarketMock(): Promise<Contract> {
+    const lendingMarketMockFactory = await ethers.getContractFactory("LendingMarketMock");
     const lendingMarketMock = await lendingMarketMockFactory.deploy() as Contract;
     await lendingMarketMock.waitForDeployment();
 
-    return lendingMarketMock;
+    return connect(lendingMarketMock, deployer); // Explicitly specifying the initial account
   }
 
   async function deployCreditAgent(): Promise<Contract> {
     const creditAgent = await upgrades.deployProxy(creditAgentFactory) as Contract;
     await creditAgent.waitForDeployment();
 
-    return creditAgent;
+    return connect(creditAgent, deployer); // Explicitly specifying the initial account
   }
 
   async function deployAndConfigureCreditAgent(): Promise<Contract> {
