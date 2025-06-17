@@ -8,12 +8,16 @@ import { ICashier } from "../interfaces/ICashier.sol";
 
 /**
  * @title CashierMock contract
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev A simplified version of the Cashier contract to use in tests for other contracts.
  */
 contract CashierMock is ICashierHookableTypes, ICashier {
+    // ------------------ Storage --------------------------------- //
+
     /// @dev The mapping of a cash-out operation structure for a given off-chain transaction identifier.
     mapping(bytes32 => CashOutOperation) internal _mockCashOutOperations;
+
+    // ------------------ Events ---------------------------------- //
 
     /// @dev Emitted when the `configureCashOutHooks()` function is called with the parameters of the function.
     event MockConfigureCashOutHooksCalled(
@@ -21,6 +25,8 @@ contract CashierMock is ICashierHookableTypes, ICashier {
         address newCallableContract,
         uint256 newHookFlags
     );
+
+    // ------------------ Transactional functions ----------------- //
 
     /// @dev Imitates the same-name function of the {ICashierHookable} interface. Just emits an event about the call.
     function configureCashOutHooks(bytes32 txId, address newCallableContract, uint256 newHookFlags) external {
@@ -40,6 +46,8 @@ contract CashierMock is ICashierHookableTypes, ICashier {
     function setCashOut(bytes32 txId, CashOutOperation calldata operation) external {
         _mockCashOutOperations[txId] = operation;
     }
+
+    // ------------------ View functions -------------------------- //
 
     /// @dev Returns a cash-out operation by a transaction ID.
     function getCashOut(bytes32 txId) external view returns (CashOutOperation memory) {

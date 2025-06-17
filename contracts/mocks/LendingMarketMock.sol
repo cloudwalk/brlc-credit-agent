@@ -4,15 +4,19 @@ pragma solidity ^0.8.0;
 
 /**
  * @title LendingMarketMock contract
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev A simplified version of a lending market contract to use in tests for other contracts.
  */
 contract LendingMarketMock {
+    // ------------------ Constants ------------------------------- //
+
     /// @dev A constant value to return as a fake loan identifier.
     uint256 public constant LOAN_ID_STAB = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDE;
 
     /// @dev A constant value to return as a fake installment loan count.
     uint256 public constant INSTALLMENT_COUNT_STAB = 12;
+
+    // ------------------ Events ---------------------------------- //
 
     /// @dev Emitted when the `takeLoanFor()` function is called with the parameters of the function.
     event MockTakeLoanForCalled(
@@ -38,8 +42,10 @@ contract LendingMarketMock {
     /// @dev Emitted when the `revokeInstallmentLoan()` function is called with the parameters of the function.
     event MockRevokeInstallmentLoanCalled(uint256 loanId);
 
+    // ------------------ Transactional functions ----------------- //
+
     /**
-     * @dev Imitates the same-name function a lending market contracts.
+     * @dev Imitates the same-name function of a lending market contract.
      *      Just emits an event about the call and returns a constant.
      */
     function takeLoanFor(
@@ -60,7 +66,7 @@ contract LendingMarketMock {
     }
 
     /**
-     * @dev Imitates the same-name function a lending market contracts.
+     * @dev Imitates the same-name function of a lending market contract.
      *      Just emits an event about the call and returns a constant.
      */
     function takeInstallmentLoanFor(
@@ -80,12 +86,12 @@ contract LendingMarketMock {
         return (LOAN_ID_STAB, INSTALLMENT_COUNT_STAB);
     }
 
-    /// @dev Imitates the same-name function a lending market contracts. Just emits an event about the call.
+    /// @dev Imitates the same-name function of a lending market contract. Just emits an event about the call.
     function revokeLoan(uint256 loanId) external {
         emit MockRevokeLoanCalled(loanId);
     }
 
-    /// @dev Imitates the same-name function a lending market contracts. Just emits an event about the call.
+    /// @dev Imitates the same-name function of a lending market contract. Just emits an event about the call.
     function revokeInstallmentLoan(uint256 loanId) external {
         emit MockRevokeInstallmentLoanCalled(loanId);
     }

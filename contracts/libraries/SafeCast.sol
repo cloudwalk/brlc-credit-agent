@@ -4,16 +4,20 @@ pragma solidity ^0.8.0;
 
 /**
  * @title SafeCast library
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Defines safe casting functions from uint256 to other sizes.
  */
 library SafeCast {
+    // ------------------ Errors ---------------------------------- //
+
     /**
      * @dev Thrown when the value doesn't fit in an uint of `bits` size.
      * @param bits The size of the target type.
      * @param value The value that didn't fit.
      */
     error SafeCast_OverflowedUintDowncast(uint8 bits, uint256 value);
+
+    // ------------------ Internal functions ---------------------- //
 
     /** @dev Returns the downcasted uint64 from uint256, reverting on
      *       overflow (when the input is greater than largest uint64).

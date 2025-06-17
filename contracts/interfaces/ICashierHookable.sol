@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 /**
  * @title ICashierHookableTypes interface
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Defines the types used in the cashier hookable contract.
  */
 interface ICashierHookableTypes {
@@ -61,18 +61,22 @@ interface ICashierHookableTypes {
     /**
      * @dev The hook configuration for a concrete cashier operation.
      *
-     * See notes for the {HookIndex} enumeration.
+     * The fields:
+     *
+     * - callableContract -- The address of the contract that implements the hook function.
+     * - hookFlags --------- The bit flags that define when the hook function should be called.
      */
     struct HookConfig {
-        address callableContract; // -- The address of the contract that implements the hook function.
-        uint32 hookFlags; // ---------- The bit flags that define when the hook function should be called
-        // uint64 __reserved; // ------ Reserved for future use until the end of the storage slot.
+        // Slot 1
+        address callableContract;
+        uint32 hookFlags;
+        // uint64 __reserved; // Reserved until the end of the storage slot
     }
 }
 
 /**
  * @title ICashierHookable interface
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev The interface of an addition to the Cashier contract that allows to call a hook function during some actions.
  */
 interface ICashierHookable is ICashierHookableTypes {

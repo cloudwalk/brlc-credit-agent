@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 
 /**
  * @title ICreditAgentTypes interface
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Defines the types used in the credit agent contract.
  */
 interface ICreditAgentTypes {
@@ -44,145 +44,99 @@ interface ICreditAgentTypes {
         Reversed
     }
 
-    /// @dev The data of a single credit.
+    /**
+     * @dev The data of a single credit.
+     *
+     * The fields:
+     *
+     * - borrower ----------- The address of the borrower.
+     * - programId ---------- The unique identifier of a lending program for the credit.
+     * - durationInPeriods -- The duration of the credit in periods. The period length is defined outside.
+     * - status ------------- The status of the credit, see {CreditStatus}.
+     * - loanAmount --------- The amount of the related loan.
+     * - loanAddon ---------- The addon amount (extra charges or fees) of the related loan.
+     * - loanId ------------- The unique ID of the related loan on the lending market or zero if not taken.
+     */
     struct Credit {
         // Slot 1
-        address borrower; // ---------- The address of the borrower.
-        uint32 programId; // ---------- The unique identifier of a lending program for the credit.
-        uint32 durationInPeriods; // -- The duration of the credit in periods. The period length is defined outside.
-        CreditStatus status; // ------- The status of the credit, see {CreditStatus}.
-        // uint24 __reserved; // ------ Reserved for future use until the end of the storage slot.
+        address borrower;
+        uint32 programId;
+        uint32 durationInPeriods;
+        CreditStatus status;
+        // uint24 __reserved; // Reserved until the end of the storage slot
 
         // Slot 2
-        uint64 loanAmount; // --------- The amount of the related loan.
-        uint64 loanAddon; // ---------- The addon amount (extra charges or fees) of the related loan.
-        // uint128 __reserved; // ----- Reserved for future use until the end of the storage slot.
+        uint64 loanAmount;
+        uint64 loanAddon;
+        // uint128 __reserved; // Reserved until the end of the storage slot
 
         // Slot 3
-        uint256 loanId; // ------------ The unique ID of the related loan on the lending market or zero if not taken.
+        uint256 loanId;
+        // No reserve until the end of the storage slot
     }
 
-    /// @dev The data of a single installment credit.
+    /**
+     * @dev The data of a single installment credit.
+     *
+     * The fields:
+     *
+     * - borrower ------------ The address of the borrower.
+     * - programId ----------- The unique identifier of a lending program for the credit.
+     * - status -------------- The status of the credit, see {CreditStatus}.
+     * - durationsInPeriods -- The duration of each installment in periods.
+     * - borrowAmounts ------- The amounts of each installment.
+     * - addonAmounts -------- The addon amounts of each installment.
+     * - firstInstallmentId -- The unique ID of the related first installment loan on the market or zero if not taken.
+     */
     struct InstallmentCredit {
         // Slot 1
-        address borrower; // ------------- The address of the borrower.
-        uint32 programId; // ------------- The unique identifier of a lending program for the credit.
-        CreditStatus status; // ---------- The status of the credit, see {CreditStatus}.
-        // uint56 __reserved; // --------- Reserved for future use until the end of the storage slot.
+        address borrower;
+        uint32 programId;
+        CreditStatus status;
+        // uint56 __reserved; // Reserved until the end of the storage slot
 
         // Slot 2
-        uint32[] durationsInPeriods; // -- The duration of each installment in periods.
+        uint32[] durationsInPeriods;
+        // No reserve until the end of the storage slot
 
         // Slot 3
-        uint64[] borrowAmounts; // ------- The amounts of each installment.
+        uint64[] borrowAmounts;
+        // No reserve until the end of the storage slot
 
         // Slot 4
-        uint64[] addonAmounts; // -------- The addon amounts of each installment.
+        uint64[] addonAmounts;
+        // No reserve until the end of the storage slot
 
         // Slot 5
-        uint256 firstInstallmentId; // --- The unique ID of the related first installment loan on the lending market or zero if not taken.
+        uint256 firstInstallmentId;
+        // No reserve until the end of the storage slot
     }
 
-    /// @dev The state of this agent contract.
+    /**
+     * @dev The state of this agent contract.
+     *
+     * The fields:
+     *
+     * - configured ------------------------- True if the agent is properly configured.
+     * - initiatedCreditCounter ------------- The counter of initiated credits.
+     * - pendingCreditCounter --------------- The counter of pending credits.
+     * - initiatedInstallmentCreditCounter -- The counter of initiated installment credits.
+     * - pendingInstallmentCreditCounter ---- The counter of pending installment credits.
+     */
     struct AgentState {
         // Slot 1
-        bool configured; // --------------------------- True if the agent is properly configured.
-        uint32 initiatedCreditCounter; // ------------- The counter of initiated credits.
-        uint32 pendingCreditCounter; // --------------- The counter of pending credits.
-        uint32 initiatedInstallmentCreditCounter; // -- The counter of initiated installment credits.
-        uint32 pendingInstallmentCreditCounter; // ---- The counter of pending installment credits.
-        // uint120 __reserved; // --------------------- Reserved for future use until the end of the storage slot.
+        bool configured;
+        uint32 initiatedCreditCounter;
+        uint32 pendingCreditCounter;
+        uint32 initiatedInstallmentCreditCounter;
+        uint32 pendingInstallmentCreditCounter;
+        // uint120 __reserved; // Reserved until the end of the storage slot
     }
-}
-
-/**
- * @title ICreditAgentErrors interface
- * @author CloudWalk Inc. (See https://cloudwalk.io)
- * @dev Defines the custom errors used in the credit agent contract.
- */
-interface ICreditAgentErrors is ICreditAgentTypes {
-    /// @dev The value of a configuration parameter is the same as previously set one.
-    error CreditAgent_AlreadyConfigured();
-
-    /// @dev The zero borrower address has been passed as a function argument.
-    error CreditAgent_BorrowerAddressZero();
-
-    /// @dev Thrown if the provided new implementation address is not of a credit agent contract.
-    error CreditAgent_ImplementationAddressInvalid();
-
-    /**
-     * @dev The caller is not allowed to execute the hook function.
-     * @param caller The address of the caller.
-     */
-    error CreditAgent_CashierHookCallerUnauthorized(address caller);
-
-    /**
-     * @dev The the hook function is called with unexpected hook index.
-     * @param hookIndex The index of the hook.
-     * @param txId The off-chain transaction identifier of the operation.
-     * @param caller The address of the caller.
-     */
-    error CreditAgent_CashierHookIndexUnexpected(uint256 hookIndex, bytes32 txId, address caller);
-
-    /**
-     * @dev The related cash-out operation has inappropriate parameters (e.g. account, amount values).
-     * @param txId The off-chain transaction identifiers of the operation.
-     */
-    error CreditAgent_CashOutParametersInappropriate(bytes32 txId);
-
-    /// @dev Configuring is prohibited due to at least one unprocessed credit exists or other conditions.
-    error CreditAgent_ConfiguringProhibited();
-
-    /// @dev This agent contract is not configured yet.
-    error CreditAgent_ContractNotConfigured();
-
-    /**
-     * @dev The related credit has inappropriate status to execute the requested operation.
-     * @param txId The off-chain transaction identifiers of the operation.
-     * @param status The current status of the credit.
-     */
-    error CreditAgent_CreditStatusInappropriate(bytes32 txId, CreditStatus status);
-
-    /// @dev The zero loan amount has been passed as a function argument.
-    error CreditAgent_LoanAmountZero();
-
-    /// @dev The zero loan duration has been passed as a function argument.
-    error CreditAgent_LoanDurationZero();
-
-    /// @dev The input arrays are empty or have different lengths.
-    error CreditAgent_InputArraysInvalid();
-
-    /// @dev The zero program ID has been passed as a function argument.
-    error CreditAgent_ProgramIdZero();
-
-    /// @dev The zero off-chain transaction identifier has been passed as a function argument.
-    error CreditAgent_TxIdZero();
-
-    /// @dev The transaction identifier is already used.
-    error CreditAgent_TxIdAlreadyUsed();
-
-    /**
-     * @dev The related cash-out operation has failed to be processed by the cashier hook.
-     * @param txId The off-chain transaction identifier of the operation.
-     */
-    error CreditAgent_FailedToProcessCashOutRequestBefore(bytes32 txId);
-
-    /**
-     * @dev The related cash-out operation has failed to be processed by the cashier hook.
-     * @param txId The off-chain transaction identifier of the operation.
-     */
-    error CreditAgent_FailedToProcessCashOutConfirmationAfter(bytes32 txId);
-
-    /**
-     * @dev The related cash-out operation has failed to be processed by the cashier hook.
-     * @param txId The off-chain transaction identifier of the operation.
-     */
-    error CreditAgent_FailedToProcessCashOutReversalAfter(bytes32 txId);
 }
 
 /**
  * @title ICreditAgentPrimary interface
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev The primary part of the credit agent contract interface.
  */
 interface ICreditAgentPrimary is ICreditAgentTypes {
@@ -318,16 +272,11 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
      * @dev Returns the state of this agent contract.
      */
     function agentState() external view returns (AgentState memory);
-
-    /**
-     * @dev Proves that the contract is the credit agent contract.
-     */
-    function proveCreditAgent() external pure;
 }
 
 /**
  * @title ICreditAgentConfiguration interface
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev The configuration part of the credit agent contract interface.
  */
 interface ICreditAgentConfiguration is ICreditAgentTypes {
@@ -347,7 +296,7 @@ interface ICreditAgentConfiguration is ICreditAgentTypes {
      */
     event LendingMarketChanged(address newLendingMarket, address oldLendingMarket);
 
-    // ------------------ Functions ------------------------------- //
+    // ------------------ Transactional functions ----------------- //
 
     /**
      * @dev Sets the address of the cashier contract in this contract configuration.
@@ -373,12 +322,98 @@ interface ICreditAgentConfiguration is ICreditAgentTypes {
 }
 
 /**
+ * @title ICreditAgentErrors interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines the custom errors used in the credit agent contract.
+ */
+interface ICreditAgentErrors is ICreditAgentTypes {
+    /// @dev The value of a configuration parameter is the same as previously set one.
+    error CreditAgent_AlreadyConfigured();
+
+    /// @dev The zero borrower address has been passed as a function argument.
+    error CreditAgent_BorrowerAddressZero();
+
+    /// @dev Thrown if the provided new implementation address is not of a credit agent contract.
+    error CreditAgent_ImplementationAddressInvalid();
+
+    /**
+     * @dev The caller is not allowed to execute the hook function.
+     * @param caller The address of the caller.
+     */
+    error CreditAgent_CashierHookCallerUnauthorized(address caller);
+
+    /**
+     * @dev The the hook function is called with unexpected hook index.
+     * @param hookIndex The index of the hook.
+     * @param txId The off-chain transaction identifier of the operation.
+     * @param caller The address of the caller.
+     */
+    error CreditAgent_CashierHookIndexUnexpected(uint256 hookIndex, bytes32 txId, address caller);
+
+    /**
+     * @dev The related cash-out operation has inappropriate parameters (e.g. account, amount values).
+     * @param txId The off-chain transaction identifiers of the operation.
+     */
+    error CreditAgent_CashOutParametersInappropriate(bytes32 txId);
+
+    /// @dev Configuring is prohibited due to at least one unprocessed credit exists or other conditions.
+    error CreditAgent_ConfiguringProhibited();
+
+    /// @dev This agent contract is not configured yet.
+    error CreditAgent_ContractNotConfigured();
+
+    /**
+     * @dev The related credit has inappropriate status to execute the requested operation.
+     * @param txId The off-chain transaction identifiers of the operation.
+     * @param status The current status of the credit.
+     */
+    error CreditAgent_CreditStatusInappropriate(bytes32 txId, CreditStatus status);
+
+    /// @dev The zero loan amount has been passed as a function argument.
+    error CreditAgent_LoanAmountZero();
+
+    /// @dev The zero loan duration has been passed as a function argument.
+    error CreditAgent_LoanDurationZero();
+
+    /// @dev The input arrays are empty or have different lengths.
+    error CreditAgent_InputArraysInvalid();
+
+    /// @dev The zero program ID has been passed as a function argument.
+    error CreditAgent_ProgramIdZero();
+
+    /// @dev The zero off-chain transaction identifier has been passed as a function argument.
+    error CreditAgent_TxIdZero();
+
+    /// @dev The transaction identifier is already used.
+    error CreditAgent_TxIdAlreadyUsed();
+
+    /**
+     * @dev The related cash-out operation has failed to be processed by the cashier hook.
+     * @param txId The off-chain transaction identifier of the operation.
+     */
+    error CreditAgent_FailedToProcessCashOutRequestBefore(bytes32 txId);
+
+    /**
+     * @dev The related cash-out operation has failed to be processed by the cashier hook.
+     * @param txId The off-chain transaction identifier of the operation.
+     */
+    error CreditAgent_FailedToProcessCashOutConfirmationAfter(bytes32 txId);
+
+    /**
+     * @dev The related cash-out operation has failed to be processed by the cashier hook.
+     * @param txId The off-chain transaction identifier of the operation.
+     */
+    error CreditAgent_FailedToProcessCashOutReversalAfter(bytes32 txId);
+}
+
+/**
  * @title ICreditAgent interface
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev The full interface of the credit agent contract.
  */
-interface ICreditAgent is
-    ICreditAgentErrors, // Tools: this comment prevents Prettier from formatting into a single line.
-    ICreditAgentPrimary,
-    ICreditAgentConfiguration
-{}
+interface ICreditAgent is ICreditAgentPrimary, ICreditAgentConfiguration, ICreditAgentErrors {
+    /**
+     * @dev Proves that the contract is the credit agent contract.
+     */
+    function proveCreditAgent() external pure;
+}

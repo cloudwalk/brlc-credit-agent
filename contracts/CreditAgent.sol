@@ -24,7 +24,7 @@ import { ICashierHookableTypes } from "./interfaces/ICashierHookable.sol";
 
 /**
  * @title CreditAgent contract
- * @author CloudWalk Inc. (See https://cloudwalk.io)
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Wrapper contract for credit operations.
  *
  * This contract links together a cashier contract with a lending market contract
@@ -65,13 +65,10 @@ contract CreditAgent is
 
     // ------------------ Constants ------------------------------- //
 
-    /// @dev The role of this contract owner.
-    bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
-
-    /// @dev The role of admin that is allowed to configure the contract.
+    /// @dev The role of an admin that is allowed to configure the contract.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    /// @dev The role of manager that is allowed to initialize and cancel credit operations.
+    /// @dev The role of a manager that is allowed to initialize and cancel credit operations.
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     /// @dev The bit flags that represent the required hooks for cash-out operations.
@@ -93,48 +90,41 @@ contract CreditAgent is
         _;
     }
 
+    // ------------------ Constructor ----------------------------- //
+
+    /**
+     * @dev Constructor that prohibits the initialization of the implementation of the upgradeable contract.
+     *
+     * See details:
+     * https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable#initializing_the_implementation_contract
+     *
+     * @custom:oz-upgrades-unsafe-allow constructor
+     */
+    constructor() {
+        _disableInitializers();
+    }
+
     // ------------------ Initializers ---------------------------- //
 
     /**
-     * @dev The initialize function of the upgradable contract.
-     * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
+     * @dev The initialize function of the upgradeable contract.
+     *
+     * See details: https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable
      */
     function initialize() external initializer {
-        __CreditAgent_init();
-    }
-
-    /**
-     * @dev The internal initializer of the upgradable contract.
-     *
-     * See {CreditAgent-initialize}.
-     */
-    function __CreditAgent_init() internal onlyInitializing {
-        __Context_init_unchained();
-        __ERC165_init_unchained();
-        __AccessControl_init_unchained();
         __AccessControlExt_init_unchained();
-        __Pausable_init_unchained();
-        __PausableExt_init_unchained(OWNER_ROLE);
-        __Rescuable_init_unchained(OWNER_ROLE);
+        __PausableExt_init_unchained();
+        __Rescuable_init_unchained();
+        __UUPSExt_init_unchained(); // This is needed only to avoid errors during coverage assessment
 
-        __CreditAgent_init_unchained();
-    }
-
-    /**
-     * @dev The internal unchained initializer of the upgradable contract.
-     *
-     * See {CreditAgent-initialize}.
-     */
-    function __CreditAgent_init_unchained() internal onlyInitializing {
-        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
-        _setRoleAdmin(ADMIN_ROLE, OWNER_ROLE);
-        _setRoleAdmin(MANAGER_ROLE, OWNER_ROLE);
+        _setRoleAdmin(ADMIN_ROLE, GRANTOR_ROLE);
+        _setRoleAdmin(MANAGER_ROLE, GRANTOR_ROLE);
 
         _grantRole(OWNER_ROLE, _msgSender());
         _grantRole(ADMIN_ROLE, _msgSender());
     }
 
-    // ------------------ Functions ------------------------------- //
+    // ------------------ Transactional functions ----------------- //
 
     /**
      * @inheritdoc ICreditAgentConfiguration
@@ -458,7 +448,7 @@ contract CreditAgent is
     // ------------------ Pure functions -------------------------- //
 
     /**
-     * @inheritdoc ICreditAgentPrimary
+     * @inheritdoc ICreditAgent
      */
     function proveCreditAgent() external pure {}
 
@@ -638,7 +628,7 @@ contract CreditAgent is
         revert CreditAgent_FailedToProcessCashOutReversalAfter(txId);
     }
 
-    /// @dev Calculates the sum of all elements in an memory array.
+    /// @dev Calculates the sum of all elements in a memory array.
     /// @param values Array of amounts to sum.
     /// @return The total sum of all array elements.
     function _sumArray(uint64[] storage values) internal view returns (uint256) {
@@ -721,7 +711,7 @@ contract CreditAgent is
     }
 
     /**
-     * @dev Tries to process the cash-out request before hook by taking a ordinary loan.
+     * @dev Tries to process the cash-out request before hook by taking an ordinary loan.
      *
      * @param txId The unique identifier of the related cash-out operation.
      * @return true if the operation was successful, false otherwise.
@@ -856,7 +846,7 @@ contract CreditAgent is
     }
 
     /**
-     * @dev Tries to process the cash-out reversal after hook by revoking a ordinary loan.
+     * @dev Tries to process the cash-out reversal after hook by revoking an ordinary loan.
      *
      * @param txId The unique identifier of the related cash-out operation.
      * @return true if the operation was successful, false otherwise.
@@ -918,7 +908,7 @@ contract CreditAgent is
      * @param newImplementation The address of the new implementation.
      */
     function _validateUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
-        try ICreditAgentPrimary(newImplementation).proveCreditAgent() {} catch {
+        try ICreditAgent(newImplementation).proveCreditAgent() {} catch {
             revert CreditAgent_ImplementationAddressInvalid();
         }
     }
