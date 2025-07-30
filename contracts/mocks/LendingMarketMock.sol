@@ -20,7 +20,7 @@ contract LendingMarketMock {
 
     /// @dev Emitted when the `takeLoanFor()` function is called with the parameters of the function.
     event MockTakeLoanForCalled(
-        address borrower, // Tools: this comment prevents Prettier from formatting into a single line.
+        address borrower, // Tools: prevent Prettier one-liner
         uint256 programId,
         uint256 borrowAmount,
         uint256 addonAmount,
@@ -29,7 +29,7 @@ contract LendingMarketMock {
 
     /// @dev Emitted when the `takeInstallmentLoanFor()` function is called with the parameters of the function.
     event MockTakeInstallmentLoanForCalled(
-        address borrower, // Tools: this comment prevents Prettier from formatting into a single line.
+        address borrower, // Tools: prevent Prettier one-liner
         uint256 programId,
         uint256[] borrowAmounts,
         uint256[] addonAmounts,
@@ -49,14 +49,14 @@ contract LendingMarketMock {
      *      Just emits an event about the call and returns a constant.
      */
     function takeLoanFor(
-        address borrower, // Tools: this comment prevents Prettier from formatting into a single line.
+        address borrower, // Tools: prevent Prettier one-liner
         uint32 programId,
         uint256 borrowAmount,
         uint256 addonAmount,
         uint256 durationInPeriods
     ) external returns (uint256) {
         emit MockTakeLoanForCalled(
-            borrower, // Tools: this comment prevents Prettier from formatting into a single line.
+            borrower, // Tools: prevent Prettier one-liner
             programId,
             borrowAmount,
             addonAmount,
@@ -70,14 +70,14 @@ contract LendingMarketMock {
      *      Just emits an event about the call and returns a constant.
      */
     function takeInstallmentLoanFor(
-        address borrower, // Tools: this comment prevents Prettier from formatting into a single line.
+        address borrower, // Tools: prevent Prettier one-liner
         uint32 programId,
         uint256[] memory borrowAmounts,
         uint256[] memory addonAmounts,
         uint256[] memory durationsInPeriods
     ) external returns (uint256, uint256) {
         emit MockTakeInstallmentLoanForCalled(
-            borrower, // Tools: this comment prevents Prettier from formatting into a single line.
+            borrower, // Tools: prevent Prettier one-liner
             programId,
             borrowAmounts,
             addonAmounts,

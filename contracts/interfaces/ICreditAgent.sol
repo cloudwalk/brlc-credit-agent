@@ -207,7 +207,7 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
      * @param loanAddon The addon amount (extra charges or fees) of the related loan.
      */
     function initiateCredit(
-        bytes32 txId, // Tools: this comment prevents Prettier from formatting into a single line.
+        bytes32 txId, // Tools: prevent Prettier one-liner
         address borrower,
         uint256 programId,
         uint256 durationInPeriods,
