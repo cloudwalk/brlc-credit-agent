@@ -107,7 +107,7 @@ contract CreditAgent is
     // ------------------ Initializers ---------------------------- //
 
     /**
-     * @dev The initialize function of the upgradeable contract.
+     * @dev Initializer of the upgradeable contract.
      *
      * See details: https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable
      */
@@ -185,7 +185,7 @@ contract CreditAgent is
      * - The credit with the provided `txId` must have the `Nonexistent` or `Reversed` status.
      */
     function initiateCredit(
-        bytes32 txId, // Tools: this comment prevents Prettier from formatting into a single line.
+        bytes32 txId, // Tools: prevent Prettier one-liner
         address borrower,
         uint256 programId,
         uint256 durationInPeriods,
@@ -256,7 +256,7 @@ contract CreditAgent is
      * - The credit with the provided `txId` must have the `Nonexistent` or `Reversed` status.
      */
     function initiateInstallmentCredit(
-        bytes32 txId, // Tools: this comment prevents Prettier from formatting into a single line.
+        bytes32 txId, // Tools: prevent Prettier one-liner
         address borrower,
         uint256 programId,
         uint256[] calldata durationsInPeriods,
@@ -492,7 +492,7 @@ contract CreditAgent is
      * @param oldStatus The previous status of the credit.
      */
     function _changeCreditStatus(
-        bytes32 txId, // Tools: this comment prevents Prettier from formatting into a single line.
+        bytes32 txId, // Tools: prevent Prettier one-liner
         Credit storage credit,
         CreditStatus newStatus,
         CreditStatus oldStatus
@@ -538,7 +538,7 @@ contract CreditAgent is
      * @param oldStatus The previous status of the credit.
      */
     function _changeInstallmentCreditStatus(
-        bytes32 txId, // Tools: this comment prevents Prettier from formatting into a single line.
+        bytes32 txId, // Tools: prevent Prettier one-liner
         InstallmentCredit storage installmentCredit,
         CreditStatus newStatus,
         CreditStatus oldStatus
@@ -700,7 +700,7 @@ contract CreditAgent is
      * @param expectedAmount The expected amount of the operation.
      */
     function _checkCashierCashOutState(
-        bytes32 txId, // Tools: this comment prevents Prettier from formatting into a single line.
+        bytes32 txId, // Tools: prevent Prettier one-liner
         address expectedAccount,
         uint256 expectedAmount
     ) internal view {

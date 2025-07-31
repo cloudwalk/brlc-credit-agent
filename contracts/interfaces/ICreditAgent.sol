@@ -47,7 +47,7 @@ interface ICreditAgentTypes {
     /**
      * @dev The data of a single credit.
      *
-     * The fields:
+     * Fields:
      *
      * - borrower ----------- The address of the borrower.
      * - programId ---------- The unique identifier of a lending program for the credit.
@@ -78,7 +78,7 @@ interface ICreditAgentTypes {
     /**
      * @dev The data of a single installment credit.
      *
-     * The fields:
+     * Fields:
      *
      * - borrower ------------ The address of the borrower.
      * - programId ----------- The unique identifier of a lending program for the credit.
@@ -115,7 +115,7 @@ interface ICreditAgentTypes {
     /**
      * @dev The state of this agent contract.
      *
-     * The fields:
+     * Fields:
      *
      * - configured ------------------------- True if the agent is properly configured.
      * - initiatedCreditCounter ------------- The counter of initiated credits.
@@ -207,7 +207,7 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
      * @param loanAddon The addon amount (extra charges or fees) of the related loan.
      */
     function initiateCredit(
-        bytes32 txId, // Tools: this comment prevents Prettier from formatting into a single line.
+        bytes32 txId, // Tools: prevent Prettier one-liner
         address borrower,
         uint256 programId,
         uint256 durationInPeriods,
