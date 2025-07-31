@@ -47,7 +47,7 @@ interface ICreditAgentTypes {
     /**
      * @dev The data of a single credit.
      *
-     * The fields:
+     * Fields:
      *
      * - borrower ----------- The address of the borrower.
      * - programId ---------- The unique identifier of a lending program for the credit.
@@ -78,7 +78,7 @@ interface ICreditAgentTypes {
     /**
      * @dev The data of a single installment credit.
      *
-     * The fields:
+     * Fields:
      *
      * - borrower ------------ The address of the borrower.
      * - programId ----------- The unique identifier of a lending program for the credit.
@@ -115,7 +115,7 @@ interface ICreditAgentTypes {
     /**
      * @dev The state of this agent contract.
      *
-     * The fields:
+     * Fields:
      *
      * - configured ------------------------- True if the agent is properly configured.
      * - initiatedCreditCounter ------------- The counter of initiated credits.
