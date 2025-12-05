@@ -933,7 +933,7 @@ contract CreditAgent is
             emit InstallmentCreditStatusChanged(
                 txId,
                 borrower,
-                CreditStatus.Confirmed, // newStatus
+                CreditStatus.Reversed, // newStatus
                 CreditStatus.Pending, // oldStatus
                 creditRequest.loanId,
                 programId,
