@@ -816,8 +816,7 @@ contract CreditAgent is
 
         // DEPRECATED STAFF FOR TESTS
         if (creditRequest.takeLoanSelector == ILendingMarket.takeLoanFor.selector) {
-            $.agentState.initiatedCreditCounter--;
-            $.agentState.pendingCreditCounter++;
+            $.agentState.pendingCreditCounter--;
             (
                 address borrower,
                 uint256 programId,
@@ -837,8 +836,7 @@ contract CreditAgent is
                 loanAddon
             );
         } else if (creditRequest.takeLoanSelector == ILendingMarket.takeInstallmentLoanFor.selector) {
-            $.agentState.initiatedInstallmentCreditCounter--;
-            $.agentState.pendingInstallmentCreditCounter++;
+            $.agentState.pendingInstallmentCreditCounter--;
             (
                 address borrower,
                 uint256 programId,

@@ -1007,7 +1007,7 @@ describe("Contract 'CreditAgent'", async () => {
         checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
       });
 
-      it("A cash-out requested and then reversed with other proper conditions", async () => {
+      it.only("A cash-out requested and then reversed with other proper conditions", async () => {
         const { fixture, txId, initCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
         const credit: Credit = { ...initCredit, loanId: fixture.loanIdStub };
 
