@@ -332,7 +332,7 @@ contract CreditAgent is
         bytes memory takeLoanData = _removeCreditRequest(txId);
 
         // deprecated staff for tests
-        (address borrower, uint256 programId, uint256 durationInPeriods, uint256 loanAmount, uint256 loanAddon) = abi
+        (address borrower, uint256 programId, uint256 loanAmount, uint256 loanAddon, uint256 durationInPeriods) = abi
             .decode(takeLoanData, (address, uint256, uint256, uint256, uint256));
         _getCreditAgentStorage().agentState.initiatedCreditCounter--;
         emit CreditStatusChanged(
@@ -365,9 +365,9 @@ contract CreditAgent is
         (
             address borrower,
             uint256 programId,
-            uint256[] memory durationsInPeriods,
             uint256[] memory borrowAmounts,
-            uint256[] memory addonAmounts
+            uint256[] memory addonAmounts,
+            uint256[] memory durationsInPeriods
         ) = abi.decode(takeLoanData, (address, uint256, uint256[], uint256[], uint256[]));
 
         _getCreditAgentStorage().agentState.initiatedInstallmentCreditCounter--;
@@ -429,8 +429,8 @@ contract CreditAgent is
     function getCredit(bytes32 txId) external view returns (Credit memory) {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
         CreditRequest storage creditRequest = $.creditRequests[txId];
-        (address borrower, uint256 programId, uint256 durationInPeriods, uint256 loanAmount, uint256 loanAddon) = abi
-            .decode(creditRequest.takeLoanData, (address, uint256, uint256, uint256, uint256));
+        (address borrower, uint256 programId, uint256 loanAmount, uint256 loanAddon, uint256 durationInPeriods) = abi
+            .decode(creditRequest.takeLoanData, (address, uint32, uint256, uint256, uint256));
         return
             Credit(
                 borrower,
@@ -452,9 +452,9 @@ contract CreditAgent is
         (
             address borrower,
             uint256 programId,
-            uint256[] memory durationsInPeriods,
             uint256[] memory borrowAmounts,
-            uint256[] memory addonAmounts
+            uint256[] memory addonAmounts,
+            uint256[] memory durationsInPeriods
         ) = abi.decode(creditRequest.takeLoanData, (address, uint256, uint256[], uint256[], uint256[]));
         return
             InstallmentCredit(
@@ -729,10 +729,10 @@ contract CreditAgent is
             (
                 address _borrower,
                 uint256 programId,
-                uint256 durationInPeriods,
                 uint256 _loanAmount,
-                uint256 loanAddon
-            ) = abi.decode(creditRequest.takeLoanData, (address, uint256, uint256, uint256, uint256));
+                uint256 loanAddon,
+                uint256 durationInPeriods
+            ) = abi.decode(creditRequest.takeLoanData, (address, uint32, uint256, uint256, uint256));
             emit CreditStatusChanged(
                 txId,
                 borrower,
@@ -750,9 +750,9 @@ contract CreditAgent is
             (
                 address _borrower,
                 uint256 programId,
-                uint256[] memory durationsInPeriods,
                 uint256[] memory borrowAmounts,
-                uint256[] memory addonAmounts
+                uint256[] memory addonAmounts,
+                uint256[] memory durationsInPeriods
             ) = abi.decode(creditRequest.takeLoanData, (address, uint256, uint256[], uint256[], uint256[]));
             emit InstallmentCreditStatusChanged(
                 txId,
@@ -808,10 +808,10 @@ contract CreditAgent is
             (
                 address borrower,
                 uint256 programId,
-                uint256 durationInPeriods,
                 uint256 loanAmount,
-                uint256 loanAddon
-            ) = abi.decode(creditRequest.takeLoanData, (address, uint256, uint256, uint256, uint256));
+                uint256 loanAddon,
+                uint256 durationInPeriods
+            ) = abi.decode(creditRequest.takeLoanData, (address, uint32, uint256, uint256, uint256));
             emit CreditStatusChanged(
                 txId,
                 borrower,
@@ -829,9 +829,9 @@ contract CreditAgent is
             (
                 address borrower,
                 uint256 programId,
-                uint256[] memory durationsInPeriods,
                 uint256[] memory borrowAmounts,
-                uint256[] memory addonAmounts
+                uint256[] memory addonAmounts,
+                uint256[] memory durationsInPeriods
             ) = abi.decode(creditRequest.takeLoanData, (address, uint256, uint256[], uint256[], uint256[]));
             emit InstallmentCreditStatusChanged(
                 txId,
