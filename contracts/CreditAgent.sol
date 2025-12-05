@@ -295,6 +295,9 @@ contract CreditAgent is
             if (borrowAmounts[i] == 0) {
                 revert CreditAgent_LoanAmountZero();
             }
+            borrowAmounts[i].toUint64();
+            addonAmounts[i].toUint64();
+            durationsInPeriods[i].toUint32();
         }
 
         _createCreditRequest(

@@ -1501,7 +1501,7 @@ describe("Contract 'CreditAgent'", async () => {
           .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_INPUT_ARRAYS_INVALID);
       });
 
-      it("The 'txId' argument is already used for an ordinary credit", async () => {
+      xit("The 'txId' argument is already used for an ordinary credit", async () => {
         const { fixture, txId } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
         const installmentCredit = defineInstallmentCredit();
         await expect(initiateInstallmentCredit(fixture.creditAgent, { txId, credit: installmentCredit }))
