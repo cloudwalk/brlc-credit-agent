@@ -27,6 +27,7 @@ const config: HardhatUserConfig = {
         enabled: true,
         runs: Number(process.env.OPTIMIZER_RUNS ?? 1000),
       },
+      viaIR: true,
     },
   },
   networks: {

@@ -216,19 +216,18 @@ contract CreditAgent is
         if (loanAmount == 0) {
             revert CreditAgent_LoanAmountZero();
         }
+        // some validation for the arguments
+        loanAmount.toUint64();
+        loanAddon.toUint64();
+        durationInPeriods.toUint32();
 
         _createCreditRequest(
             txId,
             borrower,
             loanAmount,
-            abi.encodeWithSelector(
-                ILendingMarket.takeLoanFor.selector,
-                borrower,
-                programId,
-                loanAmount,
-                loanAddon,
-                durationInPeriods
-            )
+            ILendingMarket.takeLoanFor.selector,
+            ILendingMarket.revokeLoan.selector,
+            abi.encode(borrower, programId.toUint32(), loanAmount, loanAddon, durationInPeriods)
         );
 
         // DEPRECATAD staff
@@ -296,20 +295,18 @@ contract CreditAgent is
             if (borrowAmounts[i] == 0) {
                 revert CreditAgent_LoanAmountZero();
             }
+            borrowAmounts[i].toUint64();
+            addonAmounts[i].toUint64();
+            durationsInPeriods[i].toUint32();
         }
 
         _createCreditRequest(
             txId,
             borrower,
             _sumArray(borrowAmounts),
-            abi.encodeWithSelector(
-                ILendingMarket.takeInstallmentLoanFor.selector,
-                borrower,
-                programId,
-                borrowAmounts,
-                addonAmounts,
-                durationsInPeriods
-            )
+            ILendingMarket.takeInstallmentLoanFor.selector,
+            ILendingMarket.revokeInstallmentLoan.selector,
+            abi.encode(borrower, programId.toUint32(), borrowAmounts, addonAmounts, durationsInPeriods)
         );
 
         // deprecated staff
@@ -339,27 +336,23 @@ contract CreditAgent is
      * - The credit with the provided `txId` must have the `Initiated` status.
      */
     function revokeCredit(bytes32 txId) external whenNotPaused onlyRole(MANAGER_ROLE) {
-        if (txId == bytes32(0)) {
-            revert CreditAgent_TxIdZero();
-        }
+        bytes memory takeLoanData = _removeCreditRequest(txId);
 
-        CreditAgentStorage storage $ = _getCreditAgentStorage();
-
-        Credit storage credit = $.credits[txId];
-        if (credit.status != CreditStatus.Initiated) {
-            revert CreditAgent_CreditStatusInappropriate(txId, credit.status);
-        }
-
-        _changeCreditStatus(
+        // deprecated staff for tests
+        (address borrower, uint256 programId, uint256 loanAmount, uint256 loanAddon, uint256 durationInPeriods) = abi
+            .decode(takeLoanData, (address, uint256, uint256, uint256, uint256));
+        _getCreditAgentStorage().agentState.initiatedCreditCounter--;
+        emit CreditStatusChanged(
             txId,
-            credit,
-            CreditStatus.Nonexistent, // newStatus
-            CreditStatus.Initiated // oldStatus
+            borrower,
+            CreditStatus.Nonexistent, // newStatus,
+            CreditStatus.Initiated, // oldStatus
+            0,
+            programId,
+            durationInPeriods,
+            loanAmount,
+            loanAddon
         );
-
-        delete $.credits[txId];
-
-        ICashierHookable($.cashier).configureCashOutHooks(txId, address(0), 0);
     }
 
     /**
@@ -373,27 +366,30 @@ contract CreditAgent is
      * - The credit with the provided `txId` must have the `Initiated` status.
      */
     function revokeInstallmentCredit(bytes32 txId) external whenNotPaused onlyRole(MANAGER_ROLE) {
-        if (txId == bytes32(0)) {
-            revert CreditAgent_TxIdZero();
-        }
+        bytes memory takeLoanData = _removeCreditRequest(txId);
 
-        CreditAgentStorage storage $ = _getCreditAgentStorage();
+        // deprecated staff for tests
+        (
+            address borrower,
+            uint256 programId,
+            uint256[] memory borrowAmounts,
+            uint256[] memory addonAmounts,
+            uint256[] memory durationsInPeriods
+        ) = abi.decode(takeLoanData, (address, uint256, uint256[], uint256[], uint256[]));
 
-        InstallmentCredit storage installmentCredit = $.installmentCredits[txId];
-        if (installmentCredit.status != CreditStatus.Initiated) {
-            revert CreditAgent_CreditStatusInappropriate(txId, installmentCredit.status);
-        }
-
-        _changeInstallmentCreditStatus(
+        _getCreditAgentStorage().agentState.initiatedInstallmentCreditCounter--;
+        emit InstallmentCreditStatusChanged(
             txId,
-            installmentCredit,
+            borrower,
             CreditStatus.Nonexistent, // newStatus
-            CreditStatus.Initiated // oldStatus
+            CreditStatus.Initiated, // oldStatus
+            0, // firstInstallmentId
+            programId,
+            durationsInPeriods[durationsInPeriods.length - 1], // lastDurationInPeriods
+            _sumArray(borrowAmounts), // totalBorrowAmount
+            _sumArray(addonAmounts), // totalAddonAmount
+            durationsInPeriods.length
         );
-
-        delete $.installmentCredits[txId];
-
-        ICashierHookable($.cashier).configureCashOutHooks(txId, address(0), 0);
     }
 
     /**
@@ -437,17 +433,55 @@ contract CreditAgent is
     /**
      * @inheritdoc ICreditAgentPrimary
      */
-    function getCredit(bytes32 txId) external view returns (Credit memory) {
+    function getCredit(bytes32 txId) external view returns (Credit memory result) {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
-        return $.credits[txId];
+        CreditRequest storage creditRequest = $.creditRequests[txId];
+        if (creditRequest.takeLoanData.length != 0) {
+            (
+                address borrower,
+                uint256 programId,
+                uint256 loanAmount,
+                uint256 loanAddon,
+                uint256 durationInPeriods
+            ) = abi.decode(creditRequest.takeLoanData, (address, uint32, uint256, uint256, uint256));
+            result = Credit(
+                borrower,
+                programId,
+                durationInPeriods,
+                creditRequest.status,
+                loanAmount,
+                loanAddon,
+                creditRequest.loanId
+            );
+        }
+        // else empty object
     }
 
     /**
      * @inheritdoc ICreditAgentPrimary
      */
-    function getInstallmentCredit(bytes32 txId) external view returns (InstallmentCredit memory) {
+    function getInstallmentCredit(bytes32 txId) external view returns (InstallmentCredit memory result) {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
-        return $.installmentCredits[txId];
+        CreditRequest storage creditRequest = $.creditRequests[txId];
+        if (creditRequest.takeLoanData.length != 0) {
+            (
+                address borrower,
+                uint256 programId,
+                uint256[] memory borrowAmounts,
+                uint256[] memory addonAmounts,
+                uint256[] memory durationsInPeriods
+            ) = abi.decode(creditRequest.takeLoanData, (address, uint256, uint256[], uint256[], uint256[]));
+            result = InstallmentCredit(
+                borrower,
+                programId,
+                creditRequest.status,
+                durationsInPeriods,
+                borrowAmounts,
+                addonAmounts,
+                creditRequest.loanId
+            );
+        }
+        // else empty object
     }
 
     /**
@@ -470,8 +504,10 @@ contract CreditAgent is
     function _createCreditRequest(
         bytes32 txId, // Tools: prevent Prettier one-liner
         address borrower,
-        uint64 cashOutAmount,
-        bytes calldata takeLoanCalldata
+        uint256 cashOutAmount,
+        bytes4 takeLoanSelector,
+        bytes4 revokeLoanSelector,
+        bytes memory takeLoanData
     ) internal {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
         CreditRequest storage creditRequest = $.creditRequests[txId];
@@ -485,9 +521,10 @@ contract CreditAgent is
         creditRequest.status = CreditStatus.Initiated;
         creditRequest.borrower = borrower;
         delete creditRequest.loanId; // clean up if status was Reversed
-        creditRequest.cashOutAmount = cashOutAmount;
-        creditRequest.takeLoanCalldata = takeLoanCalldata;
-        delete creditRequest.revokeLoanCalldata; // clean up if status was Reversed
+        creditRequest.cashOutAmount = uint64(cashOutAmount);
+        creditRequest.takeLoanData = takeLoanData;
+        creditRequest.takeLoanSelector = takeLoanSelector;
+        creditRequest.revokeLoanSelector = revokeLoanSelector;
 
         emit CreditRequestStatusChanged(
             txId,
@@ -498,6 +535,31 @@ contract CreditAgent is
         );
 
         ICashierHookable($.cashier).configureCashOutHooks(txId, address(this), REQUIRED_CASHIER_CASH_OUT_HOOK_FLAGS);
+    }
+
+    // TODO remove return values it is used only for depecated event now
+    function _removeCreditRequest(bytes32 txId) internal returns (bytes memory takeLoanData) {
+        if (txId == bytes32(0)) {
+            revert CreditAgent_TxIdZero();
+        }
+
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+        CreditRequest storage creditRequest = $.creditRequests[txId];
+        takeLoanData = creditRequest.takeLoanData;
+        if (creditRequest.status != CreditStatus.Initiated) {
+            revert CreditAgent_CreditStatusInappropriate(txId, creditRequest.status);
+        }
+        CreditStatus oldStatus = creditRequest.status;
+        emit CreditRequestStatusChanged(
+            txId,
+            creditRequest.borrower,
+            CreditStatus.Nonexistent,
+            oldStatus,
+            creditRequest.cashOutAmount
+        );
+        delete $.creditRequests[txId];
+
+        ICashierHookable($.cashier).configureCashOutHooks(txId, address(0), 0);
     }
 
     /**
@@ -543,10 +605,6 @@ contract CreditAgent is
             return;
         }
 
-        if (_processTakeInstallmentLoanFor(txId)) {
-            return;
-        }
-
         revert CreditAgent_FailedToProcessCashOutRequestBefore(txId);
     }
 
@@ -557,10 +615,6 @@ contract CreditAgent is
      */
     function _processCashierHookCashOutConfirmationAfter(bytes32 txId) internal {
         if (_processChangeCreditStatus(txId)) {
-            return;
-        }
-
-        if (_processChangeInstallmentCreditStatus(txId)) {
             return;
         }
 
@@ -577,17 +631,13 @@ contract CreditAgent is
             return;
         }
 
-        if (_processRevokeInstallmentLoan(txId)) {
-            return;
-        }
-
         revert CreditAgent_FailedToProcessCashOutReversalAfter(txId);
     }
 
     /// @dev Calculates the sum of all elements in a memory array.
     /// @param values Array of amounts to sum.
     /// @return The total sum of all array elements.
-    function _sumArray(uint64[] storage values) internal view returns (uint256) {
+    function _sumArray(uint256[] memory values) internal pure returns (uint256) {
         uint256 len = values.length;
         uint256 sum = 0;
         for (uint256 i = 0; i < len; ++i) {
@@ -653,78 +703,87 @@ contract CreditAgent is
     function _processTakeLoanFor(bytes32 txId) internal returns (bool) {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
 
-        Credit storage credit = $.credits[txId];
+        CreditRequest storage creditRequest = $.creditRequests[txId];
 
-        if (credit.status == CreditStatus.Nonexistent) {
+        if (creditRequest.status == CreditStatus.Nonexistent) {
             return false;
         }
 
-        if (credit.status != CreditStatus.Initiated) {
-            revert CreditAgent_CreditStatusInappropriate(txId, credit.status);
+        if (creditRequest.status != CreditStatus.Initiated) {
+            revert CreditAgent_CreditStatusInappropriate(txId, creditRequest.status);
         }
 
-        address borrower = credit.borrower;
-        uint256 loanAmount = credit.loanAmount;
+        address borrower = creditRequest.borrower;
+        uint256 loanAmount = creditRequest.cashOutAmount;
 
-        _checkCashierCashOutState(txId, borrower, loanAmount);
+        _checkCashierCashOutState(txId, borrower, loanAmount); // TODO: TO WE NEED THIS
 
-        credit.loanId = ILendingMarket($.lendingMarket).takeLoanFor(
-            borrower,
-            credit.programId,
-            loanAmount,
-            credit.loanAddon,
-            credit.durationInPeriods
+        (bool success, bytes memory result) = $.lendingMarket.call(
+            abi.encodePacked(creditRequest.takeLoanSelector, creditRequest.takeLoanData)
         );
-
-        _changeCreditStatus(
-            txId,
-            credit,
-            CreditStatus.Pending, // newStatus
-            CreditStatus.Initiated // oldStatus
-        );
-
-        return true;
-    }
-
-    /**
-     * @dev Tries to process the cash-out request before hook by taking an installment loan.
-     *
-     * @param txId The unique identifier of the related cash-out operation.
-     * @return true if the operation was successful, false otherwise.
-     */
-    function _processTakeInstallmentLoanFor(bytes32 txId) internal returns (bool) {
-        CreditAgentStorage storage $ = _getCreditAgentStorage();
-
-        InstallmentCredit storage installmentCredit = $.installmentCredits[txId];
-
-        if (installmentCredit.status == CreditStatus.Nonexistent) {
+        if (!success) {
             return false;
         }
 
-        if (installmentCredit.status != CreditStatus.Initiated) {
-            revert CreditAgent_CreditStatusInappropriate(txId, installmentCredit.status);
-        }
+        uint256 loanId = abi.decode(result, (uint256));
 
-        address borrower = installmentCredit.borrower;
+        creditRequest.loanId = loanId;
+        creditRequest.status = CreditStatus.Pending;
 
-        _checkCashierCashOutState(txId, borrower, _sumArray(installmentCredit.borrowAmounts));
-
-        (uint256 firstInstallmentId, ) = ILendingMarket($.lendingMarket).takeInstallmentLoanFor(
-            borrower,
-            installmentCredit.programId,
-            _toUint256Array(installmentCredit.borrowAmounts),
-            _toUint256Array(installmentCredit.addonAmounts),
-            _toUint256Array(installmentCredit.durationsInPeriods)
-        );
-
-        installmentCredit.firstInstallmentId = firstInstallmentId;
-
-        _changeInstallmentCreditStatus(
+        emit CreditRequestStatusChanged(
             txId,
-            installmentCredit,
+            borrower,
             CreditStatus.Pending, // newStatus
-            CreditStatus.Initiated // oldStatus
+            CreditStatus.Initiated, // oldStatus
+            loanAmount
         );
+
+        // DEPRECATED STAFF FOR TESTS
+        if (creditRequest.takeLoanSelector == ILendingMarket.takeLoanFor.selector) {
+            $.agentState.initiatedCreditCounter--;
+            $.agentState.pendingCreditCounter++;
+            (
+                address _borrower,
+                uint256 programId,
+                uint256 _loanAmount,
+                uint256 loanAddon,
+                uint256 durationInPeriods
+            ) = abi.decode(creditRequest.takeLoanData, (address, uint32, uint256, uint256, uint256));
+            emit CreditStatusChanged(
+                txId,
+                borrower,
+                CreditStatus.Pending, // newStatus
+                CreditStatus.Initiated, // oldStatus,
+                creditRequest.loanId,
+                programId,
+                durationInPeriods,
+                loanAmount,
+                loanAddon
+            );
+        } else if (creditRequest.takeLoanSelector == ILendingMarket.takeInstallmentLoanFor.selector) {
+            $.agentState.initiatedInstallmentCreditCounter--;
+            $.agentState.pendingInstallmentCreditCounter++;
+            (
+                address _borrower,
+                uint256 programId,
+                uint256[] memory borrowAmounts,
+                uint256[] memory addonAmounts,
+                uint256[] memory durationsInPeriods
+            ) = abi.decode(creditRequest.takeLoanData, (address, uint256, uint256[], uint256[], uint256[]));
+            emit InstallmentCreditStatusChanged(
+                txId,
+                borrower,
+                CreditStatus.Pending, // newStatus
+                CreditStatus.Initiated, // oldStatus
+                loanId,
+                programId,
+                durationsInPeriods[durationsInPeriods.length - 1], // lastDurationInPeriods
+                _sumArray(borrowAmounts), // totalBorrowAmount
+                _sumArray(addonAmounts), // totalAddonAmount
+                durationsInPeriods.length
+            );
+        }
+        //
 
         return true;
     }
@@ -738,52 +797,70 @@ contract CreditAgent is
     function _processChangeCreditStatus(bytes32 txId) internal returns (bool) {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
 
-        Credit storage credit = $.credits[txId];
+        CreditRequest storage creditRequest = $.creditRequests[txId];
 
-        if (credit.status == CreditStatus.Nonexistent) {
+        if (creditRequest.status == CreditStatus.Nonexistent) {
             return false;
         }
 
-        if (credit.status != CreditStatus.Pending) {
-            revert CreditAgent_CreditStatusInappropriate(txId, credit.status);
+        if (creditRequest.status != CreditStatus.Pending) {
+            revert CreditAgent_CreditStatusInappropriate(txId, creditRequest.status);
         }
 
-        _changeCreditStatus(
+        creditRequest.status = CreditStatus.Confirmed;
+
+        emit CreditRequestStatusChanged(
             txId,
-            credit,
+            creditRequest.borrower,
             CreditStatus.Confirmed, // newStatus
-            CreditStatus.Pending // oldStatus
+            CreditStatus.Pending, // oldStatus
+            creditRequest.cashOutAmount
         );
 
-        return true;
-    }
-
-    /**
-     * @dev Tries to process the cash-out confirmation after hook by changing the installment credit status to Confirmed.
-     *
-     * @param txId The unique identifier of the related cash-out operation.
-     * @return true if the operation was successful, false otherwise.
-     */
-    function _processChangeInstallmentCreditStatus(bytes32 txId) internal returns (bool) {
-        CreditAgentStorage storage $ = _getCreditAgentStorage();
-
-        InstallmentCredit storage installmentCredit = $.installmentCredits[txId];
-
-        if (installmentCredit.status == CreditStatus.Nonexistent) {
-            return false;
+        // DEPRECATED STAFF FOR TESTS
+        if (creditRequest.takeLoanSelector == ILendingMarket.takeLoanFor.selector) {
+            $.agentState.pendingCreditCounter--;
+            (
+                address borrower,
+                uint256 programId,
+                uint256 loanAmount,
+                uint256 loanAddon,
+                uint256 durationInPeriods
+            ) = abi.decode(creditRequest.takeLoanData, (address, uint32, uint256, uint256, uint256));
+            emit CreditStatusChanged(
+                txId,
+                borrower,
+                CreditStatus.Confirmed, // newStatus
+                CreditStatus.Pending, // oldStatus,
+                creditRequest.loanId,
+                programId,
+                durationInPeriods,
+                loanAmount,
+                loanAddon
+            );
+        } else if (creditRequest.takeLoanSelector == ILendingMarket.takeInstallmentLoanFor.selector) {
+            $.agentState.pendingInstallmentCreditCounter--;
+            (
+                address borrower,
+                uint256 programId,
+                uint256[] memory borrowAmounts,
+                uint256[] memory addonAmounts,
+                uint256[] memory durationsInPeriods
+            ) = abi.decode(creditRequest.takeLoanData, (address, uint256, uint256[], uint256[], uint256[]));
+            emit InstallmentCreditStatusChanged(
+                txId,
+                borrower,
+                CreditStatus.Confirmed, // newStatus
+                CreditStatus.Pending, // oldStatus
+                creditRequest.loanId,
+                programId,
+                durationsInPeriods[durationsInPeriods.length - 1], // lastDurationInPeriods
+                _sumArray(borrowAmounts), // totalBorrowAmount
+                _sumArray(addonAmounts), // totalAddonAmount
+                durationsInPeriods.length
+            );
         }
-
-        if (installmentCredit.status != CreditStatus.Pending) {
-            revert CreditAgent_CreditStatusInappropriate(txId, installmentCredit.status);
-        }
-
-        _changeInstallmentCreditStatus(
-            txId,
-            installmentCredit,
-            CreditStatus.Confirmed, // newStatus
-            CreditStatus.Pending // oldStatus
-        );
-
+        //
         return true;
     }
 
@@ -796,56 +873,77 @@ contract CreditAgent is
     function _processRevokeLoan(bytes32 txId) internal returns (bool) {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
 
-        Credit storage credit = $.credits[txId];
+        CreditRequest storage creditRequest = $.creditRequests[txId];
 
-        if (credit.status == CreditStatus.Nonexistent) {
+        if (creditRequest.status == CreditStatus.Nonexistent) {
             return false;
         }
 
-        if (credit.status != CreditStatus.Pending) {
-            revert CreditAgent_CreditStatusInappropriate(txId, credit.status);
+        if (creditRequest.status != CreditStatus.Pending) {
+            revert CreditAgent_CreditStatusInappropriate(txId, creditRequest.status);
         }
 
-        ILendingMarket($.lendingMarket).revokeLoan(credit.loanId);
-
-        _changeCreditStatus(
-            txId,
-            credit,
-            CreditStatus.Reversed, // newStatus
-            CreditStatus.Pending // oldStatus
+        (bool success, ) = $.lendingMarket.call(
+            abi.encodeWithSelector(creditRequest.revokeLoanSelector, creditRequest.loanId)
         );
-
-        return true;
-    }
-
-    /**
-     * @dev Tries to process the cash-out reversal after hook by revoking an installment loan.
-     *
-     * @param txId The unique identifier of the related cash-out operation.
-     * @return true if the operation was successful, false otherwise.
-     */
-    function _processRevokeInstallmentLoan(bytes32 txId) internal returns (bool) {
-        CreditAgentStorage storage $ = _getCreditAgentStorage();
-
-        InstallmentCredit storage installmentCredit = $.installmentCredits[txId];
-
-        if (installmentCredit.status == CreditStatus.Nonexistent) {
+        if (!success) {
             return false;
         }
 
-        if (installmentCredit.status != CreditStatus.Pending) {
-            revert CreditAgent_CreditStatusInappropriate(txId, installmentCredit.status);
-        }
-
-        ILendingMarket($.lendingMarket).revokeInstallmentLoan(installmentCredit.firstInstallmentId);
-
-        _changeInstallmentCreditStatus(
+        emit CreditRequestStatusChanged(
             txId,
-            installmentCredit,
+            creditRequest.borrower,
             CreditStatus.Reversed, // newStatus
-            CreditStatus.Pending // oldStatus
+            CreditStatus.Pending, // oldStatus
+            creditRequest.cashOutAmount
         );
 
+        creditRequest.status = CreditStatus.Reversed;
+
+        // DEPRECATED STAFF FOR TESTS
+        if (creditRequest.takeLoanSelector == ILendingMarket.takeLoanFor.selector) {
+            $.agentState.pendingCreditCounter--;
+            (
+                address borrower,
+                uint256 programId,
+                uint256 loanAmount,
+                uint256 loanAddon,
+                uint256 durationInPeriods
+            ) = abi.decode(creditRequest.takeLoanData, (address, uint32, uint256, uint256, uint256));
+            emit CreditStatusChanged(
+                txId,
+                creditRequest.borrower,
+                CreditStatus.Reversed, // newStatus
+                CreditStatus.Pending, // oldStatus
+                creditRequest.loanId,
+                programId,
+                durationInPeriods,
+                loanAmount,
+                loanAddon
+            );
+        } else if (creditRequest.takeLoanSelector == ILendingMarket.takeInstallmentLoanFor.selector) {
+            $.agentState.pendingInstallmentCreditCounter--;
+            (
+                address borrower,
+                uint256 programId,
+                uint256[] memory borrowAmounts,
+                uint256[] memory addonAmounts,
+                uint256[] memory durationsInPeriods
+            ) = abi.decode(creditRequest.takeLoanData, (address, uint256, uint256[], uint256[], uint256[]));
+            emit InstallmentCreditStatusChanged(
+                txId,
+                borrower,
+                CreditStatus.Confirmed, // newStatus
+                CreditStatus.Pending, // oldStatus
+                creditRequest.loanId,
+                programId,
+                durationsInPeriods[durationsInPeriods.length - 1], // lastDurationInPeriods
+                _sumArray(borrowAmounts), // totalBorrowAmount
+                _sumArray(addonAmounts), // totalAddonAmount
+                durationsInPeriods.length
+            );
+        }
+        //
         return true;
     }
 
