@@ -28,9 +28,8 @@ abstract contract CreditAgentStorageLayout is ICreditAgentTypes {
      *
      * - cashier ------------ The address of the cashier contract.
      * - lendingMarket ------ The address of the lending market contract.
-     * - credits ------------ The mapping of a credit structure for a given transaction identifier.
+     * - creditRequests ----- The mapping of a credit request structure for a given transaction identifier.
      * - agentState --------- The state of this agent contract.
-     * - installmentCredits - The mapping of an installment credit structure for a given transaction identifier.
      *
      * @custom:storage-location erc7201:cloudwalk.storage.CreditAgent
      */
@@ -44,15 +43,11 @@ abstract contract CreditAgentStorageLayout is ICreditAgentTypes {
         // uint96 __reserved2; // Reserved until the end of the storage slot
 
         // Slot 3
-        mapping(bytes32 txId => Credit credit) credits;
+        mapping(bytes32 txId => CreditRequest creditRequest) creditRequests;
         // No reserve until the end of the storage slot
 
         // Slot 4
         AgentState agentState;
-        // No reserve until the end of the storage slot
-
-        // Slot 5
-        mapping(bytes32 txId => InstallmentCredit installmentCredit) installmentCredits;
         // No reserve until the end of the storage slot
     }
 

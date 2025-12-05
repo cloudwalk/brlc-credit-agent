@@ -217,34 +217,33 @@ contract CreditAgent is
             revert CreditAgent_LoanAmountZero();
         }
 
-        if ($.installmentCredits[txId].status != CreditStatus.Nonexistent) {
-            revert CreditAgent_TxIdAlreadyUsed();
-        }
-
-        Credit storage credit = $.credits[txId];
-
-        CreditStatus oldStatus = credit.status;
-        if (oldStatus != CreditStatus.Nonexistent && oldStatus != CreditStatus.Reversed) {
-            revert CreditAgent_CreditStatusInappropriate(txId, oldStatus);
-        }
-        if (oldStatus != CreditStatus.Nonexistent) {
-            credit.loanId = 0;
-        }
-
-        credit.borrower = borrower;
-        credit.programId = programId.toUint32();
-        credit.loanAmount = loanAmount.toUint64();
-        credit.loanAddon = loanAddon.toUint64();
-        credit.durationInPeriods = durationInPeriods.toUint32();
-
-        _changeCreditStatus(
+        _createCreditRequest(
             txId,
-            credit,
-            CreditStatus.Initiated, // newStatus
-            CreditStatus.Nonexistent // oldStatus
+            borrower,
+            loanAmount,
+            abi.encodeWithSelector(
+                ILendingMarket.takeLoanFor.selector,
+                borrower,
+                programId,
+                loanAmount,
+                loanAddon,
+                durationInPeriods
+            )
         );
 
-        ICashierHookable($.cashier).configureCashOutHooks(txId, address(this), REQUIRED_CASHIER_CASH_OUT_HOOK_FLAGS);
+        // DEPRECATAD staff
+        $.agentState.initiatedCreditCounter++;
+        emit CreditStatusChanged(
+            txId,
+            borrower,
+            CreditStatus.Initiated, // newStatus
+            CreditStatus.Nonexistent, // oldStatus
+            0, // loanId
+            programId,
+            durationInPeriods,
+            loanAmount,
+            loanAddon
+        );
     }
 
     /**
@@ -299,37 +298,34 @@ contract CreditAgent is
             }
         }
 
-        if ($.credits[txId].status != CreditStatus.Nonexistent) {
-            revert CreditAgent_TxIdAlreadyUsed();
-        }
-
-        InstallmentCredit storage installmentCredit = $.installmentCredits[txId];
-
-        CreditStatus oldStatus = installmentCredit.status;
-        if (oldStatus != CreditStatus.Nonexistent && oldStatus != CreditStatus.Reversed) {
-            revert CreditAgent_CreditStatusInappropriate(txId, oldStatus);
-        }
-        if (oldStatus != CreditStatus.Nonexistent) {
-            installmentCredit.firstInstallmentId = 0;
-            delete installmentCredit.durationsInPeriods;
-            delete installmentCredit.borrowAmounts;
-            delete installmentCredit.addonAmounts;
-        }
-
-        installmentCredit.borrower = borrower;
-        installmentCredit.programId = programId.toUint32();
-        _storeToUint32Array(durationsInPeriods, installmentCredit.durationsInPeriods);
-        _storeToUint64Array(borrowAmounts, installmentCredit.borrowAmounts);
-        _storeToUint64Array(addonAmounts, installmentCredit.addonAmounts);
-
-        _changeInstallmentCreditStatus(
+        _createCreditRequest(
             txId,
-            installmentCredit,
-            CreditStatus.Initiated, // newStatus
-            CreditStatus.Nonexistent // oldStatus
+            borrower,
+            _sumArray(borrowAmounts),
+            abi.encodeWithSelector(
+                ILendingMarket.takeInstallmentLoanFor.selector,
+                borrower,
+                programId,
+                borrowAmounts,
+                addonAmounts,
+                durationsInPeriods
+            )
         );
 
-        ICashierHookable($.cashier).configureCashOutHooks(txId, address(this), REQUIRED_CASHIER_CASH_OUT_HOOK_FLAGS);
+        // deprecated staff
+        $.agentState.initiatedInstallmentCreditCounter++;
+        emit InstallmentCreditStatusChanged(
+            txId,
+            borrower,
+            CreditStatus.Initiated, // newStatus
+            CreditStatus.Nonexistent, // oldStatus
+            0, // firstInstallmentId
+            programId,
+            durationsInPeriods[durationsInPeriods.length - 1], // lastDurationInPeriods
+            _sumArray(borrowAmounts), // totalBorrowAmount
+            _sumArray(addonAmounts), // totalAddonAmount
+            durationsInPeriods.length
+        );
     }
 
     /**
@@ -471,6 +467,39 @@ contract CreditAgent is
 
     // ------------------ Internal functions ---------------------- //
 
+    function _createCreditRequest(
+        bytes32 txId, // Tools: prevent Prettier one-liner
+        address borrower,
+        uint64 cashOutAmount,
+        bytes calldata takeLoanCalldata
+    ) internal {
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+        CreditRequest storage creditRequest = $.creditRequests[txId];
+
+        CreditStatus oldStatus = creditRequest.status;
+
+        if (oldStatus != CreditStatus.Nonexistent && oldStatus != CreditStatus.Reversed) {
+            revert CreditAgent_CreditStatusInappropriate(txId, oldStatus);
+        }
+
+        creditRequest.status = CreditStatus.Initiated;
+        creditRequest.borrower = borrower;
+        delete creditRequest.loanId; // clean up if status was Reversed
+        creditRequest.cashOutAmount = cashOutAmount;
+        creditRequest.takeLoanCalldata = takeLoanCalldata;
+        delete creditRequest.revokeLoanCalldata; // clean up if status was Reversed
+
+        emit CreditRequestStatusChanged(
+            txId,
+            borrower,
+            CreditStatus.Initiated, // newStatus
+            oldStatus,
+            cashOutAmount
+        );
+
+        ICashierHookable($.cashier).configureCashOutHooks(txId, address(this), REQUIRED_CASHIER_CASH_OUT_HOOK_FLAGS);
+    }
+
     /**
      * @dev Checks the permission to configure this agent contract.
      */
@@ -502,104 +531,6 @@ contract CreditAgent is
                 $.agentState.configured = false;
             }
         }
-    }
-
-    /**
-     * @dev Changes the status of a credit with event emitting and counters updating.
-     *
-     * @param txId The unique identifier of the related cash-out operation.
-     * @param credit The storage reference to the credit to be updated.
-     * @param newStatus The current status of the credit.
-     * @param oldStatus The previous status of the credit.
-     */
-    function _changeCreditStatus(
-        bytes32 txId, // Tools: prevent Prettier one-liner
-        Credit storage credit,
-        CreditStatus newStatus,
-        CreditStatus oldStatus
-    ) internal {
-        CreditAgentStorage storage $ = _getCreditAgentStorage();
-
-        emit CreditStatusChanged(
-            txId,
-            credit.borrower,
-            newStatus,
-            oldStatus,
-            credit.loanId,
-            credit.programId,
-            credit.durationInPeriods,
-            credit.loanAmount,
-            credit.loanAddon
-        );
-
-        unchecked {
-            if (oldStatus == CreditStatus.Initiated) {
-                $.agentState.initiatedCreditCounter -= uint32(1);
-            } else if (oldStatus == CreditStatus.Pending) {
-                $.agentState.pendingCreditCounter -= uint32(1);
-            }
-        }
-
-        if (newStatus == CreditStatus.Initiated) {
-            $.agentState.initiatedCreditCounter += uint32(1);
-        } else if (newStatus == CreditStatus.Pending) {
-            $.agentState.pendingCreditCounter += uint32(1);
-        } else if (newStatus == CreditStatus.Nonexistent) {
-            // Skip the other actions because the Credit structure will be deleted
-            return;
-        }
-
-        credit.status = newStatus;
-    }
-
-    /**
-     * @dev Changes the status of an installment credit with event emitting and counters updating.
-     *
-     * @param txId The unique identifier of the related cash-out operation.
-     * @param installmentCredit The storage reference to the installment credit to be updated.
-     * @param newStatus The current status of the credit.
-     * @param oldStatus The previous status of the credit.
-     */
-    function _changeInstallmentCreditStatus(
-        bytes32 txId, // Tools: prevent Prettier one-liner
-        InstallmentCredit storage installmentCredit,
-        CreditStatus newStatus,
-        CreditStatus oldStatus
-    ) internal {
-        CreditAgentStorage storage $ = _getCreditAgentStorage();
-
-        uint256 installmentCount = installmentCredit.durationsInPeriods.length;
-        emit InstallmentCreditStatusChanged(
-            txId,
-            installmentCredit.borrower,
-            newStatus,
-            oldStatus,
-            installmentCredit.firstInstallmentId,
-            installmentCredit.programId,
-            installmentCredit.durationsInPeriods[installmentCount - 1], // lastDurationInPeriods
-            _sumArray(installmentCredit.borrowAmounts), // totalBorrowAmount
-            _sumArray(installmentCredit.addonAmounts), // totalAddonAmount
-            installmentCount
-        );
-
-        unchecked {
-            if (oldStatus == CreditStatus.Initiated) {
-                $.agentState.initiatedInstallmentCreditCounter -= uint32(1);
-            } else if (oldStatus == CreditStatus.Pending) {
-                $.agentState.pendingInstallmentCreditCounter -= uint32(1);
-            }
-        }
-
-        if (newStatus == CreditStatus.Initiated) {
-            $.agentState.initiatedInstallmentCreditCounter += uint32(1);
-        } else if (newStatus == CreditStatus.Pending) {
-            $.agentState.pendingInstallmentCreditCounter += uint32(1);
-        } else if (newStatus == CreditStatus.Nonexistent) {
-            // Skip the other actions because the Credit structure will be deleted
-            return;
-        }
-
-        installmentCredit.status = newStatus;
     }
 
     /**
@@ -663,30 +594,6 @@ contract CreditAgent is
             sum += values[i];
         }
         return sum;
-    }
-
-    /**
-     * @dev Stores an array of uint256 values to an array of uint32 values.
-     * @param inputValues The array of uint256 values to convert.
-     * @param storeValues The array of uint32 values to store.
-     */
-    function _storeToUint32Array(uint256[] calldata inputValues, uint32[] storage storeValues) internal {
-        uint256 len = inputValues.length;
-        for (uint256 i = 0; i < len; ++i) {
-            storeValues.push(inputValues[i].toUint32());
-        }
-    }
-
-    /**
-     * @dev Stores an array of uint256 values to an array of uint64 values.
-     * @param inputValues The array of uint256 values to convert.
-     * @param storeValues The array of uint64 values to store.
-     */
-    function _storeToUint64Array(uint256[] calldata inputValues, uint64[] storage storeValues) internal {
-        uint256 len = inputValues.length;
-        for (uint256 i = 0; i < len; ++i) {
-            storeValues.push(inputValues[i].toUint64());
-        }
     }
 
     /**

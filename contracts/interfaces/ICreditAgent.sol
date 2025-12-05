@@ -45,34 +45,54 @@ interface ICreditAgentTypes {
     }
 
     /**
-     * @dev The data of a single credit.
+     * @dev The data of a single credit request.
+     *
+     * Fields:
+     *
+     * - status ------------- The status of the credit request, see {CreditStatus}.
+     * - borrower ----------- The address of the borrower.
+     * - cashOutAmount ------ The total amount of the related cash-out operation. Should match with related cash-out operation amount.
+     * - loanId ------------- The unique ID of the related loan on the lending market or zero if not taken.
+     * - takeLoanCalldata --- The calldata to take the loan.
+     * - revokeLoanCalldata - The calldata to revoke the loan.
+     */
+    struct CreditRequest {
+        // Slot 1
+        CreditStatus status;
+        // next 2 fields are required only for _checkCashierCashOutState function, that could be removed
+        address borrower;
+        uint64 cashOutAmount;
+        // uint24 __reserved; // Reserved until the end of the storage slot
+
+        // Slot 2
+        bytes32 loanId;
+        // Slot 3
+        bytes takeLoanCalldata;
+        // Slot 4
+        bytes revokeLoanCalldata;
+    }
+
+    /**
+     * @dev The view of a single credit.
      *
      * Fields:
      *
      * - borrower ----------- The address of the borrower.
      * - programId ---------- The unique identifier of a lending program for the credit.
-     * - durationInPeriods -- The duration of the credit in periods. The period length is defined outside.
+     * - durationInPeriods -- The duration of the credit in periods.
      * - status ------------- The status of the credit, see {CreditStatus}.
      * - loanAmount --------- The amount of the related loan.
      * - loanAddon ---------- The addon amount (extra charges or fees) of the related loan.
      * - loanId ------------- The unique ID of the related loan on the lending market or zero if not taken.
      */
     struct Credit {
-        // Slot 1
         address borrower;
-        uint32 programId;
-        uint32 durationInPeriods;
+        uint256 programId;
+        uint256 durationInPeriods;
         CreditStatus status;
-        // uint24 __reserved; // Reserved until the end of the storage slot
-
-        // Slot 2
-        uint64 loanAmount;
-        uint64 loanAddon;
-        // uint128 __reserved; // Reserved until the end of the storage slot
-
-        // Slot 3
+        uint256 loanAmount;
+        uint256 loanAddon;
         uint256 loanId;
-        // No reserve until the end of the storage slot
     }
 
     /**
@@ -89,9 +109,8 @@ interface ICreditAgentTypes {
      * - firstInstallmentId -- The unique ID of the related first installment loan on the market or zero if not taken.
      */
     struct InstallmentCredit {
-        // Slot 1
         address borrower;
-        uint32 programId;
+        uint256 programId;
         CreditStatus status;
         // uint56 __reserved; // Reserved until the end of the storage slot
 
@@ -111,7 +130,6 @@ interface ICreditAgentTypes {
         uint256 firstInstallmentId;
         // No reserve until the end of the storage slot
     }
-
     /**
      * @dev The state of this agent contract.
      *
@@ -140,7 +158,7 @@ interface ICreditAgentTypes {
  * @dev The primary part of the credit agent contract interface.
  */
 interface ICreditAgentPrimary is ICreditAgentTypes {
-    // ------------------ Events ---------------------------------- //
+    // DEPRECATED EVENTS
 
     /**
      * @dev Emitted when the status of a credit is changed.
@@ -190,6 +208,24 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
         uint256 totalBorrowAmount,
         uint256 totalAddonAmount,
         uint256 installmentCount
+    );
+
+    // ------------------ Events ---------------------------------- //
+
+    /**
+     * @dev Emitted when the status of an installment credit is changed.
+     * @param txId The unique identifier of the related cash-out operation.
+     * @param borrower The address of the borrower.
+     * @param newStatus The current status of the credit.
+     * @param oldStatus The previous status of the credit.
+     * @param totalBorrowAmount The total amount of all installments.
+     */
+    event CreditRequestStatusChanged(
+        bytes32 indexed txId,
+        address indexed borrower,
+        CreditStatus newStatus,
+        CreditStatus oldStatus,
+        uint256 totalBorrowAmount
     );
 
     // ------------------ Functions ------------------------------- //
