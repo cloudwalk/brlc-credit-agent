@@ -216,6 +216,10 @@ contract CreditAgent is
         if (loanAmount == 0) {
             revert CreditAgent_LoanAmountZero();
         }
+        // some validation for the arguments
+        loanAmount.toUint64();
+        loanAddon.toUint64();
+        durationInPeriods.toUint32();
 
         _createCreditRequest(
             txId,
@@ -223,7 +227,7 @@ contract CreditAgent is
             loanAmount,
             ILendingMarket.takeLoanFor.selector,
             ILendingMarket.revokeLoan.selector,
-            abi.encode(borrower, uint32(programId), loanAmount, loanAddon, durationInPeriods)
+            abi.encode(borrower, programId.toUint32(), loanAmount, loanAddon, durationInPeriods)
         );
 
         // DEPRECATAD staff
@@ -299,7 +303,7 @@ contract CreditAgent is
             _sumArray(borrowAmounts),
             ILendingMarket.takeInstallmentLoanFor.selector,
             ILendingMarket.revokeInstallmentLoan.selector,
-            abi.encode(borrower, uint32(programId), borrowAmounts, addonAmounts, durationsInPeriods)
+            abi.encode(borrower, programId.toUint32(), borrowAmounts, addonAmounts, durationsInPeriods)
         );
 
         // deprecated staff
