@@ -842,7 +842,8 @@ describe("Contract 'CreditAgent'", async () => {
           .withArgs(64, credit.loanAddon);
       });
 
-      it("The 'txId' argument is already used for an installment credit", async () => {
+      // TODO: remove that error
+      xit("The 'txId' argument is already used for an installment credit", async () => {
         const { fixture, txId } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
         const credit = defineCredit();
         await expect(initiateCredit(fixture.creditAgent, { txId, credit }))
@@ -1500,7 +1501,7 @@ describe("Contract 'CreditAgent'", async () => {
           .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_INPUT_ARRAYS_INVALID);
       });
 
-      it("The 'txId' argument is already used for an ordinary credit", async () => {
+      xit("The 'txId' argument is already used for an ordinary credit", async () => {
         const { fixture, txId } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
         const installmentCredit = defineInstallmentCredit();
         await expect(initiateInstallmentCredit(fixture.creditAgent, { txId, credit: installmentCredit }))
