@@ -65,11 +65,13 @@ interface ICreditAgentTypes {
         // uint24 __reserved; // Reserved until the end of the storage slot
 
         // Slot 2
-        bytes32 loanId;
+        uint256 loanId; // maybe bytes32?
         // Slot 3
-        bytes takeLoanCalldata;
+        bytes takeLoanData;
         // Slot 4
-        bytes revokeLoanCalldata;
+        // TODO: i dont like it but ooooook
+        bytes4 revokeLoanSelector;
+        bytes4 takeLoanSelector;
     }
 
     /**
@@ -115,15 +117,15 @@ interface ICreditAgentTypes {
         // uint56 __reserved; // Reserved until the end of the storage slot
 
         // Slot 2
-        uint32[] durationsInPeriods;
+        uint256[] durationsInPeriods;
         // No reserve until the end of the storage slot
 
         // Slot 3
-        uint64[] borrowAmounts;
+        uint256[] borrowAmounts;
         // No reserve until the end of the storage slot
 
         // Slot 4
-        uint64[] addonAmounts;
+        uint256[] addonAmounts;
         // No reserve until the end of the storage slot
 
         // Slot 5
