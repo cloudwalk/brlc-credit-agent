@@ -430,13 +430,18 @@ contract CreditAgent is
     /**
      * @inheritdoc ICreditAgentPrimary
      */
-    function getCredit(bytes32 txId) external view returns (Credit memory) {
+    function getCredit(bytes32 txId) external view returns (Credit memory result) {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
         CreditRequest storage creditRequest = $.creditRequests[txId];
-        (address borrower, uint256 programId, uint256 loanAmount, uint256 loanAddon, uint256 durationInPeriods) = abi
-            .decode(creditRequest.takeLoanData, (address, uint32, uint256, uint256, uint256));
-        return
-            Credit(
+        if (creditRequest.takeLoanData.length != 0) {
+            (
+                address borrower,
+                uint256 programId,
+                uint256 loanAmount,
+                uint256 loanAddon,
+                uint256 durationInPeriods
+            ) = abi.decode(creditRequest.takeLoanData, (address, uint32, uint256, uint256, uint256));
+            result = Credit(
                 borrower,
                 programId,
                 durationInPeriods,
@@ -445,23 +450,25 @@ contract CreditAgent is
                 loanAddon,
                 creditRequest.loanId
             );
+        }
+        // else empty object
     }
 
     /**
      * @inheritdoc ICreditAgentPrimary
      */
-    function getInstallmentCredit(bytes32 txId) external view returns (InstallmentCredit memory) {
+    function getInstallmentCredit(bytes32 txId) external view returns (InstallmentCredit memory result) {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
         CreditRequest storage creditRequest = $.creditRequests[txId];
-        (
-            address borrower,
-            uint256 programId,
-            uint256[] memory borrowAmounts,
-            uint256[] memory addonAmounts,
-            uint256[] memory durationsInPeriods
-        ) = abi.decode(creditRequest.takeLoanData, (address, uint256, uint256[], uint256[], uint256[]));
-        return
-            InstallmentCredit(
+        if (creditRequest.takeLoanData.length != 0) {
+            (
+                address borrower,
+                uint256 programId,
+                uint256[] memory borrowAmounts,
+                uint256[] memory addonAmounts,
+                uint256[] memory durationsInPeriods
+            ) = abi.decode(creditRequest.takeLoanData, (address, uint256, uint256[], uint256[], uint256[]));
+            result = InstallmentCredit(
                 borrower,
                 programId,
                 creditRequest.status,
@@ -470,6 +477,8 @@ contract CreditAgent is
                 addonAmounts,
                 creditRequest.loanId
             );
+        }
+        // else empty object
     }
 
     /**
