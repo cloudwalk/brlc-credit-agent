@@ -900,8 +900,45 @@ contract CreditAgent is
         // DEPRECATED STAFF FOR TESTS
         if (creditRequest.takeLoanSelector == ILendingMarket.takeLoanFor.selector) {
             $.agentState.pendingCreditCounter--;
+            (
+                address borrower,
+                uint256 programId,
+                uint256 loanAmount,
+                uint256 loanAddon,
+                uint256 durationInPeriods
+            ) = abi.decode(creditRequest.takeLoanData, (address, uint32, uint256, uint256, uint256));
+            emit CreditStatusChanged(
+                txId,
+                creditRequest.borrower,
+                CreditStatus.Reversed, // newStatus
+                CreditStatus.Pending, // oldStatus
+                creditRequest.loanId,
+                programId,
+                durationInPeriods,
+                loanAmount,
+                loanAddon
+            );
         } else if (creditRequest.takeLoanSelector == ILendingMarket.takeInstallmentLoanFor.selector) {
             $.agentState.pendingInstallmentCreditCounter--;
+            (
+                address borrower,
+                uint256 programId,
+                uint256[] memory borrowAmounts,
+                uint256[] memory addonAmounts,
+                uint256[] memory durationsInPeriods
+            ) = abi.decode(creditRequest.takeLoanData, (address, uint256, uint256[], uint256[], uint256[]));
+            emit InstallmentCreditStatusChanged(
+                txId,
+                borrower,
+                CreditStatus.Confirmed, // newStatus
+                CreditStatus.Pending, // oldStatus
+                creditRequest.loanId,
+                programId,
+                durationsInPeriods[durationsInPeriods.length - 1], // lastDurationInPeriods
+                _sumArray(borrowAmounts), // totalBorrowAmount
+                _sumArray(addonAmounts), // totalAddonAmount
+                durationsInPeriods.length
+            );
         }
         //
         return true;
