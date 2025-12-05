@@ -10,7 +10,7 @@ import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.
 import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 import { Versionable } from "./base/Versionable.sol";
 
-import { CreditAgentStorage } from "./CreditAgentStorage.sol";
+import { CreditAgentStorageLayout } from "./CreditAgentStorageLayout.sol";
 import { SafeCast } from "./libraries/SafeCast.sol";
 
 import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
@@ -52,7 +52,7 @@ import { ICashierHookableTypes } from "./interfaces/ICashierHookable.sol";
  * About roles see https://docs.openzeppelin.com/contracts/5.x/api/access#AccessControl.
  */
 contract CreditAgent is
-    CreditAgentStorage,
+    CreditAgentStorageLayout,
     AccessControlExtUpgradeable,
     PausableExtUpgradeable,
     RescuableUpgradeable,
@@ -85,7 +85,8 @@ contract CreditAgent is
      * with an {AccessControlUnauthorizedAccount} error including the required role.
      */
     modifier onlyCashier() {
-        if (_msgSender() != _cashier) {
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+        if (_msgSender() != $.cashier) {
             revert CreditAgent_CashierHookCallerUnauthorized(_msgSender());
         }
         _;
@@ -139,12 +140,13 @@ contract CreditAgent is
     function setCashier(address newCashier) external whenNotPaused onlyRole(ADMIN_ROLE) {
         _checkConfiguringPermission();
 
-        address oldCashier = _cashier;
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+        address oldCashier = $.cashier;
         if (oldCashier == newCashier) {
             revert CreditAgent_AlreadyConfigured();
         }
 
-        _cashier = newCashier;
+        $.cashier = newCashier;
         _updateConfiguredState();
 
         emit CashierChanged(newCashier, oldCashier);
@@ -162,12 +164,13 @@ contract CreditAgent is
     function setLendingMarket(address newLendingMarket) external whenNotPaused onlyRole(ADMIN_ROLE) {
         _checkConfiguringPermission();
 
-        address oldLendingMarket = _lendingMarket;
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+        address oldLendingMarket = $.lendingMarket;
         if (oldLendingMarket == newLendingMarket) {
             revert CreditAgent_AlreadyConfigured();
         }
 
-        _lendingMarket = newLendingMarket;
+        $.lendingMarket = newLendingMarket;
         _updateConfiguredState();
 
         emit LendingMarketChanged(newLendingMarket, oldLendingMarket);
@@ -193,7 +196,9 @@ contract CreditAgent is
         uint256 loanAmount,
         uint256 loanAddon
     ) external whenNotPaused onlyRole(MANAGER_ROLE) {
-        if (!_agentState.configured) {
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+
+        if (!$.agentState.configured) {
             revert CreditAgent_ContractNotConfigured();
         }
         if (txId == bytes32(0)) {
@@ -212,11 +217,11 @@ contract CreditAgent is
             revert CreditAgent_LoanAmountZero();
         }
 
-        if (_installmentCredits[txId].status != CreditStatus.Nonexistent) {
+        if ($.installmentCredits[txId].status != CreditStatus.Nonexistent) {
             revert CreditAgent_TxIdAlreadyUsed();
         }
 
-        Credit storage credit = _credits[txId];
+        Credit storage credit = $.credits[txId];
 
         CreditStatus oldStatus = credit.status;
         if (oldStatus != CreditStatus.Nonexistent && oldStatus != CreditStatus.Reversed) {
@@ -239,7 +244,7 @@ contract CreditAgent is
             CreditStatus.Nonexistent // oldStatus
         );
 
-        ICashierHookable(_cashier).configureCashOutHooks(txId, address(this), REQUIRED_CASHIER_CASH_OUT_HOOK_FLAGS);
+        ICashierHookable($.cashier).configureCashOutHooks(txId, address(this), REQUIRED_CASHIER_CASH_OUT_HOOK_FLAGS);
     }
 
     /**
@@ -264,7 +269,9 @@ contract CreditAgent is
         uint256[] calldata borrowAmounts,
         uint256[] calldata addonAmounts
     ) external whenNotPaused onlyRole(MANAGER_ROLE) {
-        if (!_agentState.configured) {
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+
+        if (!$.agentState.configured) {
             revert CreditAgent_ContractNotConfigured();
         }
         if (txId == bytes32(0)) {
@@ -292,11 +299,11 @@ contract CreditAgent is
             }
         }
 
-        if (_credits[txId].status != CreditStatus.Nonexistent) {
+        if ($.credits[txId].status != CreditStatus.Nonexistent) {
             revert CreditAgent_TxIdAlreadyUsed();
         }
 
-        InstallmentCredit storage installmentCredit = _installmentCredits[txId];
+        InstallmentCredit storage installmentCredit = $.installmentCredits[txId];
 
         CreditStatus oldStatus = installmentCredit.status;
         if (oldStatus != CreditStatus.Nonexistent && oldStatus != CreditStatus.Reversed) {
@@ -322,7 +329,7 @@ contract CreditAgent is
             CreditStatus.Nonexistent // oldStatus
         );
 
-        ICashierHookable(_cashier).configureCashOutHooks(txId, address(this), REQUIRED_CASHIER_CASH_OUT_HOOK_FLAGS);
+        ICashierHookable($.cashier).configureCashOutHooks(txId, address(this), REQUIRED_CASHIER_CASH_OUT_HOOK_FLAGS);
     }
 
     /**
@@ -340,7 +347,9 @@ contract CreditAgent is
             revert CreditAgent_TxIdZero();
         }
 
-        Credit storage credit = _credits[txId];
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+
+        Credit storage credit = $.credits[txId];
         if (credit.status != CreditStatus.Initiated) {
             revert CreditAgent_CreditStatusInappropriate(txId, credit.status);
         }
@@ -352,9 +361,9 @@ contract CreditAgent is
             CreditStatus.Initiated // oldStatus
         );
 
-        delete _credits[txId];
+        delete $.credits[txId];
 
-        ICashierHookable(_cashier).configureCashOutHooks(txId, address(0), 0);
+        ICashierHookable($.cashier).configureCashOutHooks(txId, address(0), 0);
     }
 
     /**
@@ -372,7 +381,9 @@ contract CreditAgent is
             revert CreditAgent_TxIdZero();
         }
 
-        InstallmentCredit storage installmentCredit = _installmentCredits[txId];
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+
+        InstallmentCredit storage installmentCredit = $.installmentCredits[txId];
         if (installmentCredit.status != CreditStatus.Initiated) {
             revert CreditAgent_CreditStatusInappropriate(txId, installmentCredit.status);
         }
@@ -384,9 +395,9 @@ contract CreditAgent is
             CreditStatus.Initiated // oldStatus
         );
 
-        delete _installmentCredits[txId];
+        delete $.installmentCredits[txId];
 
-        ICashierHookable(_cashier).configureCashOutHooks(txId, address(0), 0);
+        ICashierHookable($.cashier).configureCashOutHooks(txId, address(0), 0);
     }
 
     /**
@@ -415,35 +426,40 @@ contract CreditAgent is
      * @inheritdoc ICreditAgentConfiguration
      */
     function cashier() external view returns (address) {
-        return _cashier;
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+        return $.cashier;
     }
 
     /**
      * @inheritdoc ICreditAgentConfiguration
      */
     function lendingMarket() external view returns (address) {
-        return _lendingMarket;
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+        return $.lendingMarket;
     }
 
     /**
      * @inheritdoc ICreditAgentPrimary
      */
     function getCredit(bytes32 txId) external view returns (Credit memory) {
-        return _credits[txId];
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+        return $.credits[txId];
     }
 
     /**
      * @inheritdoc ICreditAgentPrimary
      */
     function getInstallmentCredit(bytes32 txId) external view returns (InstallmentCredit memory) {
-        return _installmentCredits[txId];
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+        return $.installmentCredits[txId];
     }
 
     /**
      * @inheritdoc ICreditAgentPrimary
      */
     function agentState() external view returns (AgentState memory) {
-        return _agentState;
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+        return $.agentState;
     }
 
     // ------------------ Pure functions -------------------------- //
@@ -459,11 +475,13 @@ contract CreditAgent is
      * @dev Checks the permission to configure this agent contract.
      */
     function _checkConfiguringPermission() internal view {
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+
         if (
-            _agentState.initiatedCreditCounter > 0 ||
-            _agentState.pendingCreditCounter > 0 ||
-            _agentState.initiatedInstallmentCreditCounter > 0 ||
-            _agentState.pendingInstallmentCreditCounter > 0
+            $.agentState.initiatedCreditCounter > 0 ||
+            $.agentState.pendingCreditCounter > 0 ||
+            $.agentState.initiatedInstallmentCreditCounter > 0 ||
+            $.agentState.pendingInstallmentCreditCounter > 0
         ) {
             revert CreditAgent_ConfiguringProhibited();
         }
@@ -473,13 +491,15 @@ contract CreditAgent is
      * @dev Changes the configured state of this agent contract if necessary.
      */
     function _updateConfiguredState() internal {
-        if (_lendingMarket != address(0) && _cashier != address(0)) {
-            if (!_agentState.configured) {
-                _agentState.configured = true;
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+
+        if ($.lendingMarket != address(0) && $.cashier != address(0)) {
+            if (!$.agentState.configured) {
+                $.agentState.configured = true;
             }
         } else {
-            if (_agentState.configured) {
-                _agentState.configured = false;
+            if ($.agentState.configured) {
+                $.agentState.configured = false;
             }
         }
     }
@@ -498,6 +518,8 @@ contract CreditAgent is
         CreditStatus newStatus,
         CreditStatus oldStatus
     ) internal {
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+
         emit CreditStatusChanged(
             txId,
             credit.borrower,
@@ -512,16 +534,16 @@ contract CreditAgent is
 
         unchecked {
             if (oldStatus == CreditStatus.Initiated) {
-                _agentState.initiatedCreditCounter -= uint32(1);
+                $.agentState.initiatedCreditCounter -= uint32(1);
             } else if (oldStatus == CreditStatus.Pending) {
-                _agentState.pendingCreditCounter -= uint32(1);
+                $.agentState.pendingCreditCounter -= uint32(1);
             }
         }
 
         if (newStatus == CreditStatus.Initiated) {
-            _agentState.initiatedCreditCounter += uint32(1);
+            $.agentState.initiatedCreditCounter += uint32(1);
         } else if (newStatus == CreditStatus.Pending) {
-            _agentState.pendingCreditCounter += uint32(1);
+            $.agentState.pendingCreditCounter += uint32(1);
         } else if (newStatus == CreditStatus.Nonexistent) {
             // Skip the other actions because the Credit structure will be deleted
             return;
@@ -544,6 +566,8 @@ contract CreditAgent is
         CreditStatus newStatus,
         CreditStatus oldStatus
     ) internal {
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+
         uint256 installmentCount = installmentCredit.durationsInPeriods.length;
         emit InstallmentCreditStatusChanged(
             txId,
@@ -560,16 +584,16 @@ contract CreditAgent is
 
         unchecked {
             if (oldStatus == CreditStatus.Initiated) {
-                _agentState.initiatedInstallmentCreditCounter -= uint32(1);
+                $.agentState.initiatedInstallmentCreditCounter -= uint32(1);
             } else if (oldStatus == CreditStatus.Pending) {
-                _agentState.pendingInstallmentCreditCounter -= uint32(1);
+                $.agentState.pendingInstallmentCreditCounter -= uint32(1);
             }
         }
 
         if (newStatus == CreditStatus.Initiated) {
-            _agentState.initiatedInstallmentCreditCounter += uint32(1);
+            $.agentState.initiatedInstallmentCreditCounter += uint32(1);
         } else if (newStatus == CreditStatus.Pending) {
-            _agentState.pendingInstallmentCreditCounter += uint32(1);
+            $.agentState.pendingInstallmentCreditCounter += uint32(1);
         } else if (newStatus == CreditStatus.Nonexistent) {
             // Skip the other actions because the Credit structure will be deleted
             return;
@@ -705,7 +729,9 @@ contract CreditAgent is
         address expectedAccount,
         uint256 expectedAmount
     ) internal view {
-        ICashier.CashOutOperation memory operation = ICashier(_cashier).getCashOut(txId);
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+
+        ICashier.CashOutOperation memory operation = ICashier($.cashier).getCashOut(txId);
         if (operation.account != expectedAccount || operation.amount != expectedAmount) {
             revert CreditAgent_CashOutParametersInappropriate(txId);
         }
@@ -718,7 +744,9 @@ contract CreditAgent is
      * @return true if the operation was successful, false otherwise.
      */
     function _processTakeLoanFor(bytes32 txId) internal returns (bool) {
-        Credit storage credit = _credits[txId];
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+
+        Credit storage credit = $.credits[txId];
 
         if (credit.status == CreditStatus.Nonexistent) {
             return false;
@@ -733,7 +761,7 @@ contract CreditAgent is
 
         _checkCashierCashOutState(txId, borrower, loanAmount);
 
-        credit.loanId = ILendingMarket(_lendingMarket).takeLoanFor(
+        credit.loanId = ILendingMarket($.lendingMarket).takeLoanFor(
             borrower,
             credit.programId,
             loanAmount,
@@ -758,7 +786,9 @@ contract CreditAgent is
      * @return true if the operation was successful, false otherwise.
      */
     function _processTakeInstallmentLoanFor(bytes32 txId) internal returns (bool) {
-        InstallmentCredit storage installmentCredit = _installmentCredits[txId];
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+
+        InstallmentCredit storage installmentCredit = $.installmentCredits[txId];
 
         if (installmentCredit.status == CreditStatus.Nonexistent) {
             return false;
@@ -772,7 +802,7 @@ contract CreditAgent is
 
         _checkCashierCashOutState(txId, borrower, _sumArray(installmentCredit.borrowAmounts));
 
-        (uint256 firstInstallmentId, ) = ILendingMarket(_lendingMarket).takeInstallmentLoanFor(
+        (uint256 firstInstallmentId, ) = ILendingMarket($.lendingMarket).takeInstallmentLoanFor(
             borrower,
             installmentCredit.programId,
             _toUint256Array(installmentCredit.borrowAmounts),
@@ -799,7 +829,9 @@ contract CreditAgent is
      * @return true if the operation was successful, false otherwise.
      */
     function _processChangeCreditStatus(bytes32 txId) internal returns (bool) {
-        Credit storage credit = _credits[txId];
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+
+        Credit storage credit = $.credits[txId];
 
         if (credit.status == CreditStatus.Nonexistent) {
             return false;
@@ -826,7 +858,9 @@ contract CreditAgent is
      * @return true if the operation was successful, false otherwise.
      */
     function _processChangeInstallmentCreditStatus(bytes32 txId) internal returns (bool) {
-        InstallmentCredit storage installmentCredit = _installmentCredits[txId];
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+
+        InstallmentCredit storage installmentCredit = $.installmentCredits[txId];
 
         if (installmentCredit.status == CreditStatus.Nonexistent) {
             return false;
@@ -853,7 +887,9 @@ contract CreditAgent is
      * @return true if the operation was successful, false otherwise.
      */
     function _processRevokeLoan(bytes32 txId) internal returns (bool) {
-        Credit storage credit = _credits[txId];
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+
+        Credit storage credit = $.credits[txId];
 
         if (credit.status == CreditStatus.Nonexistent) {
             return false;
@@ -863,7 +899,7 @@ contract CreditAgent is
             revert CreditAgent_CreditStatusInappropriate(txId, credit.status);
         }
 
-        ILendingMarket(_lendingMarket).revokeLoan(credit.loanId);
+        ILendingMarket($.lendingMarket).revokeLoan(credit.loanId);
 
         _changeCreditStatus(
             txId,
@@ -882,7 +918,9 @@ contract CreditAgent is
      * @return true if the operation was successful, false otherwise.
      */
     function _processRevokeInstallmentLoan(bytes32 txId) internal returns (bool) {
-        InstallmentCredit storage installmentCredit = _installmentCredits[txId];
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+
+        InstallmentCredit storage installmentCredit = $.installmentCredits[txId];
 
         if (installmentCredit.status == CreditStatus.Nonexistent) {
             return false;
@@ -892,7 +930,7 @@ contract CreditAgent is
             revert CreditAgent_CreditStatusInappropriate(txId, installmentCredit.status);
         }
 
-        ILendingMarket(_lendingMarket).revokeInstallmentLoan(installmentCredit.firstInstallmentId);
+        ILendingMarket($.lendingMarket).revokeInstallmentLoan(installmentCredit.firstInstallmentId);
 
         _changeInstallmentCreditStatus(
             txId,
