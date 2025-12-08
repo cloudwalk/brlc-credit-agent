@@ -95,4 +95,6 @@ contract LendingMarketMock {
     function revokeInstallmentLoan(uint256 loanId) external {
         emit MockRevokeInstallmentLoanCalled(loanId);
     }
+
+    function proveLendingMarket() external pure {}
 }

@@ -57,13 +57,8 @@ interface Fixture {
 
 interface AgentState {
   configured: boolean;
-  initiatedCreditCounter: bigint;
-  pendingCreditCounter: bigint;
-  initiatedInstallmentCreditCounter: bigint;
-  pendingInstallmentCreditCounter: bigint;
-
-  // Indexing signature to ensure that fields are iterated over in a key-value style
-  [key: string]: bigint | boolean;
+  initiatedRequestCounter: bigint;
+  pendingRequestCounter: bigint;
 }
 
 interface CashOut {
@@ -81,10 +76,8 @@ interface Version {
 
 const initialAgentState: AgentState = {
   configured: false,
-  initiatedCreditCounter: 0n,
-  pendingCreditCounter: 0n,
-  initiatedInstallmentCreditCounter: 0n,
-  pendingInstallmentCreditCounter: 0n,
+  initiatedRequestCounter: 0n,
+  pendingRequestCounter: 0n,
 };
 
 const initialCredit: Credit = {
@@ -114,10 +107,10 @@ const initialCashOut: CashOut = {
   flags: 0,
 };
 
-function checkEquality<T extends Record<string, unknown>>(actualObject: T, expectedObject: T) {
+function checkEquality<T extends object>(actualObject: T, expectedObject: T) {
   Object.keys(expectedObject).forEach((property) => {
-    const actualValue = actualObject[property];
-    const expectedValue = expectedObject[property];
+    const actualValue = actualObject[property as keyof T];
+    const expectedValue = expectedObject[property as keyof T];
 
     // Ensure the property is not missing or a function
     if (typeof actualValue === "undefined" || typeof actualValue === "function") {
@@ -155,7 +148,7 @@ async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
   }
 }
 
-describe("Contract 'CreditAgent'", async () => {
+describe("Contract 'CreditAgentCapybaraV1'", async () => {
   const TX_ID_STUB = ethers.encodeBytes32String("STUB_TRANSACTION_ID_ORDINARY");
   const TX_ID_STUB_INSTALLMENT = ethers.encodeBytes32String("STUB_TRANSACTION_ID_INSTALLMENT");
   const TX_ID_ZERO = ethers.ZeroHash;
@@ -228,7 +221,7 @@ describe("Contract 'CreditAgent'", async () => {
   before(async () => {
     [deployer, admin, manager, borrower] = await ethers.getSigners();
 
-    creditAgentFactory = await ethers.getContractFactory("CreditAgent");
+    creditAgentFactory = await ethers.getContractFactory("CreditAgentCapybaraV1");
     creditAgentFactory = creditAgentFactory.connect(deployer); // Explicitly specifying the initial account
   });
 
@@ -543,6 +536,7 @@ describe("Contract 'CreditAgent'", async () => {
   describe("Function 'setCashier()'", async () => {
     it("Executes as expected in different cases", async () => {
       const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
+      const lendingMarketMock = await setUpFixture(deployLendingMarketMock);
       const cashierStubAddress1 = borrower.address;
       const cashierStubAddress2 = admin.address;
 
@@ -570,8 +564,7 @@ describe("Contract 'CreditAgent'", async () => {
       checkEquality(await creditAgent.agentState() as AgentState, initialAgentState);
 
       // Set the lending market address, then the cashier address to check the logic of configured status
-      const lendingMarketStubAddress = borrower.address;
-      await proveTx(connect(creditAgent, admin).setLendingMarket(lendingMarketStubAddress));
+      await proveTx(connect(creditAgent, admin).setLendingMarket(lendingMarketMock));
       await proveTx(connect(creditAgent, admin).setCashier(cashierStubAddress1));
       expect(await creditAgent.cashier()).to.equal(cashierStubAddress1);
       const expectedAgentState = { ...initialAgentState, configured: true };
@@ -626,43 +619,43 @@ describe("Contract 'CreditAgent'", async () => {
   describe("Function 'setLendingMarket()'", async () => {
     it("Executes as expected in different cases", async () => {
       const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
-      const lendingMarketStubAddress1 = borrower.address;
-      const lendingMarketStubAddress2 = admin.address;
+      const lendingMarketMock = await setUpFixture(deployLendingMarketMock);
+      const lendingMarketMock2 = await deployLendingMarketMock();
 
       expect(await creditAgent.lendingMarket()).to.equal(ADDRESS_ZERO);
 
       // Change the initial configuration
-      await expect(connect(creditAgent, admin).setLendingMarket(lendingMarketStubAddress1))
+      await expect(connect(creditAgent, admin).setLendingMarket(lendingMarketMock))
         .to.emit(creditAgent, EVENT_NAME_LENDING_MARKET_CHANGED)
-        .withArgs(lendingMarketStubAddress1, ADDRESS_ZERO);
-      expect(await creditAgent.lendingMarket()).to.equal(lendingMarketStubAddress1);
+        .withArgs(lendingMarketMock, ADDRESS_ZERO);
+      expect(await creditAgent.lendingMarket()).to.equal(lendingMarketMock);
       checkEquality(await creditAgent.agentState() as AgentState, initialAgentState);
 
       // Change to a new non-zero address
-      await expect(connect(creditAgent, admin).setLendingMarket(lendingMarketStubAddress2))
+      await expect(connect(creditAgent, admin).setLendingMarket(lendingMarketMock2))
         .to.emit(creditAgent, EVENT_NAME_LENDING_MARKET_CHANGED)
-        .withArgs(lendingMarketStubAddress2, lendingMarketStubAddress1);
-      expect(await creditAgent.lendingMarket()).to.equal(lendingMarketStubAddress2);
+        .withArgs(lendingMarketMock2, lendingMarketMock);
+      expect(await creditAgent.lendingMarket()).to.equal(lendingMarketMock2);
       checkEquality(await creditAgent.agentState() as AgentState, initialAgentState);
 
       // Set the zero address
       await expect(connect(creditAgent, admin).setLendingMarket(ADDRESS_ZERO))
         .to.emit(creditAgent, EVENT_NAME_LENDING_MARKET_CHANGED)
-        .withArgs(ADDRESS_ZERO, lendingMarketStubAddress2);
+        .withArgs(ADDRESS_ZERO, lendingMarketMock2);
       expect(await creditAgent.lendingMarket()).to.equal(ADDRESS_ZERO);
       checkEquality(await creditAgent.agentState() as AgentState, initialAgentState);
 
       // Set the cashier address, then the lending market address to check the logic of configured status
       const cashierStubAddress = borrower.address;
       await proveTx(connect(creditAgent, admin).setCashier(cashierStubAddress));
-      await proveTx(connect(creditAgent, admin).setLendingMarket(lendingMarketStubAddress1));
-      expect(await creditAgent.lendingMarket()).to.equal(lendingMarketStubAddress1);
+      await proveTx(connect(creditAgent, admin).setLendingMarket(lendingMarketMock));
+      expect(await creditAgent.lendingMarket()).to.equal(lendingMarketMock);
       const expectedAgentState = { ...initialAgentState, configured: true };
       checkEquality(await creditAgent.agentState() as AgentState, expectedAgentState);
 
       // Set another lending market address must not change the configured status of the agent contract
-      await proveTx(connect(creditAgent, admin).setLendingMarket(lendingMarketStubAddress2));
-      expect(await creditAgent.lendingMarket()).to.equal(lendingMarketStubAddress2);
+      await proveTx(connect(creditAgent, admin).setLendingMarket(lendingMarketMock2));
+      expect(await creditAgent.lendingMarket()).to.equal(lendingMarketMock2);
       checkEquality(await creditAgent.agentState() as AgentState, expectedAgentState);
 
       // Resetting the address must change the configured status appropriately
@@ -691,15 +684,15 @@ describe("Contract 'CreditAgent'", async () => {
 
     it("Is reverted if the configuration is unchanged", async () => {
       const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
-      const lendingMarketMockAddress = borrower.address;
+      const lendingMarketMock = await setUpFixture(deployLendingMarketMock);
 
       // Try to set the default value
       await expect(connect(creditAgent, admin).setLendingMarket(ADDRESS_ZERO))
         .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ALREADY_CONFIGURED);
 
       // Try to set the same value twice
-      await proveTx(connect(creditAgent, admin).setLendingMarket(lendingMarketMockAddress));
-      await expect(connect(creditAgent, admin).setLendingMarket(lendingMarketMockAddress))
+      await proveTx(connect(creditAgent, admin).setLendingMarket(lendingMarketMock));
+      await expect(connect(creditAgent, admin).setLendingMarket(lendingMarketMock))
         .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ALREADY_CONFIGURED);
     });
 
@@ -962,7 +955,7 @@ describe("Contract 'CreditAgent'", async () => {
         const { fixture, txId, initCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
         const expectedAgentState: AgentState = {
           ...initialAgentState,
-          initiatedCreditCounter: 1n,
+          initiatedRequestCounter: 1n,
           configured: true,
         };
         checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
@@ -979,8 +972,8 @@ describe("Contract 'CreditAgent'", async () => {
             oldCreditStatus: CreditStatus.Initiated,
           },
         );
-        expectedAgentState.initiatedCreditCounter = 0n;
-        expectedAgentState.pendingCreditCounter = 1n;
+        expectedAgentState.initiatedRequestCounter = 0n;
+        expectedAgentState.pendingRequestCounter = 1n;
         checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
 
         // Emulate cash-out confirmation
@@ -994,7 +987,7 @@ describe("Contract 'CreditAgent'", async () => {
             oldCreditStatus: CreditStatus.Pending,
           },
         );
-        expectedAgentState.pendingCreditCounter = 0n;
+        expectedAgentState.pendingRequestCounter = 0n;
         checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
       });
 
@@ -1015,7 +1008,7 @@ describe("Contract 'CreditAgent'", async () => {
         );
         const expectedAgentState: AgentState = {
           ...initialAgentState,
-          pendingCreditCounter: 1n,
+          pendingRequestCounter: 1n,
           configured: true,
         };
         checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
@@ -1031,7 +1024,7 @@ describe("Contract 'CreditAgent'", async () => {
             oldCreditStatus: CreditStatus.Pending,
           },
         );
-        expectedAgentState.pendingCreditCounter = 0n;
+        expectedAgentState.pendingRequestCounter = 0n;
         checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
       });
     });
@@ -1183,19 +1176,19 @@ describe("Contract 'CreditAgent'", async () => {
       const { creditAgent } = fixture;
       const expectedAgentState: AgentState = {
         ...initialAgentState,
-        initiatedCreditCounter: 1n,
+        initiatedRequestCounter: 1n,
         configured: true,
       };
       const credit: Credit = { ...initCredit };
       checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
 
       await proveTx(connect(creditAgent, manager).revokeCredit(txId));
-      expectedAgentState.initiatedCreditCounter = 0n;
+      expectedAgentState.initiatedRequestCounter = 0n;
       checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
 
       const tx = initiateCredit(creditAgent, { txId, credit });
       await checkCreditInitiation(fixture, { tx, txId, credit });
-      expectedAgentState.initiatedCreditCounter = 1n;
+      expectedAgentState.initiatedRequestCounter = 1n;
       checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
     });
 
@@ -1211,8 +1204,8 @@ describe("Contract 'CreditAgent'", async () => {
       await checkCreditInitiation(fixture, { tx, txId, credit });
       const expectedAgentState: AgentState = {
         ...initialAgentState,
-        initiatedCreditCounter: 1n,
-        pendingCreditCounter: 0n,
+        initiatedRequestCounter: 1n,
+        pendingRequestCounter: 0n,
         configured: true,
       };
       checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
@@ -1491,14 +1484,6 @@ describe("Contract 'CreditAgent'", async () => {
         await expect(initiateInstallmentCredit(creditAgent, { credit }))
           .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_INPUT_ARRAYS_INVALID);
       });
-
-      xit("The 'txId' argument is already used for an ordinary credit", async () => {
-        const { fixture, txId } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
-        const installmentCredit = defineInstallmentCredit();
-        await expect(initiateInstallmentCredit(fixture.creditAgent, { txId, credit: installmentCredit }))
-          .to.be.revertedWithCustomError(fixture.creditAgent, ERROR_NAME_TX_ID_ALREADY_USED);
-      });
-
       // Additional more complex checks are in the other sections
     });
   });
@@ -1628,7 +1613,7 @@ describe("Contract 'CreditAgent'", async () => {
         } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
         const expectedAgentState: AgentState = {
           ...initialAgentState,
-          initiatedInstallmentCreditCounter: 1n,
+          initiatedRequestCounter: 1n,
           configured: true,
         };
         checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
@@ -1645,8 +1630,8 @@ describe("Contract 'CreditAgent'", async () => {
             oldCreditStatus: CreditStatus.Initiated,
           },
         );
-        expectedAgentState.initiatedInstallmentCreditCounter = 0n;
-        expectedAgentState.pendingInstallmentCreditCounter = 1n;
+        expectedAgentState.initiatedRequestCounter = 0n;
+        expectedAgentState.pendingRequestCounter = 1n;
         checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
 
         // Emulate cash-out confirmation
@@ -1660,7 +1645,7 @@ describe("Contract 'CreditAgent'", async () => {
             oldCreditStatus: CreditStatus.Pending,
           },
         );
-        expectedAgentState.pendingInstallmentCreditCounter = 0n;
+        expectedAgentState.pendingRequestCounter = 0n;
         checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
       });
 
@@ -1685,7 +1670,7 @@ describe("Contract 'CreditAgent'", async () => {
         );
         const expectedAgentState: AgentState = {
           ...initialAgentState,
-          pendingInstallmentCreditCounter: 1n,
+          pendingRequestCounter: 1n,
           configured: true,
         };
         checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
@@ -1701,7 +1686,7 @@ describe("Contract 'CreditAgent'", async () => {
             oldCreditStatus: CreditStatus.Pending,
           },
         );
-        expectedAgentState.pendingInstallmentCreditCounter = 0n;
+        expectedAgentState.pendingRequestCounter = 0n;
         checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
       });
     });
@@ -1865,19 +1850,19 @@ describe("Contract 'CreditAgent'", async () => {
       const { creditAgent } = fixture;
       const expectedAgentState: AgentState = {
         ...initialAgentState,
-        initiatedInstallmentCreditCounter: 1n,
+        initiatedRequestCounter: 1n,
         configured: true,
       };
       const credit: InstallmentCredit = { ...initCredit };
       checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
 
       await proveTx(connect(creditAgent, manager).revokeInstallmentCredit(txId));
-      expectedAgentState.initiatedInstallmentCreditCounter = 0n;
+      expectedAgentState.initiatedRequestCounter = 0n;
       checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
 
       const tx = initiateInstallmentCredit(creditAgent, { txId, credit });
       await checkInstallmentCreditInitiation(fixture, { tx, txId, credit });
-      expectedAgentState.initiatedInstallmentCreditCounter = 1n;
+      expectedAgentState.initiatedRequestCounter = 1n;
       checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
     });
 
@@ -1896,9 +1881,8 @@ describe("Contract 'CreditAgent'", async () => {
       const tx = initiateInstallmentCredit(creditAgent, { txId, credit });
       await checkInstallmentCreditInitiation(fixture, { tx, txId, credit });
       const expectedAgentState: AgentState = {
-        ...initialAgentState,
-        initiatedInstallmentCreditCounter: 1n,
-        pendingInstallmentCreditCounter: 0n,
+        initiatedRequestCounter: 1n,
+        pendingRequestCounter: 0n,
         configured: true,
       };
       checkEquality(await fixture.creditAgent.agentState() as AgentState, expectedAgentState);
