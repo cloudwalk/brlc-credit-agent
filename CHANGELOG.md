@@ -1,8 +1,19 @@
 # Main Changes
 
-- Solc updated to 0.8.28 and evmVersion to cancun
+- `CreditStatusChanged` and `InstallmentCreditStatusChanged` are merged into one simplified `CreditRequestStatusChanged`
+- Removed `CreditAgent_TxIdAlreadyUsed` error that was previously used to crosscheck ids uniqness in 2 types of credit requests.
+- `CreditAgent_BorrowerAddressZero` error renamed `CreditAgent_AccountAddressZero`
+- Next errors renamed to `CreditAgentCapybaraV1_*`:
+  - `CreditAgent_LoanAmountZero`
+  - `CreditAgent_LoanDurationZero`
+  - `CreditAgent_InputArraysInvalid`
+  - `CreditAgent_ProgramIdZero`
+- Added `CreditAgent_LendingMarketNotContract` error for validate lendingMarking contract.
+
+## Technical changes
+
+- Solc updated to 0.8.28 and evmVersion to cancun. IR compilation enabled.
 - Storage location moved to ERC-7201: Namespaced Storage Layout slot calculation.
-- CreditStatusChanged and InstallmentCreditStatusChanged are merged into one simplified CreditRequestStatusChanged
 
 ## Migration Steps
 

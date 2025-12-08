@@ -1,0 +1,236 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.8.28;
+
+import { CreditAgent } from "./CreditAgent.sol";
+
+import { ICreditAgentCapybaraV1, ICreditAgentCapybaraV1Primary } from "./interfaces/ICreditAgentCapybaraV1.sol";
+
+import { ILendingMarketCapybaraV1 } from "./interfaces/ILendingMarketCapybaraV1.sol";
+
+import { SafeCast } from "./libraries/SafeCast.sol";
+
+/**
+ * @title CreditAgentCapybaraV1 contract
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Wrapper contract for credit operations.
+ *
+ * This contract is a stateless wrapper contract for the CreditAgent contract
+ * that creates correct CreditRequest using Capybara Finance V1 lending market interface.
+ *
+ * It validates input parameters and creates CreditRequest using the correct selectors and data.
+ *
+ * @custom:oz-upgrades-unsafe-allow missing-initializer
+ */
+contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
+    using SafeCast for uint256;
+
+    /**
+     * @inheritdoc ICreditAgentCapybaraV1Primary
+     *
+     * @dev Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {MANAGER_ROLE} role.
+     * - The contract must be configured.
+     * - The provided `txId` must not be used for any other credit.
+     * - The provided `txId`, `borrower`, `programId`, `durationInPeriods`, `loanAmount` must not be zeros.
+     * - The credit with the provided `txId` must have the `Nonexistent` or `Reversed` status.
+     */
+    function initiateCredit(
+        bytes32 txId, // Tools: prevent Prettier one-liner
+        address borrower,
+        uint256 programId,
+        uint256 durationInPeriods,
+        uint256 loanAmount,
+        uint256 loanAddon
+    ) external whenNotPaused onlyRole(MANAGER_ROLE) {
+        if (programId == 0) {
+            revert CreditAgentCapybaraV1_ProgramIdZero();
+        }
+        if (durationInPeriods == 0) {
+            revert CreditAgentCapybaraV1_LoanDurationZero();
+        }
+        if (loanAmount == 0) {
+            revert CreditAgentCapybaraV1_LoanAmountZero();
+        }
+
+        loanAmount.toUint64();
+        loanAddon.toUint64();
+        durationInPeriods.toUint32();
+
+        _createCreditRequest(
+            txId,
+            borrower,
+            loanAmount,
+            ILendingMarketCapybaraV1.takeLoanFor.selector,
+            ILendingMarketCapybaraV1.revokeLoan.selector,
+            abi.encode(borrower, programId.toUint32(), loanAmount, loanAddon, durationInPeriods)
+        );
+
+        /* Checking in the end because we want to check compatibility
+        only after all other checks for configuration are passed */
+        _checkLendingMarketCompatibility();
+    }
+
+    /**
+     * @inheritdoc ICreditAgentCapybaraV1Primary
+     *
+     * @dev Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {MANAGER_ROLE} role.
+     * - The contract must be configured.
+     * - The provided `txId` must not be used for any other credit.
+     * - The provided `txId`, `borrower`, `programId` must not be zeros.
+     * - The provided `durationsInPeriods`, `borrowAmounts`, `addonAmounts` arrays must have the same length.
+     * - The provided `durationsInPeriods` and `borrowAmounts` arrays must contain only non-zero values.
+     * - The credit with the provided `txId` must have the `Nonexistent` or `Reversed` status.
+     */
+    function initiateInstallmentCredit(
+        bytes32 txId, // Tools: prevent Prettier one-liner
+        address borrower,
+        uint256 programId,
+        uint256[] calldata durationsInPeriods,
+        uint256[] calldata borrowAmounts,
+        uint256[] calldata addonAmounts
+    ) external whenNotPaused onlyRole(MANAGER_ROLE) {
+        if (programId == 0) {
+            revert CreditAgentCapybaraV1_ProgramIdZero();
+        }
+        if (
+            durationsInPeriods.length == 0 ||
+            durationsInPeriods.length != borrowAmounts.length ||
+            durationsInPeriods.length != addonAmounts.length
+        ) {
+            revert CreditAgentCapybaraV1_InputArraysInvalid();
+        }
+        for (uint256 i = 0; i < borrowAmounts.length; i++) {
+            if (durationsInPeriods[i] == 0) {
+                revert CreditAgentCapybaraV1_LoanDurationZero();
+            }
+            if (borrowAmounts[i] == 0) {
+                revert CreditAgentCapybaraV1_LoanAmountZero();
+            }
+            borrowAmounts[i].toUint64();
+            addonAmounts[i].toUint64();
+            durationsInPeriods[i].toUint32();
+        }
+
+        _createCreditRequest(
+            txId,
+            borrower,
+            _sumArray(borrowAmounts),
+            ILendingMarketCapybaraV1.takeInstallmentLoanFor.selector,
+            ILendingMarketCapybaraV1.revokeInstallmentLoan.selector,
+            abi.encode(borrower, programId.toUint32(), borrowAmounts, addonAmounts, durationsInPeriods)
+        );
+    }
+
+    /**
+     * @inheritdoc ICreditAgentCapybaraV1Primary
+     *
+     * @dev Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {MANAGER_ROLE} role.
+     * - The provided `txId` must not be zero.
+     * - The credit with the provided `txId` must have the `Initiated` status.
+     */
+    function revokeCredit(bytes32 txId) external whenNotPaused onlyRole(MANAGER_ROLE) {
+        _removeCreditRequest(txId);
+    }
+
+    /**
+     * @inheritdoc ICreditAgentCapybaraV1Primary
+     *
+     * @dev Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {MANAGER_ROLE} role.
+     * - The provided `txId` must not be zero.
+     * - The credit with the provided `txId` must have the `Initiated` status.
+     */
+    function revokeInstallmentCredit(bytes32 txId) external whenNotPaused onlyRole(MANAGER_ROLE) {
+        _removeCreditRequest(txId);
+    }
+
+    /**
+     * @inheritdoc ICreditAgentCapybaraV1Primary
+     */
+    function getCredit(bytes32 txId) external view returns (Credit memory result) {
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+        CreditRequest storage creditRequest = $.creditRequests[txId];
+        if (creditRequest.takeLoanData.length != 0) {
+            (
+                address borrower,
+                uint256 programId,
+                uint256 loanAmount,
+                uint256 loanAddon,
+                uint256 durationInPeriods
+            ) = abi.decode(creditRequest.takeLoanData, (address, uint32, uint256, uint256, uint256));
+            result = Credit(
+                creditRequest.status,
+                borrower,
+                programId,
+                durationInPeriods,
+                loanAmount,
+                loanAddon,
+                creditRequest.loanId
+            );
+        }
+        // else empty object
+    }
+
+    /**
+     * @inheritdoc ICreditAgentCapybaraV1Primary
+     */
+    function getInstallmentCredit(bytes32 txId) external view returns (InstallmentCredit memory result) {
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+        CreditRequest storage creditRequest = $.creditRequests[txId];
+        if (creditRequest.takeLoanData.length != 0) {
+            (
+                address borrower,
+                uint256 programId,
+                uint256[] memory borrowAmounts,
+                uint256[] memory addonAmounts,
+                uint256[] memory durationsInPeriods
+            ) = abi.decode(creditRequest.takeLoanData, (address, uint256, uint256[], uint256[], uint256[]));
+            result = InstallmentCredit(
+                creditRequest.status,
+                borrower,
+                programId,
+                durationsInPeriods,
+                borrowAmounts,
+                addonAmounts,
+                creditRequest.loanId
+            );
+        }
+        // else empty object
+    }
+
+    // ------------------ Internal functions ---------------------- //
+
+    function _checkLendingMarketCompatibility() internal view {
+        // We don't need to check for code length because we already checked it when setting the lending market
+        try ILendingMarketCapybaraV1(lendingMarket()).proveLendingMarket() {
+            // all good
+        } catch {
+            revert CreditAgentCapybaraV1_LendingMarketIncompatible();
+        }
+    }
+
+    // ------------------ Pure functions -------------------------- //
+
+    /// @dev Calculates the sum of all elements in a memory array.
+    /// @param values Array of amounts to sum.
+    /// @return The total sum of all array elements.
+    function _sumArray(uint256[] memory values) internal pure returns (uint256) {
+        uint256 len = values.length;
+        uint256 sum = 0;
+        for (uint256 i = 0; i < len; ++i) {
+            sum += values[i];
+        }
+        return sum;
+    }
+}

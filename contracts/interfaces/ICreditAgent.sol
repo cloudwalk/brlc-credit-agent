@@ -5,7 +5,7 @@ pragma solidity ^0.8.20;
 /**
  * @title ICreditAgentTypes interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the types used in the credit agent contract.
+ * @dev Defines the types used in the credit abstract agent contract.
  */
 interface ICreditAgentTypes {
     /**
@@ -77,64 +77,6 @@ interface ICreditAgentTypes {
     }
 
     /**
-     * @dev The view of a single credit.
-     *
-     * Fields:
-     *
-     * - borrower ----------- The address of the borrower.
-     * - programId ---------- The unique identifier of a lending program for the credit.
-     * - durationInPeriods -- The duration of the credit in periods.
-     * - status ------------- The status of the credit, see {CreditStatus}.
-     * - loanAmount --------- The amount of the related loan.
-     * - loanAddon ---------- The addon amount (extra charges or fees) of the related loan.
-     * - loanId ------------- The unique ID of the related loan on the lending market or zero if not taken.
-     */
-    struct Credit {
-        address borrower;
-        uint256 programId;
-        uint256 durationInPeriods;
-        CreditRequestStatus status;
-        uint256 loanAmount;
-        uint256 loanAddon;
-        uint256 loanId;
-    }
-
-    /**
-     * @dev The data of a single installment credit.
-     *
-     * Fields:
-     *
-     * - borrower ------------ The address of the borrower.
-     * - programId ----------- The unique identifier of a lending program for the credit.
-     * - status -------------- The status of the credit, see {CreditStatus}.
-     * - durationsInPeriods -- The duration of each installment in periods.
-     * - borrowAmounts ------- The amounts of each installment.
-     * - addonAmounts -------- The addon amounts of each installment.
-     * - firstInstallmentId -- The unique ID of the related first installment loan on the market or zero if not taken.
-     */
-    struct InstallmentCredit {
-        address borrower;
-        uint256 programId;
-        CreditRequestStatus status;
-        // uint56 __reserved; // Reserved until the end of the storage slot
-
-        // Slot 2
-        uint256[] durationsInPeriods;
-        // No reserve until the end of the storage slot
-
-        // Slot 3
-        uint256[] borrowAmounts;
-        // No reserve until the end of the storage slot
-
-        // Slot 4
-        uint256[] addonAmounts;
-        // No reserve until the end of the storage slot
-
-        // Slot 5
-        uint256 firstInstallmentId;
-        // No reserve until the end of the storage slot
-    }
-    /**
      * @dev The state of this agent contract.
      *
      * Fields:
@@ -177,80 +119,6 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
     );
 
     // ------------------ Functions ------------------------------- //
-
-    /**
-     * @dev Initiates a credit.
-     *
-     * This function is expected to be called by a limited number of accounts.
-     *
-     * @param txId The unique identifier of the related cash-out operation.
-     * @param borrower The address of the borrower.
-     * @param programId The unique identifier of the lending program for the credit.
-     * @param durationInPeriods The duration of the credit in periods. The period length is defined outside.
-     * @param loanAmount The amount of the related loan.
-     * @param loanAddon The addon amount (extra charges or fees) of the related loan.
-     */
-    function initiateCredit(
-        bytes32 txId, // Tools: prevent Prettier one-liner
-        address borrower,
-        uint256 programId,
-        uint256 durationInPeriods,
-        uint256 loanAmount,
-        uint256 loanAddon
-    ) external;
-
-    /**
-     * @dev Initiates an installment credit.
-     *
-     * This function is expected to be called by a limited number of accounts.
-     *
-     * @param txId The unique identifier of the related cash-out operation.
-     * @param borrower The address of the borrower.
-     * @param programId The unique identifier of the lending program for the credit.
-     * @param durationsInPeriods The duration of each installment in periods.
-     * @param borrowAmounts The amounts of each installment.
-     * @param addonAmounts The addon amounts of each installment.
-     */
-    function initiateInstallmentCredit(
-        bytes32 txId,
-        address borrower,
-        uint256 programId,
-        uint256[] calldata durationsInPeriods,
-        uint256[] calldata borrowAmounts,
-        uint256[] calldata addonAmounts
-    ) external;
-
-    /**
-     * @dev Revokes a credit.
-     *
-     * This function is expected to be called by a limited number of accounts.
-     *
-     * @param txId The unique identifier of the related cash-out operation.
-     */
-    function revokeCredit(bytes32 txId) external;
-
-    /**
-     * @dev Revokes an installment credit.
-     *
-     * This function is expected to be called by a limited number of accounts.
-     *
-     * @param txId The unique identifier of the related cash-out operation.
-     */
-    function revokeInstallmentCredit(bytes32 txId) external;
-
-    /**
-     * @dev Returns a credit structure by its unique identifier.
-     * @param txId The unique identifier of the related cash-out operation.
-     * @return The credit structure.
-     */
-    function getCredit(bytes32 txId) external view returns (Credit memory);
-
-    /**
-     * @dev Returns an installment credit structure by its unique identifier.
-     * @param txId The unique identifier of the related cash-out operation.
-     * @return The installment credit structure.
-     */
-    function getInstallmentCredit(bytes32 txId) external view returns (InstallmentCredit memory);
 
     /**
      * @dev Returns the state of this agent contract.
@@ -315,7 +183,7 @@ interface ICreditAgentErrors is ICreditAgentTypes {
     error CreditAgent_AlreadyConfigured();
 
     /// @dev The zero borrower address has been passed as a function argument.
-    error CreditAgent_BorrowerAddressZero();
+    error CreditAgent_AccountAddressZero();
 
     /// @dev Thrown if the provided new implementation address is not of a credit agent contract.
     error CreditAgent_ImplementationAddressInvalid();
@@ -353,18 +221,6 @@ interface ICreditAgentErrors is ICreditAgentTypes {
      */
     error CreditAgent_CreditRequestStatusInappropriate(bytes32 txId, CreditRequestStatus status);
 
-    /// @dev The zero loan amount has been passed as a function argument.
-    error CreditAgent_LoanAmountZero();
-
-    /// @dev The zero loan duration has been passed as a function argument.
-    error CreditAgent_LoanDurationZero();
-
-    /// @dev The input arrays are empty or have different lengths.
-    error CreditAgent_InputArraysInvalid();
-
-    /// @dev The zero program ID has been passed as a function argument.
-    error CreditAgent_ProgramIdZero();
-
     /// @dev The zero off-chain transaction identifier has been passed as a function argument.
     error CreditAgent_TxIdZero();
 
@@ -385,6 +241,11 @@ interface ICreditAgentErrors is ICreditAgentTypes {
      * @param txId The off-chain transaction identifier of the operation.
      */
     error CreditAgent_FailedToProcessCashOutReversalAfter(bytes32 txId);
+
+    /**
+     * @dev The provided lending market contract is not a contract.
+     */
+    error CreditAgent_LendingMarketNotContract();
 }
 
 /**

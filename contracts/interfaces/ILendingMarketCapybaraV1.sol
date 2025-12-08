@@ -3,11 +3,13 @@
 pragma solidity ^0.8.0;
 
 /**
- * @title ILendingMarket interface
+ * @title ILendingMarketCapybaraV1 interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Defines the needed functions of the lending market contract.
+ *
+ * See https://github.com/cloudwalk/brlc-capybara-finance
  */
-interface ILendingMarket {
+interface ILendingMarketCapybaraV1 {
     /**
      * @dev Takes an ordinary loan for a provided account.
      * @param borrower The account for whom the loan is taken.
@@ -54,4 +56,9 @@ interface ILendingMarket {
      * @param loanId The unique identifier of any sub-loan of the installment loan to revoke.
      */
     function revokeInstallmentLoan(uint256 loanId) external;
+
+    /**
+     * @dev Proves that the contract is a lending market contract.
+     */
+    function proveLendingMarket() external pure;
 }

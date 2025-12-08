@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.28;
+pragma solidity ^0.8.28;
 
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
@@ -13,7 +13,6 @@ import { Versionable } from "./base/Versionable.sol";
 import { CreditAgentStorageLayout } from "./CreditAgentStorageLayout.sol";
 import { SafeCast } from "./libraries/SafeCast.sol";
 
-import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
 import { ICashier } from "./interfaces/ICashier.sol";
 import { ICreditAgent } from "./interfaces/ICreditAgent.sol";
 import { ICreditAgentConfiguration } from "./interfaces/ICreditAgent.sol";
@@ -37,21 +36,23 @@ import { ICashierHookableTypes } from "./interfaces/ICashierHookable.sol";
  * The `onCashierHook()` function selects and calls the appropriate internal function to process the hook and
  * execute the additional actions to provide a credit or revoke it if needed.
  *
- * Each credit is represented by a separate structure named {Credit} in the CreditAgent contract and
+ * Each credit request is represented by a separate structure named {CreditRequest} in the CreditAgent contract and
  * the related loan with an ID in the lending market contract.
- * The loan ID can be found in the `Credit` structure and initially equals zero until the related loan is really taken.
+ * The loan ID can be found in the `CreditRequest` structure and initially equals zero until the related loan
+ * is really taken.
  *
- * Credits are identified by the off-chain transaction ID `txId` of the related cash-out operations
+ * Credit requests are identified by the off-chain transaction ID `txId` of the related cash-out operations
  * that happens on the cashier contract.
- * To initiate a credit, revoke it or get information about it the corresponding `txId` should be passed to
- * CreditAgent as a function argument. The same for the cashier contract.
  *
- * The possible statuses of a credit are defined by the {CreditStatus} enumeration.
+ * To initiate a credit request, revoke it or get information about it the corresponding wrapper contract should
+ * be used. (For example, {CreditAgentCapybaraV1})
+ *
+ * The possible statuses of a credit request are defined by the {CreditRequestStatus} enumeration.
  *
  * Several roles are used to control access to the CreditAgent contract.
  * About roles see https://docs.openzeppelin.com/contracts/5.x/api/access#AccessControl.
  */
-contract CreditAgent is
+abstract contract CreditAgent is
     CreditAgentStorageLayout,
     AccessControlExtUpgradeable,
     PausableExtUpgradeable,
@@ -113,7 +114,7 @@ contract CreditAgent is
      *
      * See details: https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable
      */
-    function initialize() external initializer {
+    function initialize() external virtual initializer {
         __AccessControlExt_init_unchained();
         __PausableExt_init_unchained();
         __Rescuable_init_unchained();
@@ -166,162 +167,17 @@ contract CreditAgent is
 
         CreditAgentStorage storage $ = _getCreditAgentStorage();
         address oldLendingMarket = $.lendingMarket;
+        if (newLendingMarket != address(0) && newLendingMarket.code.length == 0) {
+            revert CreditAgent_LendingMarketNotContract();
+        }
         if (oldLendingMarket == newLendingMarket) {
             revert CreditAgent_AlreadyConfigured();
         }
-
+        // TODO: check for code length
         $.lendingMarket = newLendingMarket;
         _updateConfiguredState();
 
         emit LendingMarketChanged(newLendingMarket, oldLendingMarket);
-    }
-
-    /**
-     * @inheritdoc ICreditAgentPrimary
-     *
-     * @dev Requirements:
-     *
-     * - The contract must not be paused.
-     * - The caller must have the {MANAGER_ROLE} role.
-     * - The contract must be configured.
-     * - The provided `txId` must not be used for any other credit.
-     * - The provided `txId`, `borrower`, `programId`, `durationInPeriods`, `loanAmount` must not be zeros.
-     * - The credit with the provided `txId` must have the `Nonexistent` or `Reversed` status.
-     */
-    function initiateCredit(
-        bytes32 txId, // Tools: prevent Prettier one-liner
-        address borrower,
-        uint256 programId,
-        uint256 durationInPeriods,
-        uint256 loanAmount,
-        uint256 loanAddon
-    ) external whenNotPaused onlyRole(MANAGER_ROLE) {
-        CreditAgentStorage storage $ = _getCreditAgentStorage();
-
-        if (!$.agentState.configured) {
-            revert CreditAgent_ContractNotConfigured();
-        }
-        if (txId == bytes32(0)) {
-            revert CreditAgent_TxIdZero();
-        }
-        if (borrower == address(0)) {
-            revert CreditAgent_BorrowerAddressZero();
-        }
-        if (programId == 0) {
-            revert CreditAgent_ProgramIdZero();
-        }
-        if (durationInPeriods == 0) {
-            revert CreditAgent_LoanDurationZero();
-        }
-        if (loanAmount == 0) {
-            revert CreditAgent_LoanAmountZero();
-        }
-        // some validation for the arguments
-        loanAmount.toUint64();
-        loanAddon.toUint64();
-        durationInPeriods.toUint32();
-
-        _createCreditRequest(
-            txId,
-            borrower,
-            loanAmount,
-            ILendingMarket.takeLoanFor.selector,
-            ILendingMarket.revokeLoan.selector,
-            abi.encode(borrower, programId.toUint32(), loanAmount, loanAddon, durationInPeriods)
-        );
-    }
-
-    /**
-     * @inheritdoc ICreditAgentPrimary
-     *
-     * @dev Requirements:
-     *
-     * - The contract must not be paused.
-     * - The caller must have the {MANAGER_ROLE} role.
-     * - The contract must be configured.
-     * - The provided `txId` must not be used for any other credit.
-     * - The provided `txId`, `borrower`, `programId` must not be zeros.
-     * - The provided `durationsInPeriods`, `borrowAmounts`, `addonAmounts` arrays must have the same length.
-     * - The provided `durationsInPeriods` and `borrowAmounts` arrays must contain only non-zero values.
-     * - The credit with the provided `txId` must have the `Nonexistent` or `Reversed` status.
-     */
-    function initiateInstallmentCredit(
-        bytes32 txId, // Tools: prevent Prettier one-liner
-        address borrower,
-        uint256 programId,
-        uint256[] calldata durationsInPeriods,
-        uint256[] calldata borrowAmounts,
-        uint256[] calldata addonAmounts
-    ) external whenNotPaused onlyRole(MANAGER_ROLE) {
-        CreditAgentStorage storage $ = _getCreditAgentStorage();
-
-        if (!$.agentState.configured) {
-            revert CreditAgent_ContractNotConfigured();
-        }
-        if (txId == bytes32(0)) {
-            revert CreditAgent_TxIdZero();
-        }
-        if (borrower == address(0)) {
-            revert CreditAgent_BorrowerAddressZero();
-        }
-        if (programId == 0) {
-            revert CreditAgent_ProgramIdZero();
-        }
-        if (
-            durationsInPeriods.length == 0 ||
-            durationsInPeriods.length != borrowAmounts.length ||
-            durationsInPeriods.length != addonAmounts.length
-        ) {
-            revert CreditAgent_InputArraysInvalid();
-        }
-        for (uint256 i = 0; i < borrowAmounts.length; i++) {
-            if (durationsInPeriods[i] == 0) {
-                revert CreditAgent_LoanDurationZero();
-            }
-            if (borrowAmounts[i] == 0) {
-                revert CreditAgent_LoanAmountZero();
-            }
-            borrowAmounts[i].toUint64();
-            addonAmounts[i].toUint64();
-            durationsInPeriods[i].toUint32();
-        }
-
-        _createCreditRequest(
-            txId,
-            borrower,
-            _sumArray(borrowAmounts),
-            ILendingMarket.takeInstallmentLoanFor.selector,
-            ILendingMarket.revokeInstallmentLoan.selector,
-            abi.encode(borrower, programId.toUint32(), borrowAmounts, addonAmounts, durationsInPeriods)
-        );
-    }
-
-    /**
-     * @inheritdoc ICreditAgentPrimary
-     *
-     * @dev Requirements:
-     *
-     * - The contract must not be paused.
-     * - The caller must have the {MANAGER_ROLE} role.
-     * - The provided `txId` must not be zero.
-     * - The credit with the provided `txId` must have the `Initiated` status.
-     */
-    function revokeCredit(bytes32 txId) external whenNotPaused onlyRole(MANAGER_ROLE) {
-        _removeCreditRequest(txId);
-    }
-
-    /**
-     * @inheritdoc ICreditAgentPrimary
-     *
-     * @dev Requirements:
-     *
-     * - The contract must not be paused.
-     * - The caller must have the {MANAGER_ROLE} role.
-     * - The provided `txId` must not be zero.
-     * - The credit with the provided `txId` must have the `Initiated` status.
-     */
-    function revokeInstallmentCredit(bytes32 txId) external whenNotPaused onlyRole(MANAGER_ROLE) {
-        _removeCreditRequest(txId);
     }
 
     /**
@@ -357,63 +213,9 @@ contract CreditAgent is
     /**
      * @inheritdoc ICreditAgentConfiguration
      */
-    function lendingMarket() external view returns (address) {
+    function lendingMarket() public view returns (address) {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
         return $.lendingMarket;
-    }
-
-    /**
-     * @inheritdoc ICreditAgentPrimary
-     */
-    function getCredit(bytes32 txId) external view returns (Credit memory result) {
-        CreditAgentStorage storage $ = _getCreditAgentStorage();
-        CreditRequest storage creditRequest = $.creditRequests[txId];
-        if (creditRequest.takeLoanData.length != 0) {
-            (
-                address borrower,
-                uint256 programId,
-                uint256 loanAmount,
-                uint256 loanAddon,
-                uint256 durationInPeriods
-            ) = abi.decode(creditRequest.takeLoanData, (address, uint32, uint256, uint256, uint256));
-            result = Credit(
-                borrower,
-                programId,
-                durationInPeriods,
-                creditRequest.status,
-                loanAmount,
-                loanAddon,
-                creditRequest.loanId
-            );
-        }
-        // else empty object
-    }
-
-    /**
-     * @inheritdoc ICreditAgentPrimary
-     */
-    function getInstallmentCredit(bytes32 txId) external view returns (InstallmentCredit memory result) {
-        CreditAgentStorage storage $ = _getCreditAgentStorage();
-        CreditRequest storage creditRequest = $.creditRequests[txId];
-        if (creditRequest.takeLoanData.length != 0) {
-            (
-                address borrower,
-                uint256 programId,
-                uint256[] memory borrowAmounts,
-                uint256[] memory addonAmounts,
-                uint256[] memory durationsInPeriods
-            ) = abi.decode(creditRequest.takeLoanData, (address, uint256, uint256[], uint256[], uint256[]));
-            result = InstallmentCredit(
-                borrower,
-                programId,
-                creditRequest.status,
-                durationsInPeriods,
-                borrowAmounts,
-                addonAmounts,
-                creditRequest.loanId
-            );
-        }
-        // else empty object
     }
 
     /**
@@ -442,6 +244,19 @@ contract CreditAgent is
         bytes memory takeLoanData
     ) internal {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
+
+        if (account == address(0)) {
+            revert CreditAgent_AccountAddressZero();
+        }
+
+        if (!$.agentState.configured) {
+            revert CreditAgent_ContractNotConfigured();
+        }
+
+        if (txId == bytes32(0)) {
+            revert CreditAgent_TxIdZero();
+        }
+
         CreditRequest storage creditRequest = $.creditRequests[txId];
 
         CreditRequestStatus oldStatus = creditRequest.status;
@@ -564,46 +379,6 @@ contract CreditAgent is
         }
 
         revert CreditAgent_FailedToProcessCashOutReversalAfter(txId);
-    }
-
-    /// @dev Calculates the sum of all elements in a memory array.
-    /// @param values Array of amounts to sum.
-    /// @return The total sum of all array elements.
-    function _sumArray(uint256[] memory values) internal pure returns (uint256) {
-        uint256 len = values.length;
-        uint256 sum = 0;
-        for (uint256 i = 0; i < len; ++i) {
-            sum += values[i];
-        }
-        return sum;
-    }
-
-    /**
-     * @dev Converts an array of uint64 values to an array of uint256 values.
-     * @param values The array of uint64 values to convert.
-     * @return The array of uint256 values.
-     */
-    function _toUint256Array(uint64[] storage values) internal view returns (uint256[] memory) {
-        uint256 len = values.length;
-        uint256[] memory result = new uint256[](len);
-        for (uint256 i = 0; i < len; ++i) {
-            result[i] = uint256(values[i]);
-        }
-        return result;
-    }
-
-    /**
-     * @dev Converts an array of uint32 values to an array of uint256 values.
-     * @param values The array of uint32 values to convert.
-     * @return The array of uint256 values.
-     */
-    function _toUint256Array(uint32[] storage values) internal view returns (uint256[] memory) {
-        uint256 len = values.length;
-        uint256[] memory result = new uint256[](len);
-        for (uint256 i = 0; i < len; ++i) {
-            result[i] = uint256(values[i]);
-        }
-        return result;
     }
 
     /**
