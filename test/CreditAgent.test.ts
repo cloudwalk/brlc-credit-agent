@@ -210,7 +210,6 @@ describe("Contract 'CreditAgent'", async () => {
   const ERROR_NAME_LOAN_DURATION_ZERO = "CreditAgent_LoanDurationZero";
   const ERROR_NAME_PROGRAM_ID_ZERO = "CreditAgent_ProgramIdZero";
   const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCast_OverflowedUintDowncast";
-  const ERROR_NAME_TX_ID_ALREADY_USED = "CreditAgent_TxIdAlreadyUsed";
   const ERROR_NAME_TX_ID_ZERO = "CreditAgent_TxIdZero";
 
   let creditAgentFactory: ContractFactory;
@@ -840,14 +839,6 @@ describe("Contract 'CreditAgent'", async () => {
         await expect(initiateCredit(creditAgent, { credit }))
           .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST)
           .withArgs(64, credit.loanAddon);
-      });
-
-      // TODO: remove that error
-      xit("The 'txId' argument is already used for an installment credit", async () => {
-        const { fixture, txId } = await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
-        const credit = defineCredit();
-        await expect(initiateCredit(fixture.creditAgent, { txId, credit }))
-          .to.be.revertedWithCustomError(fixture.creditAgent, ERROR_NAME_TX_ID_ALREADY_USED);
       });
 
       // Additional more complex checks are in the other sections
