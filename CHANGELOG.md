@@ -9,7 +9,7 @@
   - `CreditAgent_InputArraysInvalid`
   - `CreditAgent_ProgramIdZero`
 - Added `CreditAgent_LendingMarketNotContract` error for validate lendingMarking contract.
-
+- Initialize request from reversed state emits correct `CreditRequestStatusChanged.oldStatus` = `Reversed` value
 ## Technical changes
 
 - Solc updated to 0.8.28 and evmVersion to cancun. IR compilation enabled.
