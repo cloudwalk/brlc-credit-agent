@@ -109,10 +109,12 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
      * @param newStatus The current status of the credit.
      * @param oldStatus The previous status of the credit.
      * @param totalBorrowAmount The total amount of all installments.
+     * @param loanId The unique ID of the related loan on the lending market or zero if not taken.
      */
     event CreditRequestStatusChanged(
         bytes32 indexed txId,
         address indexed account,
+        uint256 indexed loanId,
         CreditRequestStatus newStatus,
         CreditRequestStatus oldStatus,
         uint256 totalBorrowAmount

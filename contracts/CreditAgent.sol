@@ -276,6 +276,7 @@ abstract contract CreditAgent is
         emit CreditRequestStatusChanged(
             txId,
             account,
+            0,
             CreditRequestStatus.Initiated, // newStatus
             oldStatus,
             cashOutAmount
@@ -304,6 +305,7 @@ abstract contract CreditAgent is
         emit CreditRequestStatusChanged(
             txId,
             creditRequest.account,
+            creditRequest.loanId,
             CreditRequestStatus.Nonexistent,
             oldStatus,
             creditRequest.cashOutAmount
@@ -437,6 +439,7 @@ abstract contract CreditAgent is
         emit CreditRequestStatusChanged(
             txId,
             creditRequest.account,
+            loanId,
             CreditRequestStatus.Pending, // newStatus
             CreditRequestStatus.Initiated, // oldStatus
             creditRequest.cashOutAmount
@@ -472,6 +475,7 @@ abstract contract CreditAgent is
         emit CreditRequestStatusChanged(
             txId,
             creditRequest.account,
+            creditRequest.loanId,
             CreditRequestStatus.Confirmed, // newStatus
             CreditRequestStatus.Pending, // oldStatus
             creditRequest.cashOutAmount
@@ -511,6 +515,7 @@ abstract contract CreditAgent is
         emit CreditRequestStatusChanged(
             txId,
             creditRequest.account,
+            creditRequest.loanId,
             CreditRequestStatus.Reversed, // newStatus
             CreditRequestStatus.Pending, // oldStatus
             creditRequest.cashOutAmount
