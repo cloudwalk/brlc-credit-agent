@@ -114,7 +114,7 @@ abstract contract CreditAgent is
      *
      * See details: https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable
      */
-    function initialize() external virtual initializer {
+    function initialize() external initializer {
         __AccessControlExt_init_unchained();
         __PausableExt_init_unchained();
         __Rescuable_init_unchained();
@@ -173,7 +173,7 @@ abstract contract CreditAgent is
         if (oldLendingMarket == newLendingMarket) {
             revert CreditAgent_AlreadyConfigured();
         }
-        // TODO: check for code length
+
         $.lendingMarket = newLendingMarket;
         _updateConfiguredState();
 
