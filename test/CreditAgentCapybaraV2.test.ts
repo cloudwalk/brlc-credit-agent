@@ -7,7 +7,7 @@ import { checkContractUupsUpgrading, connect, getAddress, proveTx } from "../tes
 
 const ADDRESS_ZERO = ethers.ZeroAddress;
 
-enum CreditStatus {
+enum CreditRequestStatus {
   Nonexistent = 0,
   Initiated = 1,
   Pending = 2,
@@ -26,26 +26,20 @@ interface Credit {
   borrower: string;
   programId: number;
   durationInPeriods: number;
-  status: CreditStatus;
+  status: CreditRequestStatus;
   loanAmount: bigint;
   loanAddon: bigint;
   loanId: bigint;
-
-  // Indexing signature to ensure that fields are iterated over in a key-value style
-  [key: string]: bigint | string | number;
 }
 
 interface InstallmentCredit {
   borrower: string;
   programId: number;
-  status: CreditStatus;
+  status: CreditRequestStatus;
   durationsInPeriods: number[];
   borrowAmounts: bigint[];
   addonAmounts: bigint[];
   firstInstallmentId: bigint;
-
-  // Indexing signature to ensure that fields are iterated over in a key-value style
-  [key: string]: bigint | string | number | number[] | bigint[];
 }
 
 interface Fixture {
@@ -84,7 +78,7 @@ const initialCredit: Credit = {
   borrower: ADDRESS_ZERO,
   programId: 0,
   durationInPeriods: 0,
-  status: CreditStatus.Nonexistent,
+  status: CreditRequestStatus.Nonexistent,
   loanAmount: 0n,
   loanAddon: 0n,
   loanId: 0n,
@@ -93,7 +87,7 @@ const initialCredit: Credit = {
 const initialInstallmentCredit: InstallmentCredit = {
   borrower: ADDRESS_ZERO,
   programId: 0,
-  status: CreditStatus.Nonexistent,
+  status: CreditRequestStatus.Nonexistent,
   durationsInPeriods: [],
   borrowAmounts: [],
   addonAmounts: [],
@@ -170,8 +164,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
 
   // Events of the contracts under test
   const EVENT_NAME_CASHIER_CHANGED = "CashierChanged";
-  const EVENT_NAME_CREDIT_STATUS_CHANGED = "CreditStatusChanged";
-  const EVENT_NAME_INSTALLMENT_CREDIT_STATUS_CHANGED = "InstallmentCreditStatusChanged";
+  const EVENT_NAME_CREDIT_REQUEST_STATUS_CHANGED = "CreditRequestStatusChanged";
   const EVENT_NAME_LENDING_MARKET_CHANGED = "LendingMarketChanged";
   const EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED = "MockConfigureCashOutHooksCalled";
   const EVENT_NAME_MOCK_REVOKE_INSTALLMENT_LOAN_CALLED = "MockRevokeInstallmentLoanCalled";
@@ -186,22 +179,22 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
 
   // Errors of the contracts under test
   const ERROR_NAME_ALREADY_CONFIGURED = "CreditAgent_AlreadyConfigured";
-  const ERROR_NAME_BORROWER_ADDRESS_ZERO = "CreditAgent_BorrowerAddressZero";
+  const ERROR_NAME_ACCOUNT_ADDRESS_ZERO = "CreditAgent_AccountAddressZero";
   const ERROR_NAME_CASH_OUT_PARAMETERS_INAPPROPRIATE = "CreditAgent_CashOutParametersInappropriate";
   const ERROR_NAME_CASHIER_HOOK_CALLER_UNAUTHORIZED = "CreditAgent_CashierHookCallerUnauthorized";
   const ERROR_NAME_CASHIER_HOOK_INDEX_UNEXPECTED = "CreditAgent_CashierHookIndexUnexpected";
   const ERROR_NAME_CONFIGURING_PROHIBITED = "CreditAgent_ConfiguringProhibited";
   const ERROR_NAME_CONTRACT_NOT_CONFIGURED = "CreditAgent_ContractNotConfigured";
-  const ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE = "CreditAgent_CreditStatusInappropriate";
+  const ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE = "CreditAgent_CreditRequestStatusInappropriate";
   const ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_CONFIRMATION_AFTER =
     "CreditAgent_FailedToProcessCashOutConfirmationAfter";
   const ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_REQUEST_BEFORE = "CreditAgent_FailedToProcessCashOutRequestBefore";
   const ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_REVERSAL_AFTER = "CreditAgent_FailedToProcessCashOutReversalAfter";
   const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "CreditAgent_ImplementationAddressInvalid";
-  const ERROR_NAME_INPUT_ARRAYS_INVALID = "CreditAgent_InputArraysInvalid";
-  const ERROR_NAME_LOAN_AMOUNT_ZERO = "CreditAgent_LoanAmountZero";
-  const ERROR_NAME_LOAN_DURATION_ZERO = "CreditAgent_LoanDurationZero";
-  const ERROR_NAME_PROGRAM_ID_ZERO = "CreditAgent_ProgramIdZero";
+  const ERROR_NAME_INPUT_ARRAYS_INVALID = "CreditAgentCapybaraV1_InputArraysInvalid";
+  const ERROR_NAME_LOAN_AMOUNT_ZERO = "CreditAgentCapybaraV1_LoanAmountZero";
+  const ERROR_NAME_LOAN_DURATION_ZERO = "CreditAgentCapybaraV1_LoanDurationZero";
+  const ERROR_NAME_PROGRAM_ID_ZERO = "CreditAgentCapybaraV1_ProgramIdZero";
   const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCast_OverflowedUintDowncast";
   const ERROR_NAME_TX_ID_ZERO = "CreditAgent_TxIdZero";
 
@@ -298,7 +291,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       borrower: props.borrower ?? borrower.address,
       programId: props.programId ?? LOAN_PROGRAM_ID_STUB,
       durationInPeriods: props.durationInPeriods ?? LOAN_DURATION_IN_SECONDS_STUB,
-      status: props.status ?? CreditStatus.Nonexistent,
+      status: props.status ?? CreditRequestStatus.Nonexistent,
       loanAmount: props.loanAmount ?? LOAN_AMOUNT_STUB,
       loanAddon: props.loanAddon ?? LOAN_ADDON_STUB,
       loanId: props.loanId ?? 0n,
@@ -327,26 +320,25 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
     tx: Promise<TransactionResponse>;
     txId: string;
     credit: Credit;
+    fromReversed?: boolean;
   }) {
     const { creditAgent, cashierMock } = fixture;
     const { tx, txId, credit } = props;
-    await expect(tx).to.emit(creditAgent, EVENT_NAME_CREDIT_STATUS_CHANGED).withArgs(
+
+    await expect(tx).to.emit(creditAgent, EVENT_NAME_CREDIT_REQUEST_STATUS_CHANGED).withArgs(
       txId,
       credit.borrower,
-      CreditStatus.Initiated, // newStatus
-      CreditStatus.Nonexistent, // oldStatus
-      credit.loanId,
-      credit.programId,
-      credit.durationInPeriods,
+      0n,
+      CreditRequestStatus.Initiated, // newStatus
+      props.fromReversed ? CreditRequestStatus.Reversed : CreditRequestStatus.Nonexistent, // oldStatus
       credit.loanAmount,
-      credit.loanAddon,
     );
     await expect(tx).to.emit(cashierMock, EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED).withArgs(
       txId,
       getAddress(creditAgent), // newCallableContract
       NEEDED_CASHIER_CASH_OUT_HOOK_FLAGS, // newHookFlags
     );
-    credit.status = CreditStatus.Initiated;
+    credit.status = CreditRequestStatus.Initiated;
     checkEquality(await creditAgent.getCredit(txId) as Credit, credit);
   }
 
@@ -377,7 +369,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       ...initialInstallmentCredit,
       borrower: props.borrower ?? borrower.address,
       programId: props.programId ?? LOAN_PROGRAM_ID_STUB,
-      status: props.status ?? CreditStatus.Nonexistent,
+      status: props.status ?? CreditRequestStatus.Nonexistent,
       durationsInPeriods: props.durationsInPeriods ?? [10, 20],
       borrowAmounts: props.borrowAmounts ?? [BigInt(1000), BigInt(2000)],
       addonAmounts: props.addonAmounts ?? [BigInt(100), BigInt(200)],
@@ -410,27 +402,24 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
     tx: Promise<TransactionResponse>;
     txId: string;
     credit: InstallmentCredit;
+    fromReversed?: boolean;
   }) {
     const { creditAgent, cashierMock } = fixture;
     const { tx, txId, credit } = props;
-    await expect(tx).to.emit(creditAgent, EVENT_NAME_INSTALLMENT_CREDIT_STATUS_CHANGED).withArgs(
+    await expect(tx).to.emit(creditAgent, EVENT_NAME_CREDIT_REQUEST_STATUS_CHANGED).withArgs(
       txId,
       credit.borrower,
-      CreditStatus.Initiated, // newStatus
-      CreditStatus.Nonexistent, // oldStatus
-      credit.firstInstallmentId,
-      credit.programId,
-      credit.durationsInPeriods[credit.durationsInPeriods.length - 1],
+      0n,
+      CreditRequestStatus.Initiated, // newStatus
+      props.fromReversed ? CreditRequestStatus.Reversed : CreditRequestStatus.Nonexistent, // oldStatus
       _sumArray(credit.borrowAmounts),
-      _sumArray(credit.addonAmounts),
-      credit.durationsInPeriods.length,
     );
     await expect(tx).to.emit(cashierMock, EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED).withArgs(
       txId,
       getAddress(creditAgent), // newCallableContract
       NEEDED_CASHIER_CASH_OUT_HOOK_FLAGS, // newHookFlags
     );
-    credit.status = CreditStatus.Initiated;
+    credit.status = CreditRequestStatus.Initiated;
     checkEquality(await creditAgent.getInstallmentCredit(txId) as InstallmentCredit, credit);
   }
 
@@ -764,7 +753,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
         const credit = defineCredit({ borrower: ADDRESS_ZERO });
 
         await expect(initiateCredit(creditAgent, { credit }))
-          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_BORROWER_ADDRESS_ZERO);
+          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ACCOUNT_ADDRESS_ZERO);
       });
 
       it("The provided program ID is zero", async () => {
@@ -798,8 +787,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
         await proveTx(initiateCredit(creditAgent, { txId, credit }));
 
         await expect(initiateCredit(creditAgent, { txId, credit }))
-          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE)
-          .withArgs(txId, CreditStatus.Initiated);
+          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+          .withArgs(txId, CreditRequestStatus.Initiated);
       });
 
       it("The 'programId' argument is greater than unsigned 32-bit integer", async () => {
@@ -846,16 +835,13 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       await proveTx(initiateCredit(creditAgent, { txId }));
 
       const tx = connect(creditAgent, manager).revokeCredit(txId);
-      await expect(tx).to.emit(creditAgent, EVENT_NAME_CREDIT_STATUS_CHANGED).withArgs(
+      await expect(tx).to.emit(creditAgent, EVENT_NAME_CREDIT_REQUEST_STATUS_CHANGED).withArgs(
         txId,
         credit.borrower,
-        CreditStatus.Nonexistent, // newStatus
-        CreditStatus.Initiated, // oldStatus
-        credit.loanId,
-        credit.programId,
-        credit.durationInPeriods,
+        0n,
+        CreditRequestStatus.Nonexistent, // newStatus
+        CreditRequestStatus.Initiated, // oldStatus
         credit.loanAmount,
-        credit.loanAddon,
       );
       await expect(tx).to.emit(cashierMock, EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED).withArgs(
         txId,
@@ -892,8 +878,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
 
       await expect(connect(creditAgent, manager).revokeCredit(TX_ID_STUB))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE)
-        .withArgs(TX_ID_STUB, CreditStatus.Nonexistent);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+        .withArgs(TX_ID_STUB, CreditRequestStatus.Nonexistent);
     });
 
     // Additional more complex checks are in the other sections
@@ -904,8 +890,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       txId: string;
       credit: Credit;
       hookIndex: HookIndex;
-      newCreditStatus: CreditStatus;
-      oldCreditStatus: CreditStatus;
+      newCreditStatus: CreditRequestStatus;
+      oldCreditStatus: CreditRequestStatus;
     }) {
       const { creditAgent, cashierMock, lendingMarketMock } = fixture;
       const { credit, txId, hookIndex, newCreditStatus, oldCreditStatus } = props;
@@ -915,18 +901,15 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       credit.status = newCreditStatus;
 
       if (oldCreditStatus !== newCreditStatus) {
-        await expect(tx).to.emit(creditAgent, EVENT_NAME_CREDIT_STATUS_CHANGED).withArgs(
+        await expect(tx).to.emit(creditAgent, EVENT_NAME_CREDIT_REQUEST_STATUS_CHANGED).withArgs(
           txId,
           credit.borrower,
+          credit.loanId,
           newCreditStatus,
           oldCreditStatus,
-          credit.loanId,
-          credit.programId,
-          credit.durationInPeriods,
           credit.loanAmount,
-          credit.loanAddon,
         );
-        if (newCreditStatus == CreditStatus.Pending) {
+        if (newCreditStatus == CreditRequestStatus.Pending) {
           await expect(tx).to.emit(lendingMarketMock, EVENT_NAME_MOCK_TAKE_LOAN_FOR_CALLED).withArgs(
             credit.borrower,
             credit.programId,
@@ -938,13 +921,13 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
           await expect(tx).not.to.emit(lendingMarketMock, EVENT_NAME_MOCK_TAKE_LOAN_FOR_CALLED);
         }
 
-        if (newCreditStatus == CreditStatus.Reversed) {
+        if (newCreditStatus == CreditRequestStatus.Reversed) {
           await expect(tx).to.emit(lendingMarketMock, EVENT_NAME_MOCK_REVOKE_LOAN_CALLED).withArgs(credit.loanId);
         } else {
           await expect(tx).not.to.emit(lendingMarketMock, EVENT_NAME_MOCK_REVOKE_LOAN_CALLED);
         }
       } else {
-        await expect(tx).not.to.emit(creditAgent, EVENT_NAME_CREDIT_STATUS_CHANGED);
+        await expect(tx).not.to.emit(creditAgent, EVENT_NAME_CREDIT_REQUEST_STATUS_CHANGED);
       }
 
       checkEquality(await creditAgent.getCredit(txId) as Credit, credit);
@@ -968,8 +951,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
             txId,
             credit,
             hookIndex: HookIndex.CashOutRequestBefore,
-            newCreditStatus: CreditStatus.Pending,
-            oldCreditStatus: CreditStatus.Initiated,
+            newCreditStatus: CreditRequestStatus.Pending,
+            oldCreditStatus: CreditRequestStatus.Initiated,
           },
         );
         expectedAgentState.initiatedRequestCounter = 0n;
@@ -983,8 +966,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
             txId,
             credit,
             hookIndex: HookIndex.CashOutConfirmationAfter,
-            newCreditStatus: CreditStatus.Confirmed,
-            oldCreditStatus: CreditStatus.Pending,
+            newCreditStatus: CreditRequestStatus.Confirmed,
+            oldCreditStatus: CreditRequestStatus.Pending,
           },
         );
         expectedAgentState.pendingRequestCounter = 0n;
@@ -1002,8 +985,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
             txId,
             credit,
             hookIndex: HookIndex.CashOutRequestBefore,
-            newCreditStatus: CreditStatus.Pending,
-            oldCreditStatus: CreditStatus.Initiated,
+            newCreditStatus: CreditRequestStatus.Pending,
+            oldCreditStatus: CreditRequestStatus.Initiated,
           },
         );
         const expectedAgentState: AgentState = {
@@ -1020,8 +1003,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
             txId,
             credit,
             hookIndex: HookIndex.CashOutReversalAfter,
-            newCreditStatus: CreditStatus.Reversed,
-            oldCreditStatus: CreditStatus.Pending,
+            newCreditStatus: CreditRequestStatus.Reversed,
+            oldCreditStatus: CreditRequestStatus.Pending,
           },
         );
         expectedAgentState.pendingRequestCounter = 0n;
@@ -1033,12 +1016,12 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       async function checkCashierHookInappropriateStatusError(fixture: Fixture, props: {
         txId: string;
         hookIndex: HookIndex;
-        creditStatus: CreditStatus;
+        creditStatus: CreditRequestStatus;
       }) {
         const { creditAgent, cashierMock } = fixture;
         const { txId, hookIndex, creditStatus } = props;
         await expect(cashierMock.callCashierHook(getAddress(creditAgent), hookIndex, TX_ID_STUB))
-          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE)
+          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
           .withArgs(txId, creditStatus);
       }
 
@@ -1069,12 +1052,12 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutConfirmationAfter,
-          creditStatus: CreditStatus.Initiated,
+          creditStatus: CreditRequestStatus.Initiated,
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutReversalAfter,
-          creditStatus: CreditStatus.Initiated,
+          creditStatus: CreditRequestStatus.Initiated,
         });
 
         // Try for a credit with the pending status
@@ -1082,7 +1065,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutRequestBefore,
-          creditStatus: CreditStatus.Pending,
+          creditStatus: CreditRequestStatus.Pending,
         });
 
         // Try for a credit with the confirmed status
@@ -1092,17 +1075,17 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutRequestBefore,
-          creditStatus: CreditStatus.Confirmed,
+          creditStatus: CreditRequestStatus.Confirmed,
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutConfirmationAfter,
-          creditStatus: CreditStatus.Confirmed,
+          creditStatus: CreditRequestStatus.Confirmed,
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutReversalAfter,
-          creditStatus: CreditStatus.Confirmed,
+          creditStatus: CreditRequestStatus.Confirmed,
         });
       });
 
@@ -1116,17 +1099,17 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutRequestBefore,
-          creditStatus: CreditStatus.Reversed,
+          creditStatus: CreditRequestStatus.Reversed,
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutConfirmationAfter,
-          creditStatus: CreditStatus.Reversed,
+          creditStatus: CreditRequestStatus.Reversed,
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutReversalAfter,
-          creditStatus: CreditStatus.Reversed,
+          creditStatus: CreditRequestStatus.Reversed,
         });
       });
 
@@ -1201,7 +1184,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutReversalAfter, txId));
 
       const tx = initiateCredit(creditAgent, { txId, credit });
-      await checkCreditInitiation(fixture, { tx, txId, credit });
+      await checkCreditInitiation(fixture, { tx, txId, credit, fromReversed: true });
       const expectedAgentState: AgentState = {
         ...initialAgentState,
         initiatedRequestCounter: 1n,
@@ -1219,16 +1202,16 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       // Try for a credit with the pending status
       await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId));
       await expect(initiateCredit(creditAgent, { txId, credit }))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE)
-        .withArgs(txId, CreditStatus.Pending);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+        .withArgs(txId, CreditRequestStatus.Pending);
 
       // Try for a credit with the confirmed status
       await proveTx(
         cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutConfirmationAfter, txId),
       );
       await expect(initiateCredit(creditAgent, { txId, credit }))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE)
-        .withArgs(txId, CreditStatus.Confirmed);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+        .withArgs(txId, CreditRequestStatus.Confirmed);
     });
 
     it("A credit with any status except initiated cannot be revoked", async () => {
@@ -1239,14 +1222,14 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       // Try for a credit with the pending status
       await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId));
       await expect(connect(creditAgent, manager).revokeCredit(txId))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE)
-        .withArgs(txId, CreditStatus.Pending);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+        .withArgs(txId, CreditRequestStatus.Pending);
 
       // Try for a credit with the reversed status
       await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutReversalAfter, txId));
       await expect(connect(creditAgent, manager).revokeCredit(txId))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE)
-        .withArgs(txId, CreditStatus.Reversed);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+        .withArgs(txId, CreditRequestStatus.Reversed);
 
       // Try for a credit with the confirmed status
       await proveTx(initiateCredit(creditAgent, { txId, credit }));
@@ -1255,8 +1238,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
         cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutConfirmationAfter, txId),
       );
       await expect(connect(creditAgent, manager).revokeCredit(txId))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE)
-        .withArgs(txId, CreditStatus.Confirmed);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+        .withArgs(txId, CreditRequestStatus.Confirmed);
     });
 
     it("Configuring is prohibited when not all credits are processed", async () => {
@@ -1371,7 +1354,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
         const credit = defineInstallmentCredit({ borrower: ADDRESS_ZERO });
 
         await expect(initiateInstallmentCredit(creditAgent, { credit }))
-          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_BORROWER_ADDRESS_ZERO);
+          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ACCOUNT_ADDRESS_ZERO);
       });
 
       it("The provided program ID is zero", async () => {
@@ -1405,8 +1388,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
         await proveTx(initiateInstallmentCredit(creditAgent, { txId, credit }));
 
         await expect(initiateInstallmentCredit(creditAgent, { txId, credit }))
-          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE)
-          .withArgs(txId, CreditStatus.Initiated);
+          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+          .withArgs(txId, CreditRequestStatus.Initiated);
       });
 
       it("The 'programId' argument is greater than unsigned 32-bit integer", async () => {
@@ -1496,17 +1479,13 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       await proveTx(initiateInstallmentCredit(creditAgent, { txId, credit }));
 
       const tx = connect(creditAgent, manager).revokeInstallmentCredit(txId);
-      await expect(tx).to.emit(creditAgent, EVENT_NAME_INSTALLMENT_CREDIT_STATUS_CHANGED).withArgs(
+      await expect(tx).to.emit(creditAgent, EVENT_NAME_CREDIT_REQUEST_STATUS_CHANGED).withArgs(
         txId,
         credit.borrower,
-        CreditStatus.Nonexistent, // newStatus
-        CreditStatus.Initiated, // oldStatus
         credit.firstInstallmentId,
-        credit.programId,
-        credit.durationsInPeriods[credit.durationsInPeriods.length - 1],
+        CreditRequestStatus.Nonexistent, // newStatus
+        CreditRequestStatus.Initiated, // oldStatus
         _sumArray(credit.borrowAmounts),
-        _sumArray(credit.addonAmounts),
-        credit.durationsInPeriods.length,
       );
       await expect(tx).to.emit(cashierMock, EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED).withArgs(
         txId,
@@ -1543,8 +1522,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
 
       await expect(connect(creditAgent, manager).revokeInstallmentCredit(TX_ID_STUB_INSTALLMENT))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE)
-        .withArgs(TX_ID_STUB_INSTALLMENT, CreditStatus.Nonexistent);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+        .withArgs(TX_ID_STUB_INSTALLMENT, CreditRequestStatus.Nonexistent);
     });
 
     // Additional more complex checks are in the other sections
@@ -1555,8 +1534,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       txId: string;
       credit: InstallmentCredit;
       hookIndex: HookIndex;
-      newCreditStatus: CreditStatus;
-      oldCreditStatus: CreditStatus;
+      newCreditStatus: CreditRequestStatus;
+      oldCreditStatus: CreditRequestStatus;
     }) {
       const { creditAgent, cashierMock, lendingMarketMock } = fixture;
       const { credit, txId, hookIndex, newCreditStatus, oldCreditStatus } = props;
@@ -1566,19 +1545,15 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       credit.status = newCreditStatus;
 
       if (oldCreditStatus !== newCreditStatus) {
-        await expect(tx).to.emit(creditAgent, EVENT_NAME_INSTALLMENT_CREDIT_STATUS_CHANGED).withArgs(
+        await expect(tx).to.emit(creditAgent, EVENT_NAME_CREDIT_REQUEST_STATUS_CHANGED).withArgs(
           txId,
           credit.borrower,
+          credit.firstInstallmentId,
           newCreditStatus,
           oldCreditStatus,
-          credit.firstInstallmentId,
-          credit.programId,
-          credit.durationsInPeriods[credit.durationsInPeriods.length - 1],
           _sumArray(credit.borrowAmounts),
-          _sumArray(credit.addonAmounts),
-          credit.durationsInPeriods.length,
         );
-        if (newCreditStatus == CreditStatus.Pending) {
+        if (newCreditStatus == CreditRequestStatus.Pending) {
           await expect(tx).to.emit(lendingMarketMock, EVENT_NAME_MOCK_TAKE_INSTALLMENT_LOAN_FOR_CALLED).withArgs(
             credit.borrower,
             credit.programId,
@@ -1590,7 +1565,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
           await expect(tx).not.to.emit(lendingMarketMock, EVENT_NAME_MOCK_TAKE_INSTALLMENT_LOAN_FOR_CALLED);
         }
 
-        if (newCreditStatus == CreditStatus.Reversed) {
+        if (newCreditStatus == CreditRequestStatus.Reversed) {
           await expect(tx)
             .to.emit(lendingMarketMock, EVENT_NAME_MOCK_REVOKE_INSTALLMENT_LOAN_CALLED)
             .withArgs(credit.firstInstallmentId);
@@ -1598,7 +1573,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
           await expect(tx).not.to.emit(lendingMarketMock, EVENT_NAME_MOCK_REVOKE_INSTALLMENT_LOAN_CALLED);
         }
       } else {
-        await expect(tx).not.to.emit(creditAgent, EVENT_NAME_INSTALLMENT_CREDIT_STATUS_CHANGED);
+        await expect(tx).not.to.emit(creditAgent, EVENT_NAME_CREDIT_REQUEST_STATUS_CHANGED);
       }
 
       checkEquality(await creditAgent.getInstallmentCredit(txId) as InstallmentCredit, credit);
@@ -1626,8 +1601,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
             txId,
             credit,
             hookIndex: HookIndex.CashOutRequestBefore,
-            newCreditStatus: CreditStatus.Pending,
-            oldCreditStatus: CreditStatus.Initiated,
+            newCreditStatus: CreditRequestStatus.Pending,
+            oldCreditStatus: CreditRequestStatus.Initiated,
           },
         );
         expectedAgentState.initiatedRequestCounter = 0n;
@@ -1641,8 +1616,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
             txId,
             credit,
             hookIndex: HookIndex.CashOutConfirmationAfter,
-            newCreditStatus: CreditStatus.Confirmed,
-            oldCreditStatus: CreditStatus.Pending,
+            newCreditStatus: CreditRequestStatus.Confirmed,
+            oldCreditStatus: CreditRequestStatus.Pending,
           },
         );
         expectedAgentState.pendingRequestCounter = 0n;
@@ -1664,8 +1639,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
             txId,
             credit,
             hookIndex: HookIndex.CashOutRequestBefore,
-            newCreditStatus: CreditStatus.Pending,
-            oldCreditStatus: CreditStatus.Initiated,
+            newCreditStatus: CreditRequestStatus.Pending,
+            oldCreditStatus: CreditRequestStatus.Initiated,
           },
         );
         const expectedAgentState: AgentState = {
@@ -1682,8 +1657,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
             txId,
             credit,
             hookIndex: HookIndex.CashOutReversalAfter,
-            newCreditStatus: CreditStatus.Reversed,
-            oldCreditStatus: CreditStatus.Pending,
+            newCreditStatus: CreditRequestStatus.Reversed,
+            oldCreditStatus: CreditRequestStatus.Pending,
           },
         );
         expectedAgentState.pendingRequestCounter = 0n;
@@ -1695,12 +1670,12 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       async function checkCashierHookInappropriateStatusError(fixture: Fixture, props: {
         txId: string;
         hookIndex: HookIndex;
-        CreditStatus: CreditStatus;
+        CreditStatus: CreditRequestStatus;
       }) {
         const { creditAgent, cashierMock } = fixture;
         const { txId, hookIndex, CreditStatus } = props;
         await expect(cashierMock.callCashierHook(getAddress(creditAgent), hookIndex, TX_ID_STUB_INSTALLMENT))
-          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE)
+          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
           .withArgs(txId, CreditStatus);
       }
 
@@ -1731,12 +1706,12 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutConfirmationAfter,
-          CreditStatus: CreditStatus.Initiated,
+          CreditStatus: CreditRequestStatus.Initiated,
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutReversalAfter,
-          CreditStatus: CreditStatus.Initiated,
+          CreditStatus: CreditRequestStatus.Initiated,
         });
 
         // Try for a credit with the pending status
@@ -1744,7 +1719,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutRequestBefore,
-          CreditStatus: CreditStatus.Pending,
+          CreditStatus: CreditRequestStatus.Pending,
         });
 
         // Try for a credit with the confirmed status
@@ -1754,17 +1729,17 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutRequestBefore,
-          CreditStatus: CreditStatus.Confirmed,
+          CreditStatus: CreditRequestStatus.Confirmed,
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutConfirmationAfter,
-          CreditStatus: CreditStatus.Confirmed,
+          CreditStatus: CreditRequestStatus.Confirmed,
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutReversalAfter,
-          CreditStatus: CreditStatus.Confirmed,
+          CreditStatus: CreditRequestStatus.Confirmed,
         });
       });
 
@@ -1778,17 +1753,17 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutRequestBefore,
-          CreditStatus: CreditStatus.Reversed,
+          CreditStatus: CreditRequestStatus.Reversed,
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutConfirmationAfter,
-          CreditStatus: CreditStatus.Reversed,
+          CreditStatus: CreditRequestStatus.Reversed,
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutReversalAfter,
-          CreditStatus: CreditStatus.Reversed,
+          CreditStatus: CreditRequestStatus.Reversed,
         });
       });
 
@@ -1879,7 +1854,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutReversalAfter, txId));
 
       const tx = initiateInstallmentCredit(creditAgent, { txId, credit });
-      await checkInstallmentCreditInitiation(fixture, { tx, txId, credit });
+      await checkInstallmentCreditInitiation(fixture, { tx, txId, credit, fromReversed: true });
       const expectedAgentState: AgentState = {
         initiatedRequestCounter: 1n,
         pendingRequestCounter: 0n,
@@ -1900,8 +1875,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       // Try for a credit with the pending status
       await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId));
       await expect(initiateInstallmentCredit(creditAgent, { txId, credit }))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE)
-        .withArgs(txId, CreditStatus.Pending);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+        .withArgs(txId, CreditRequestStatus.Pending);
 
       // confirm => confirmed
       await proveTx(
@@ -1913,8 +1888,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       );
       // try re-initiate => revert with status=Confirmed
       await expect(initiateInstallmentCredit(creditAgent, { txId, credit }))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE)
-        .withArgs(txId, CreditStatus.Confirmed);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+        .withArgs(txId, CreditRequestStatus.Confirmed);
     });
 
     it("A credit with any status except initiated cannot be revoked", async () => {
@@ -1929,14 +1904,14 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       // Try for a credit with the pending status
       await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId));
       await expect(connect(creditAgent, manager).revokeInstallmentCredit(txId))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE)
-        .withArgs(txId, CreditStatus.Pending);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+        .withArgs(txId, CreditRequestStatus.Pending);
 
       // Try for a credit with the reversed status
       await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutReversalAfter, txId));
       await expect(connect(creditAgent, manager).revokeInstallmentCredit(txId))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE)
-        .withArgs(txId, CreditStatus.Reversed);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+        .withArgs(txId, CreditRequestStatus.Reversed);
 
       // Try for a credit with the confirmed status
       await proveTx(initiateInstallmentCredit(creditAgent, { txId, credit }));
@@ -1945,8 +1920,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
         cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutConfirmationAfter, txId),
       );
       await expect(connect(creditAgent, manager).revokeInstallmentCredit(txId))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_STATUS_INAPPROPRIATE)
-        .withArgs(txId, CreditStatus.Confirmed);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+        .withArgs(txId, CreditRequestStatus.Confirmed);
     });
 
     it("Configuring is prohibited when not all credits are processed", async () => {
