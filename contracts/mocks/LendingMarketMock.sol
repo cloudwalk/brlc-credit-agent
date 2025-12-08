@@ -8,6 +8,7 @@ pragma solidity ^0.8.0;
  * @dev A simplified version of a lending market contract to use in tests for other contracts.
  */
 contract LendingMarketMock {
+    bool private _compatible = true;
     // ------------------ Constants ------------------------------- //
 
     /// @dev A constant value to return as a fake loan identifier.
@@ -96,5 +97,13 @@ contract LendingMarketMock {
         emit MockRevokeInstallmentLoanCalled(loanId);
     }
 
-    function proveLendingMarket() external pure {}
+    /// @dev Proves that the contract is a lending market contract if it is compatible state.
+    function proveLendingMarket() external view {
+        require(_compatible);
+    }
+
+    /// @dev Sets the compatible state of the contract.
+    function setCompatible(bool compatible) external {
+        _compatible = compatible;
+    }
 }

@@ -1,9 +1,15 @@
-import { ethers, network, upgrades } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 import { expect } from "chai";
 import { Contract, ContractFactory, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { checkContractUupsUpgrading, connect, getAddress, proveTx } from "../test-utils/eth";
+import { connect, getAddress, proveTx, checkEquality, setUpFixture } from "../test-utils/eth";
+import {
+  AgentState,
+  Fixture,
+  HookIndex,
+  initialAgentState,
+  deployAndConfigureContracts as deployAndConfigureCoreContracts,
+} from "../test-utils/creditAgent";
 
 const ADDRESS_ZERO = ethers.ZeroAddress;
 
@@ -13,13 +19,6 @@ enum CreditRequestStatus {
   Pending = 2,
   Confirmed = 3,
   Reversed = 4,
-}
-
-enum HookIndex {
-  Unused = 1,
-  CashOutRequestBefore = 6,
-  CashOutConfirmationAfter = 9,
-  CashOutReversalAfter = 11,
 }
 
 interface Credit {
@@ -42,37 +41,12 @@ interface InstallmentCredit {
   firstInstallmentId: bigint;
 }
 
-interface Fixture {
-  creditAgent: Contract;
-  cashierMock: Contract;
-  lendingMarketMock: Contract;
-  loanIdStub: bigint;
-}
-
-interface AgentState {
-  configured: boolean;
-  initiatedRequestCounter: bigint;
-  pendingRequestCounter: bigint;
-}
-
 interface CashOut {
   account: string;
   amount: bigint;
   status: number;
   flags: number;
 }
-
-interface Version {
-  major: number;
-  minor: number;
-  patch: number;
-}
-
-const initialAgentState: AgentState = {
-  configured: false,
-  initiatedRequestCounter: 0n,
-  pendingRequestCounter: 0n,
-};
 
 const initialCredit: Credit = {
   borrower: ADDRESS_ZERO,
@@ -101,47 +75,6 @@ const initialCashOut: CashOut = {
   flags: 0,
 };
 
-function checkEquality<T extends object>(actualObject: T, expectedObject: T) {
-  Object.keys(expectedObject).forEach((property) => {
-    const actualValue = actualObject[property as keyof T];
-    const expectedValue = expectedObject[property as keyof T];
-
-    // Ensure the property is not missing or a function
-    if (typeof actualValue === "undefined" || typeof actualValue === "function") {
-      throw Error(`Property "${property}" is not found`);
-    }
-
-    if (Array.isArray(expectedValue)) {
-      // If the expected property is an array, compare arrays deeply
-      expect(Array.isArray(actualValue), `Property "${property}" is expected to be an array`).to.equal(true);
-      expect(actualValue).to.deep.equal(
-        expectedValue,
-        `Mismatch in the "${property}" array property`,
-      );
-    } else if (typeof expectedValue === "object" && expectedValue !== null) {
-      // If the expected property is an object (and not an array), handle nested object comparison
-      expect(actualValue).to.deep.equal(
-        expectedValue,
-        `Mismatch in the "${property}" object property`,
-      );
-    } else {
-      // Otherwise compare as primitive values
-      expect(actualValue).to.eq(
-        expectedValue,
-        `Mismatch in the "${property}" property`,
-      );
-    }
-  });
-}
-
-async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
-  if (network.name === "hardhat") {
-    return loadFixture(func);
-  } else {
-    return func();
-  }
-}
-
 describe("Contract 'CreditAgentCapybaraV1'", async () => {
   const TX_ID_STUB = ethers.encodeBytes32String("STUB_TRANSACTION_ID_ORDINARY");
   const TX_ID_STUB_INSTALLMENT = ethers.encodeBytes32String("STUB_TRANSACTION_ID_INSTALLMENT");
@@ -156,16 +89,9 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
     (1 << HookIndex.CashOutRequestBefore) +
     (1 << HookIndex.CashOutConfirmationAfter) +
     (1 << HookIndex.CashOutReversalAfter);
-  const EXPECTED_VERSION: Version = {
-    major: 1,
-    minor: 3,
-    patch: 0,
-  };
 
   // Events of the contracts under test
-  const EVENT_NAME_CASHIER_CHANGED = "CashierChanged";
   const EVENT_NAME_CREDIT_REQUEST_STATUS_CHANGED = "CreditRequestStatusChanged";
-  const EVENT_NAME_LENDING_MARKET_CHANGED = "LendingMarketChanged";
   const EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED = "MockConfigureCashOutHooksCalled";
   const EVENT_NAME_MOCK_REVOKE_INSTALLMENT_LOAN_CALLED = "MockRevokeInstallmentLoanCalled";
   const EVENT_NAME_MOCK_REVOKE_LOAN_CALLED = "MockRevokeLoanCalled";
@@ -175,10 +101,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
   // Errors of the library contracts
   const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
   const ERROR_NAME_ENFORCED_PAUSE = "EnforcedPause";
-  const ERROR_NAME_INVALID_INITIALIZATION = "InvalidInitialization";
 
   // Errors of the contracts under test
-  const ERROR_NAME_ALREADY_CONFIGURED = "CreditAgent_AlreadyConfigured";
   const ERROR_NAME_ACCOUNT_ADDRESS_ZERO = "CreditAgent_AccountAddressZero";
   const ERROR_NAME_CASH_OUT_PARAMETERS_INAPPROPRIATE = "CreditAgent_CashOutParametersInappropriate";
   const ERROR_NAME_CASHIER_HOOK_CALLER_UNAUTHORIZED = "CreditAgent_CashierHookCallerUnauthorized";
@@ -186,56 +110,35 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
   const ERROR_NAME_CONFIGURING_PROHIBITED = "CreditAgent_ConfiguringProhibited";
   const ERROR_NAME_CONTRACT_NOT_CONFIGURED = "CreditAgent_ContractNotConfigured";
   const ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE = "CreditAgent_CreditRequestStatusInappropriate";
-  const ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_CONFIRMATION_AFTER =
-    "CreditAgent_FailedToProcessCashOutConfirmationAfter";
-  const ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_REQUEST_BEFORE = "CreditAgent_FailedToProcessCashOutRequestBefore";
-  const ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_REVERSAL_AFTER = "CreditAgent_FailedToProcessCashOutReversalAfter";
-  const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "CreditAgent_ImplementationAddressInvalid";
   const ERROR_NAME_INPUT_ARRAYS_INVALID = "CreditAgentCapybaraV1_InputArraysInvalid";
   const ERROR_NAME_LOAN_AMOUNT_ZERO = "CreditAgentCapybaraV1_LoanAmountZero";
   const ERROR_NAME_LOAN_DURATION_ZERO = "CreditAgentCapybaraV1_LoanDurationZero";
   const ERROR_NAME_PROGRAM_ID_ZERO = "CreditAgentCapybaraV1_ProgramIdZero";
   const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCast_OverflowedUintDowncast";
   const ERROR_NAME_TX_ID_ZERO = "CreditAgent_TxIdZero";
+  const ERROR_NAME_LENDING_MARKET_INCOMPATIBLE = "CreditAgent_LendingMarketIncompatible";
 
-  let creditAgentFactory: ContractFactory;
+  let creditAgentCapybaraV1Factory: ContractFactory;
   let deployer: HardhatEthersSigner;
   let admin: HardhatEthersSigner;
   let manager: HardhatEthersSigner;
   let borrower: HardhatEthersSigner;
 
-  const OWNER_ROLE: string = ethers.id("OWNER_ROLE");
   const GRANTOR_ROLE: string = ethers.id("GRANTOR_ROLE");
   const PAUSER_ROLE: string = ethers.id("PAUSER_ROLE");
-  const RESCUER_ROLE: string = ethers.id("RESCUER_ROLE");
   const ADMIN_ROLE: string = ethers.id("ADMIN_ROLE");
   const MANAGER_ROLE: string = ethers.id("MANAGER_ROLE");
 
   before(async () => {
     [deployer, admin, manager, borrower] = await ethers.getSigners();
 
-    creditAgentFactory = await ethers.getContractFactory("CreditAgentCapybaraV1");
-    creditAgentFactory = creditAgentFactory.connect(deployer); // Explicitly specifying the initial account
+    creditAgentCapybaraV1Factory = await ethers.getContractFactory("CreditAgentCapybaraV1");
+    // Explicitly specifying the initial account
+    creditAgentCapybaraV1Factory = creditAgentCapybaraV1Factory.connect(deployer);
   });
 
-  async function deployCashierMock(): Promise<Contract> {
-    const cashierMockFactory: ContractFactory = await ethers.getContractFactory("CashierMock");
-    const cashierMock = await cashierMockFactory.deploy() as Contract;
-    await cashierMock.waitForDeployment();
-
-    return connect(cashierMock, deployer); // Explicitly specifying the initial account
-  }
-
-  async function deployLendingMarketMock(): Promise<Contract> {
-    const lendingMarketMockFactory = await ethers.getContractFactory("LendingMarketMock");
-    const lendingMarketMock = await lendingMarketMockFactory.deploy() as Contract;
-    await lendingMarketMock.waitForDeployment();
-
-    return connect(lendingMarketMock, deployer); // Explicitly specifying the initial account
-  }
-
   async function deployCreditAgent(): Promise<Contract> {
-    const creditAgent = await upgrades.deployProxy(creditAgentFactory) as Contract;
+    const creditAgent = await upgrades.deployProxy(creditAgentCapybaraV1Factory) as Contract;
     await creditAgent.waitForDeployment();
 
     return connect(creditAgent, deployer); // Explicitly specifying the initial account
@@ -252,15 +155,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
   }
 
   async function deployAndConfigureContracts(): Promise<Fixture> {
-    const cashierMock = await deployCashierMock();
-    const lendingMarketMock = await deployLendingMarketMock();
-    const creditAgent = await deployAndConfigureCreditAgent();
-
-    await proveTx(creditAgent.setCashier(getAddress(cashierMock)));
-    await proveTx(creditAgent.setLendingMarket(getAddress(lendingMarketMock)));
-    const loanIdStub = await lendingMarketMock.LOAN_ID_STAB();
-
-    return { creditAgent, cashierMock, lendingMarketMock, loanIdStub };
+    return deployAndConfigureCoreContracts(deployAndConfigureCreditAgent);
   }
 
   async function deployAndConfigureContractsThenInitiateCredit(): Promise<{
@@ -427,265 +322,14 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
     return array.reduce((acc, val) => acc + val, 0n);
   }
 
-  describe("Function 'initialize()'", async () => {
-    it("Configures the contract as expected", async () => {
-      const creditAgent = await setUpFixture(deployCreditAgent);
+  describe("Function '_validateLendingMarket()'", async () => {
+    it("Returns false for a non-compatible lending market contract and fails `proveLendingMarket()` call", async () => {
+      const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
+      const anotherCreditAgent = await deployCreditAgent();
 
-      // Role hashes
-      expect(await creditAgent.OWNER_ROLE()).to.equal(OWNER_ROLE);
-      expect(await creditAgent.GRANTOR_ROLE()).to.equal(GRANTOR_ROLE);
-      expect(await creditAgent.PAUSER_ROLE()).to.equal(PAUSER_ROLE);
-      expect(await creditAgent.RESCUER_ROLE()).to.equal(RESCUER_ROLE);
-      expect(await creditAgent.ADMIN_ROLE()).to.equal(ADMIN_ROLE);
-      expect(await creditAgent.MANAGER_ROLE()).to.equal(MANAGER_ROLE);
-
-      // The role admins
-      expect(await creditAgent.getRoleAdmin(OWNER_ROLE)).to.equal(OWNER_ROLE);
-      expect(await creditAgent.getRoleAdmin(GRANTOR_ROLE)).to.equal(OWNER_ROLE);
-      expect(await creditAgent.getRoleAdmin(PAUSER_ROLE)).to.equal(GRANTOR_ROLE);
-      expect(await creditAgent.getRoleAdmin(RESCUER_ROLE)).to.equal(GRANTOR_ROLE);
-      expect(await creditAgent.getRoleAdmin(ADMIN_ROLE)).to.equal(GRANTOR_ROLE);
-      expect(await creditAgent.getRoleAdmin(MANAGER_ROLE)).to.equal(GRANTOR_ROLE);
-
-      // The deployer should have the owner role and admin role, but not the other roles
-      expect(await creditAgent.hasRole(OWNER_ROLE, deployer.address)).to.equal(true);
-      expect(await creditAgent.hasRole(GRANTOR_ROLE, deployer.address)).to.equal(false);
-      expect(await creditAgent.hasRole(ADMIN_ROLE, deployer.address)).to.equal(true);
-      expect(await creditAgent.hasRole(PAUSER_ROLE, deployer.address)).to.equal(false);
-      expect(await creditAgent.hasRole(RESCUER_ROLE, deployer.address)).to.equal(false);
-      expect(await creditAgent.hasRole(MANAGER_ROLE, deployer.address)).to.equal(false);
-
-      // The initial contract state is unpaused
-      expect(await creditAgent.paused()).to.equal(false);
-
-      // The initial settings
-      expect(await creditAgent.cashier()).to.equal(ADDRESS_ZERO);
-      expect(await creditAgent.lendingMarket()).to.equal(ADDRESS_ZERO);
-      checkEquality(await creditAgent.agentState() as AgentState, initialAgentState);
+      await expect(connect(creditAgent, admin).setLendingMarket(anotherCreditAgent))
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_LENDING_MARKET_INCOMPATIBLE);
     });
-
-    it("Is reverted if it is called a second time", async () => {
-      const creditAgent = await setUpFixture(deployCreditAgent);
-      await expect(creditAgent.initialize())
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_INVALID_INITIALIZATION);
-    });
-
-    it("Is reverted for the contract implementation if it is called even for the first time", async () => {
-      const creditAgentImplementation = await creditAgentFactory.deploy() as Contract;
-      await creditAgentImplementation.waitForDeployment();
-
-      await expect(creditAgentImplementation.initialize())
-        .to.be.revertedWithCustomError(creditAgentImplementation, ERROR_NAME_INVALID_INITIALIZATION);
-    });
-  });
-
-  describe("Function '$__VERSION()'", async () => {
-    it("Returns expected values", async () => {
-      const creditAgent = await setUpFixture(deployCreditAgent);
-      const creditAgentVersion = await creditAgent.$__VERSION();
-      checkEquality(creditAgentVersion, EXPECTED_VERSION);
-    });
-  });
-
-  describe("Function 'upgradeToAndCall()'", async () => {
-    it("Executes as expected", async () => {
-      const creditAgent = await setUpFixture(deployCreditAgent);
-      await checkContractUupsUpgrading(creditAgent, creditAgentFactory);
-    });
-
-    it("Is reverted if the caller does not have the owner role", async () => {
-      const creditAgent = await setUpFixture(deployCreditAgent);
-
-      await expect(connect(creditAgent, admin).upgradeToAndCall(creditAgent, "0x"))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT);
-    });
-  });
-
-  describe("Function 'upgradeTo()'", async () => {
-    it("Executes as expected", async () => {
-      const creditAgent = await setUpFixture(deployCreditAgent);
-      await checkContractUupsUpgrading(creditAgent, creditAgentFactory, "upgradeTo(address)");
-    });
-
-    it("Is reverted if the caller does not have the owner role", async () => {
-      const creditAgent = await setUpFixture(deployCreditAgent);
-
-      await expect(connect(creditAgent, admin).upgradeTo(creditAgent))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT);
-    });
-
-    it("Is reverted if the provided implementation address is not a credit agent contract", async () => {
-      const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
-
-      await expect(creditAgent.upgradeTo(cashierMock))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID);
-    });
-  });
-
-  describe("Function 'setCashier()'", async () => {
-    it("Executes as expected in different cases", async () => {
-      const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
-      const lendingMarketMock = await setUpFixture(deployLendingMarketMock);
-      const cashierStubAddress1 = borrower.address;
-      const cashierStubAddress2 = admin.address;
-
-      expect(await creditAgent.cashier()).to.equal(ADDRESS_ZERO);
-
-      // Change the initial configuration
-      await expect(connect(creditAgent, admin).setCashier(cashierStubAddress1))
-        .to.emit(creditAgent, EVENT_NAME_CASHIER_CHANGED)
-        .withArgs(cashierStubAddress1, ADDRESS_ZERO);
-      expect(await creditAgent.cashier()).to.equal(cashierStubAddress1);
-      checkEquality(await creditAgent.agentState() as AgentState, initialAgentState);
-
-      // Change to a new non-zero address
-      await expect(connect(creditAgent, admin).setCashier(cashierStubAddress2))
-        .to.emit(creditAgent, EVENT_NAME_CASHIER_CHANGED)
-        .withArgs(cashierStubAddress2, cashierStubAddress1);
-      expect(await creditAgent.cashier()).to.equal(cashierStubAddress2);
-      checkEquality(await creditAgent.agentState() as AgentState, initialAgentState);
-
-      // Set the zero address
-      await expect(connect(creditAgent, admin).setCashier(ADDRESS_ZERO))
-        .to.emit(creditAgent, EVENT_NAME_CASHIER_CHANGED)
-        .withArgs(ADDRESS_ZERO, cashierStubAddress2);
-      expect(await creditAgent.cashier()).to.equal(ADDRESS_ZERO);
-      checkEquality(await creditAgent.agentState() as AgentState, initialAgentState);
-
-      // Set the lending market address, then the cashier address to check the logic of configured status
-      await proveTx(connect(creditAgent, admin).setLendingMarket(lendingMarketMock));
-      await proveTx(connect(creditAgent, admin).setCashier(cashierStubAddress1));
-      expect(await creditAgent.cashier()).to.equal(cashierStubAddress1);
-      const expectedAgentState = { ...initialAgentState, configured: true };
-      checkEquality(await creditAgent.agentState() as AgentState, expectedAgentState);
-
-      // Set another cashier address must not change the configured status of the agent contract
-      await proveTx(connect(creditAgent, admin).setCashier(cashierStubAddress2));
-      expect(await creditAgent.cashier()).to.equal(cashierStubAddress2);
-      checkEquality(await creditAgent.agentState() as AgentState, expectedAgentState);
-
-      // Resetting the address must change the configured status appropriately
-      await proveTx(connect(creditAgent, admin).setCashier(ADDRESS_ZERO));
-      expectedAgentState.configured = false;
-      checkEquality(await creditAgent.agentState() as AgentState, expectedAgentState);
-    });
-
-    it("Is reverted if the contract is paused", async () => {
-      const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
-      const cashierMockAddress = borrower.address;
-
-      await proveTx(creditAgent.pause());
-      await expect(connect(creditAgent, admin).setCashier(cashierMockAddress))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ENFORCED_PAUSE);
-    });
-
-    it("Is reverted if the caller does not have the admin role", async () => {
-      const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
-      const cashierMockAddress = borrower.address;
-
-      await expect(connect(creditAgent, manager).setCashier(cashierMockAddress))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
-        .withArgs(manager.address, ADMIN_ROLE);
-    });
-
-    it("Is reverted if the configuration is unchanged", async () => {
-      const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
-      const cashierMockAddress = borrower.address;
-
-      // Try to set the default value
-      await expect(connect(creditAgent, admin).setCashier(ADDRESS_ZERO))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ALREADY_CONFIGURED);
-
-      // Try to set the same value twice
-      await proveTx(connect(creditAgent, admin).setCashier(cashierMockAddress));
-      await expect(connect(creditAgent, admin).setCashier(cashierMockAddress))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ALREADY_CONFIGURED);
-    });
-
-    // Additional more complex checks are in the other sections
-  });
-
-  describe("Function 'setLendingMarket()'", async () => {
-    it("Executes as expected in different cases", async () => {
-      const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
-      const lendingMarketMock = await setUpFixture(deployLendingMarketMock);
-      const lendingMarketMock2 = await deployLendingMarketMock();
-
-      expect(await creditAgent.lendingMarket()).to.equal(ADDRESS_ZERO);
-
-      // Change the initial configuration
-      await expect(connect(creditAgent, admin).setLendingMarket(lendingMarketMock))
-        .to.emit(creditAgent, EVENT_NAME_LENDING_MARKET_CHANGED)
-        .withArgs(lendingMarketMock, ADDRESS_ZERO);
-      expect(await creditAgent.lendingMarket()).to.equal(lendingMarketMock);
-      checkEquality(await creditAgent.agentState() as AgentState, initialAgentState);
-
-      // Change to a new non-zero address
-      await expect(connect(creditAgent, admin).setLendingMarket(lendingMarketMock2))
-        .to.emit(creditAgent, EVENT_NAME_LENDING_MARKET_CHANGED)
-        .withArgs(lendingMarketMock2, lendingMarketMock);
-      expect(await creditAgent.lendingMarket()).to.equal(lendingMarketMock2);
-      checkEquality(await creditAgent.agentState() as AgentState, initialAgentState);
-
-      // Set the zero address
-      await expect(connect(creditAgent, admin).setLendingMarket(ADDRESS_ZERO))
-        .to.emit(creditAgent, EVENT_NAME_LENDING_MARKET_CHANGED)
-        .withArgs(ADDRESS_ZERO, lendingMarketMock2);
-      expect(await creditAgent.lendingMarket()).to.equal(ADDRESS_ZERO);
-      checkEquality(await creditAgent.agentState() as AgentState, initialAgentState);
-
-      // Set the cashier address, then the lending market address to check the logic of configured status
-      const cashierStubAddress = borrower.address;
-      await proveTx(connect(creditAgent, admin).setCashier(cashierStubAddress));
-      await proveTx(connect(creditAgent, admin).setLendingMarket(lendingMarketMock));
-      expect(await creditAgent.lendingMarket()).to.equal(lendingMarketMock);
-      const expectedAgentState = { ...initialAgentState, configured: true };
-      checkEquality(await creditAgent.agentState() as AgentState, expectedAgentState);
-
-      // Set another lending market address must not change the configured status of the agent contract
-      await proveTx(connect(creditAgent, admin).setLendingMarket(lendingMarketMock2));
-      expect(await creditAgent.lendingMarket()).to.equal(lendingMarketMock2);
-      checkEquality(await creditAgent.agentState() as AgentState, expectedAgentState);
-
-      // Resetting the address must change the configured status appropriately
-      await proveTx(connect(creditAgent, admin).setLendingMarket(ADDRESS_ZERO));
-      expectedAgentState.configured = false;
-      checkEquality(await creditAgent.agentState() as AgentState, expectedAgentState);
-    });
-
-    it("Is reverted if the contract is paused", async () => {
-      const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
-      const lendingMarketMockAddress = borrower.address;
-
-      await proveTx(creditAgent.pause());
-      await expect(connect(creditAgent, admin).setLendingMarket(lendingMarketMockAddress))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ENFORCED_PAUSE);
-    });
-
-    it("Is reverted if the caller does not have the admin role", async () => {
-      const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
-      const lendingMarketMockAddress = borrower.address;
-
-      await expect(connect(creditAgent, manager).setLendingMarket(lendingMarketMockAddress))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
-        .withArgs(manager.address, ADMIN_ROLE);
-    });
-
-    it("Is reverted if the configuration is unchanged", async () => {
-      const creditAgent = await setUpFixture(deployAndConfigureCreditAgent);
-      const lendingMarketMock = await setUpFixture(deployLendingMarketMock);
-
-      // Try to set the default value
-      await expect(connect(creditAgent, admin).setLendingMarket(ADDRESS_ZERO))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ALREADY_CONFIGURED);
-
-      // Try to set the same value twice
-      await proveTx(connect(creditAgent, admin).setLendingMarket(lendingMarketMock));
-      await expect(connect(creditAgent, admin).setLendingMarket(lendingMarketMock))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ALREADY_CONFIGURED);
-    });
-
-    // Additional more complex checks are in the other sections
   });
 
   describe("Function 'initiateCredit()'", async () => {
@@ -1973,32 +1617,6 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       //   cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutConfirmationAfter, txId)
       // );
       // await checkConfiguringAllowance();
-    });
-  });
-
-  describe("Function 'onCashierHook()' is reverted as expected for an unknown credit in the case of", async () => {
-    it("A cash-out request hook", async () => {
-      const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
-      const txId = TX_ID_STUB;
-      await expect(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_REQUEST_BEFORE)
-        .withArgs(txId);
-    });
-
-    it("A cash-out confirmation hook", async () => {
-      const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
-      const txId = TX_ID_STUB;
-      await expect(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutConfirmationAfter, txId))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_CONFIRMATION_AFTER)
-        .withArgs(txId);
-    });
-
-    it("A cash-out reversal hook", async () => {
-      const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
-      const txId = TX_ID_STUB;
-      await expect(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutReversalAfter, txId))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_REVERSAL_AFTER)
-        .withArgs(txId);
     });
   });
 });

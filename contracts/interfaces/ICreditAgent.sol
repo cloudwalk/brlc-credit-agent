@@ -248,6 +248,9 @@ interface ICreditAgentErrors is ICreditAgentTypes {
      * @dev The provided lending market contract is not a contract.
      */
     error CreditAgent_LendingMarketNotContract();
+
+    /// @dev The lending market contract is not compatible.
+    error CreditAgent_LendingMarketIncompatible();
 }
 
 /**

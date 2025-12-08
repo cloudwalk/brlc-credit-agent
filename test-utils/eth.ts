@@ -1,4 +1,6 @@
-import { upgrades } from "hardhat";
+import { network, upgrades } from "hardhat";
+
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { BaseContract, Contract, ContractFactory, TransactionReceipt, TransactionResponse } from "ethers";
 import { expect } from "chai";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
@@ -44,4 +46,45 @@ export async function proveTx(txResponsePromise: Promise<TransactionResponse>): 
     throw new Error("The transaction receipt is empty");
   }
   return txReceipt as TransactionReceipt;
+}
+
+export function checkEquality<T extends object>(actualObject: T, expectedObject: T) {
+  Object.keys(expectedObject).forEach((property) => {
+    const actualValue = actualObject[property as keyof T];
+    const expectedValue = expectedObject[property as keyof T];
+
+    // Ensure the property is not missing or a function
+    if (typeof actualValue === "undefined" || typeof actualValue === "function") {
+      throw Error(`Property "${property}" is not found`);
+    }
+
+    if (Array.isArray(expectedValue)) {
+      // If the expected property is an array, compare arrays deeply
+      expect(Array.isArray(actualValue), `Property "${property}" is expected to be an array`).to.equal(true);
+      expect(actualValue).to.deep.equal(
+        expectedValue,
+        `Mismatch in the "${property}" array property`,
+      );
+    } else if (typeof expectedValue === "object" && expectedValue !== null) {
+      // If the expected property is an object (and not an array), handle nested object comparison
+      expect(actualValue).to.deep.equal(
+        expectedValue,
+        `Mismatch in the "${property}" object property`,
+      );
+    } else {
+      // Otherwise compare as primitive values
+      expect(actualValue).to.eq(
+        expectedValue,
+        `Mismatch in the "${property}" property`,
+      );
+    }
+  });
+}
+
+export async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
+  if (network.name === "hardhat") {
+    return loadFixture(func);
+  } else {
+    return func();
+  }
 }

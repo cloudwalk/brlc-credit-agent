@@ -161,14 +161,20 @@ abstract contract CreditAgent is
      * - The contract must not be paused.
      * - The caller must have the {ADMIN_ROLE} role.
      * - The new lending market contract address must differ from the previously set one.
+     * - The new lending market contract must be a valid lending market contract or the zero address.
      */
     function setLendingMarket(address newLendingMarket) external whenNotPaused onlyRole(ADMIN_ROLE) {
         _checkConfiguringPermission();
 
         CreditAgentStorage storage $ = _getCreditAgentStorage();
         address oldLendingMarket = $.lendingMarket;
-        if (newLendingMarket != address(0) && newLendingMarket.code.length == 0) {
-            revert CreditAgent_LendingMarketNotContract();
+        if (newLendingMarket != address(0)) {
+            if (newLendingMarket.code.length == 0) {
+                revert CreditAgent_LendingMarketNotContract();
+            }
+            if (!_validateLendingMarket(newLendingMarket)) {
+                revert CreditAgent_LendingMarketIncompatible();
+            }
         }
         if (oldLendingMarket == newLendingMarket) {
             revert CreditAgent_AlreadyConfigured();
@@ -333,15 +339,7 @@ abstract contract CreditAgent is
     function _updateConfiguredState() internal {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
 
-        if ($.lendingMarket != address(0) && $.cashier != address(0)) {
-            if (!$.agentState.configured) {
-                $.agentState.configured = true;
-            }
-        } else {
-            if ($.agentState.configured) {
-                $.agentState.configured = false;
-            }
-        }
+        $.agentState.configured = $.lendingMarket != address(0) && $.cashier != address(0);
     }
 
     /**
@@ -537,6 +535,13 @@ abstract contract CreditAgent is
             revert CreditAgent_ImplementationAddressInvalid();
         }
     }
+
+    /**
+     * @dev Validates the lending market contract.
+     * @param lendingMarket The address of the lending market contract.
+     * @return true if the lending market contract is valid, false otherwise.
+     */
+    function _validateLendingMarket(address lendingMarket) internal view virtual returns (bool);
 
     // ------------------ Service functions ----------------------- //
 

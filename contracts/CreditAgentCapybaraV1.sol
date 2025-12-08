@@ -67,10 +67,6 @@ contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
             ILendingMarketCapybaraV1.revokeLoan.selector,
             abi.encode(borrower, programId.toUint32(), loanAmount, loanAddon, durationInPeriods)
         );
-
-        /* Checking in the end because we want to check compatibility
-        only after all other checks for configuration are passed */
-        _checkLendingMarketCompatibility();
     }
 
     /**
@@ -211,12 +207,18 @@ contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
 
     // ------------------ Internal functions ---------------------- //
 
-    function _checkLendingMarketCompatibility() internal view {
-        // We don't need to check for code length because we already checked it when setting the lending market
-        try ILendingMarketCapybaraV1(lendingMarket()).proveLendingMarket() {
-            // all good
+    /**
+     * @inheritdoc CreditAgent
+     *
+     * @dev Requirements:
+     *
+     * - The provided `lendingMarket` must be a valid Capybara Finance V1 lending market contract.
+     */
+    function _validateLendingMarket(address lendingMarket) internal pure override returns (bool) {
+        try ILendingMarketCapybaraV1(lendingMarket).proveLendingMarket() {
+            return true;
         } catch {
-            revert CreditAgentCapybaraV1_LendingMarketIncompatible();
+            return false;
         }
     }
 
