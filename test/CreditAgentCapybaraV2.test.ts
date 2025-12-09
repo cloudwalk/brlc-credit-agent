@@ -339,6 +339,7 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
         await checkCreditInitiation(fixture, { tx, txId, credit });
       });
     });
+
     it("Makes a credit request expired after 5 minutes", async () => {
       const fixture = await setUpFixture(deployAndConfigureContracts);
       const credit = defineCredit({ loanAddon: LOAN_ADDON_STUB });
@@ -1726,12 +1727,12 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
       await proveTx(initiateInstallmentCredit(creditAgent, { txId, credit }));
       await checkConfiguringProhibition();
 
-      // // Configuring is allowed if credits are reversed or confirmed and no more active credits exist
-      // await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId));
-      // await proveTx(
-      //   cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutConfirmationAfter, txId)
-      // );
-      // await checkConfiguringAllowance();
+      // Configuring is allowed if credits are reversed or confirmed and no more active credits exist
+      await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId));
+      await proveTx(
+        cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutConfirmationAfter, txId),
+      );
+      await checkConfiguringAllowance();
     });
   });
 });
