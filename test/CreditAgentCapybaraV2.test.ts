@@ -2,7 +2,9 @@ import { ethers, upgrades } from "hardhat";
 import { expect } from "chai";
 import { Contract, ContractFactory, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
-import { connect, getAddress, proveTx, checkEquality, setUpFixture } from "../test-utils/eth";
+import { time } from "@nomicfoundation/hardhat-toolbox/network-helpers";
+
+import { connect, getAddress, proveTx, checkEquality, setUpFixture, getBlockTimestamp } from "../test-utils/eth";
 import {
   AgentState,
   Fixture,
@@ -15,6 +17,7 @@ import {
 } from "../test-utils/creditAgent";
 
 const ADDRESS_ZERO = ethers.ZeroAddress;
+const EXPIRATION_TIME_SECONDS = 5 * 60;
 
 interface Credit {
   borrower: string;
@@ -144,6 +147,7 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
     txId: string;
     initCredit: Credit;
     initCashOut: CashOut;
+    initCreditTxTimestamp: number;
   }> {
     const fixture = await deployAndConfigureContracts();
     const { creditAgent, cashierMock } = fixture;
@@ -155,10 +159,11 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
       amount: initCredit.loanAmount,
     };
 
-    await proveTx(initiateCredit(creditAgent, { txId }));
+    const initiateCreditTx = await proveTx(initiateCredit(creditAgent, { txId }));
+    const initCreditTxTimestamp = await getBlockTimestamp(initiateCreditTx);
     await proveTx(cashierMock.setCashOut(txId, initCashOut));
 
-    return { fixture, txId, initCredit, initCashOut };
+    return { fixture, txId, initCredit, initCashOut, initCreditTxTimestamp };
   }
 
   function defineCredit(props: Partial<Credit> = {}): Credit {
@@ -223,6 +228,7 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
     txId: string;
     initCredit: InstallmentCredit;
     initCashOut: CashOut;
+    initCreditTxTimestamp: number;
   }> {
     const fixture = await deployAndConfigureContracts();
     const { creditAgent, cashierMock } = fixture;
@@ -234,10 +240,12 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
       amount: initCredit.borrowAmounts.reduce((acc, val) => acc + val, 0n),
     };
 
-    await proveTx(initiateInstallmentCredit(creditAgent, { txId, credit: initCredit }));
+    const initiateInstallmentCreditTx =
+      await proveTx(initiateInstallmentCredit(creditAgent, { txId, credit: initCredit }));
+    const initCreditTxTimestamp = await getBlockTimestamp(initiateInstallmentCreditTx);
     await proveTx(cashierMock.setCashOut(txId, initCashOut));
 
-    return { fixture, txId, initCredit, initCashOut };
+    return { fixture, txId, initCredit, initCashOut, initCreditTxTimestamp };
   }
 
   function defineInstallmentCredit(props: Partial<InstallmentCredit> = {}): InstallmentCredit {
@@ -330,6 +338,19 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
         const tx = initiateCredit(fixture.creditAgent, { txId, credit });
         await checkCreditInitiation(fixture, { tx, txId, credit });
       });
+    });
+    it("Makes a credit request expired after 5 minutes", async () => {
+      const fixture = await setUpFixture(deployAndConfigureContracts);
+      const credit = defineCredit({ loanAddon: LOAN_ADDON_STUB });
+      const txId = TX_ID_STUB;
+      const tx = await initiateCredit(fixture.creditAgent, { txId, credit });
+      const txTimestamp = await getBlockTimestamp(tx);
+      let creditRequest = await fixture.creditAgent.getCredit(txId);
+      expect(creditRequest.status).to.equal(CreditRequestStatus.Initiated);
+      expect(creditRequest.deadline).to.be.closeTo(txTimestamp + EXPIRATION_TIME_SECONDS, 10);
+      await time.increaseTo(creditRequest.deadline + 1n);
+      creditRequest = await fixture.creditAgent.getCredit(txId);
+      expect(creditRequest.status).to.equal(CreditRequestStatus.Expired);
     });
 
     describe("Is reverted if", () => {
@@ -466,6 +487,35 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
         0n,
         CreditRequestStatus.Nonexistent, // newStatus
         CreditRequestStatus.Initiated, // oldStatus
+        credit.loanAmount,
+      );
+      await expect(tx).to.emit(cashierMock, EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED).withArgs(
+        txId,
+        ADDRESS_ZERO, // newCallableContract,
+        0, // newHookFlags
+      );
+      checkEquality(await creditAgent.getCredit(txId) as Credit, initialCredit);
+    });
+
+    it("Executes as expected if the credit request is expired", async () => {
+      const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
+      const credit = defineCredit();
+      const txId = TX_ID_STUB;
+      const initiateCreditTx = await proveTx(initiateCredit(creditAgent, { txId }));
+      const initCreditTxTimestamp = await getBlockTimestamp(initiateCreditTx);
+
+      await time.increaseTo(initCreditTxTimestamp + EXPIRATION_TIME_SECONDS * 2);
+      const creditRequest = await creditAgent.getCredit(txId);
+      // check that the credit is expired
+      expect(creditRequest.status).to.equal(CreditRequestStatus.Expired);
+
+      const tx = connect(creditAgent, manager).revokeCredit(txId);
+      await expect(tx).to.emit(creditAgent, EVENT_NAME_CREDIT_REQUEST_STATUS_CHANGED).withArgs(
+        txId,
+        credit.borrower,
+        0n,
+        CreditRequestStatus.Nonexistent, // newStatus
+        CreditRequestStatus.Expired, // oldStatus
         credit.loanAmount,
       );
       await expect(tx).to.emit(cashierMock, EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED).withArgs(
@@ -738,6 +788,27 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
         });
       });
 
+      it("The credit status is inappropriate to the provided hook because it is expired", async () => {
+        const { fixture, txId, initCreditTxTimestamp } =
+          await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
+        await time.increaseTo(initCreditTxTimestamp + EXPIRATION_TIME_SECONDS + 1);
+        await checkCashierHookInappropriateStatusError(fixture, {
+          txId,
+          hookIndex: HookIndex.CashOutRequestBefore,
+          creditStatus: CreditRequestStatus.Expired,
+        });
+        await checkCashierHookInappropriateStatusError(fixture, {
+          txId,
+          hookIndex: HookIndex.CashOutConfirmationAfter,
+          creditStatus: CreditRequestStatus.Expired,
+        });
+        await checkCashierHookInappropriateStatusError(fixture, {
+          txId,
+          hookIndex: HookIndex.CashOutReversalAfter,
+          creditStatus: CreditRequestStatus.Expired,
+        });
+      });
+
       it("The cash-out account is not match the credit borrower before taking a loan", async () => {
         const { fixture, txId, initCashOut } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
         const { creditAgent, cashierMock } = fixture;
@@ -933,6 +1004,20 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
       });
     });
 
+    it("Makes a credit request expired after 5 minutes", async () => {
+      const fixture = await setUpFixture(deployAndConfigureContracts);
+      const credit = defineInstallmentCredit({ addonAmounts: [LOAN_ADDON_STUB, LOAN_ADDON_STUB / 2n] });
+      const txId = TX_ID_STUB_INSTALLMENT;
+      const tx = await initiateInstallmentCredit(fixture.creditAgent, { txId, credit });
+      const txTimestamp = await getBlockTimestamp(tx);
+      let creditRequest = await fixture.creditAgent.getInstallmentCredit(txId);
+      expect(creditRequest.status).to.equal(CreditRequestStatus.Initiated);
+      expect(creditRequest.deadline).to.be.closeTo(txTimestamp + EXPIRATION_TIME_SECONDS, 10);
+      await time.increaseTo(creditRequest.deadline + 1n);
+      creditRequest = await fixture.creditAgent.getInstallmentCredit(txId);
+      expect(creditRequest.status).to.equal(CreditRequestStatus.Expired);
+    });
+
     describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
@@ -1120,6 +1205,34 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
       checkEquality(await creditAgent.getInstallmentCredit(txId) as InstallmentCredit, initialInstallmentCredit);
     });
 
+    it("Executes as expected if the credit request is expired", async () => {
+      const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
+      const credit = defineInstallmentCredit();
+      const txId = TX_ID_STUB_INSTALLMENT;
+      const initiateInstallmentCreditTx = await proveTx(initiateInstallmentCredit(creditAgent, { txId, credit }));
+      const initCreditTxTimestamp = await getBlockTimestamp(initiateInstallmentCreditTx);
+      await time.increaseTo(initCreditTxTimestamp + EXPIRATION_TIME_SECONDS * 2);
+      const creditRequest = await creditAgent.getInstallmentCredit(txId);
+      // check that the credit is expired
+      expect(creditRequest.status).to.equal(CreditRequestStatus.Expired);
+
+      const tx = connect(creditAgent, manager).revokeInstallmentCredit(txId);
+      await expect(tx).to.emit(creditAgent, EVENT_NAME_CREDIT_REQUEST_STATUS_CHANGED).withArgs(
+        txId,
+        credit.borrower,
+        credit.firstInstallmentId,
+        CreditRequestStatus.Nonexistent, // newStatus
+        CreditRequestStatus.Expired, // oldStatus
+        _sumArray(credit.borrowAmounts),
+      );
+      await expect(tx).to.emit(cashierMock, EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED).withArgs(
+        txId,
+        ADDRESS_ZERO, // newCallableContract,
+        0, // newHookFlags
+      );
+      checkEquality(await creditAgent.getInstallmentCredit(txId) as InstallmentCredit, initialInstallmentCredit);
+    });
+
     it("Is reverted if the contract is paused", async () => {
       const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
       await proveTx(creditAgent.pause());
@@ -1295,13 +1408,13 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
       async function checkCashierHookInappropriateStatusError(fixture: Fixture, props: {
         txId: string;
         hookIndex: HookIndex;
-        CreditStatus: CreditRequestStatus;
+        creditStatus: CreditRequestStatus;
       }) {
         const { creditAgent, cashierMock } = fixture;
-        const { txId, hookIndex, CreditStatus } = props;
+        const { txId, hookIndex, creditStatus } = props;
         await expect(cashierMock.callCashierHook(getAddress(creditAgent), hookIndex, TX_ID_STUB_INSTALLMENT))
           .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
-          .withArgs(txId, CreditStatus);
+          .withArgs(txId, creditStatus);
       }
 
       it("The contract is paused (DUPLICATE)", async () => {
@@ -1331,12 +1444,12 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutConfirmationAfter,
-          CreditStatus: CreditRequestStatus.Initiated,
+          creditStatus: CreditRequestStatus.Initiated,
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutReversalAfter,
-          CreditStatus: CreditRequestStatus.Initiated,
+          creditStatus: CreditRequestStatus.Initiated,
         });
 
         // Try for a credit with the pending status
@@ -1344,7 +1457,7 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutRequestBefore,
-          CreditStatus: CreditRequestStatus.Pending,
+          creditStatus: CreditRequestStatus.Pending,
         });
 
         // Try for a credit with the confirmed status
@@ -1354,17 +1467,17 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutRequestBefore,
-          CreditStatus: CreditRequestStatus.Confirmed,
+          creditStatus: CreditRequestStatus.Confirmed,
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutConfirmationAfter,
-          CreditStatus: CreditRequestStatus.Confirmed,
+          creditStatus: CreditRequestStatus.Confirmed,
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutReversalAfter,
-          CreditStatus: CreditRequestStatus.Confirmed,
+          creditStatus: CreditRequestStatus.Confirmed,
         });
       });
 
@@ -1378,17 +1491,38 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutRequestBefore,
-          CreditStatus: CreditRequestStatus.Reversed,
+          creditStatus: CreditRequestStatus.Reversed,
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutConfirmationAfter,
-          CreditStatus: CreditRequestStatus.Reversed,
+          creditStatus: CreditRequestStatus.Reversed,
         });
         await checkCashierHookInappropriateStatusError(fixture, {
           txId,
           hookIndex: HookIndex.CashOutReversalAfter,
-          CreditStatus: CreditRequestStatus.Reversed,
+          creditStatus: CreditRequestStatus.Reversed,
+        });
+      });
+
+      it("The credit status is inappropriate to the provided hook because it is expired", async () => {
+        const { fixture, txId, initCreditTxTimestamp } =
+          await setUpFixture(deployAndConfigureContractsThenInitiateInstallmentCredit);
+        await time.increaseTo(initCreditTxTimestamp + EXPIRATION_TIME_SECONDS + 1);
+        await checkCashierHookInappropriateStatusError(fixture, {
+          txId,
+          hookIndex: HookIndex.CashOutRequestBefore,
+          creditStatus: CreditRequestStatus.Expired,
+        });
+        await checkCashierHookInappropriateStatusError(fixture, {
+          txId,
+          hookIndex: HookIndex.CashOutConfirmationAfter,
+          creditStatus: CreditRequestStatus.Expired,
+        });
+        await checkCashierHookInappropriateStatusError(fixture, {
+          txId,
+          hookIndex: HookIndex.CashOutReversalAfter,
+          creditStatus: CreditRequestStatus.Expired,
         });
       });
 

@@ -1,4 +1,4 @@
-import { network, upgrades } from "hardhat";
+import { network, upgrades, ethers } from "hardhat";
 
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { BaseContract, Contract, ContractFactory, TransactionReceipt, TransactionResponse } from "ethers";
@@ -87,4 +87,9 @@ export async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
   } else {
     return func();
   }
+}
+
+export async function getBlockTimestamp(txResponse: TransactionResponse | TransactionReceipt): Promise<number> {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  return (await ethers.provider.getBlock(txResponse.blockHash!))!.timestamp;
 }

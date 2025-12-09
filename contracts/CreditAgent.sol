@@ -79,6 +79,9 @@ abstract contract CreditAgent is
         (1 << uint256(ICashierHookableTypes.HookIndex.CashOutConfirmationAfter)) +
         (1 << uint256(ICashierHookableTypes.HookIndex.CashOutReversalAfter));
 
+    /// @dev The timeout for credit requests to become expired is seconds
+    uint64 private constant CREDIT_REQUEST_EXPIRATION_TIMEOUT = 5 minutes;
+
     // ------------------ Modifiers ------------------------------- //
 
     /**
@@ -241,8 +244,15 @@ abstract contract CreditAgent is
 
     // ------------------ Internal functions ---------------------- //
 
+    function _getCreditRequestStatus(CreditRequest storage creditRequest) internal view returns (CreditRequestStatus) {
+        if (creditRequest.status == CreditRequestStatus.Initiated && creditRequest.deadline < block.timestamp) {
+            return CreditRequestStatus.Expired;
+        }
+        return creditRequest.status;
+    }
+
     function _createCreditRequest(
-        bytes32 txId, // Tools: prevent Prettier one-liner
+        bytes32 txId,
         address account,
         uint256 cashOutAmount,
         bytes4 takeLoanSelector,
@@ -265,7 +275,7 @@ abstract contract CreditAgent is
 
         CreditRequest storage creditRequest = $.creditRequests[txId];
 
-        CreditRequestStatus oldStatus = creditRequest.status;
+        CreditRequestStatus oldStatus = _getCreditRequestStatus(creditRequest);
 
         if (oldStatus != CreditRequestStatus.Nonexistent && oldStatus != CreditRequestStatus.Reversed) {
             revert CreditAgent_CreditRequestStatusInappropriate(txId, oldStatus);
@@ -278,6 +288,7 @@ abstract contract CreditAgent is
         creditRequest.takeLoanData = takeLoanData;
         creditRequest.takeLoanSelector = takeLoanSelector;
         creditRequest.revokeLoanSelector = revokeLoanSelector;
+        creditRequest.deadline = (block.timestamp + CREDIT_REQUEST_EXPIRATION_TIMEOUT).toUint64();
 
         emit CreditRequestStatusChanged(
             txId,
@@ -304,10 +315,12 @@ abstract contract CreditAgent is
 
         CreditAgentStorage storage $ = _getCreditAgentStorage();
         CreditRequest storage creditRequest = $.creditRequests[txId];
-        if (creditRequest.status != CreditRequestStatus.Initiated) {
+        CreditRequestStatus oldStatus = _getCreditRequestStatus(creditRequest);
+
+        if (oldStatus != CreditRequestStatus.Initiated && oldStatus != CreditRequestStatus.Expired) {
             revert CreditAgent_CreditRequestStatusInappropriate(txId, creditRequest.status);
         }
-        CreditRequestStatus oldStatus = creditRequest.status;
+
         emit CreditRequestStatusChanged(
             txId,
             creditRequest.account,
@@ -371,9 +384,10 @@ abstract contract CreditAgent is
         CreditAgentStorage storage $ = _getCreditAgentStorage();
 
         CreditRequest storage creditRequest = $.creditRequests[txId];
+        CreditRequestStatus oldStatus = _getCreditRequestStatus(creditRequest);
 
-        if (creditRequest.status != CreditRequestStatus.Initiated) {
-            revert CreditAgent_CreditRequestStatusInappropriate(txId, creditRequest.status);
+        if (oldStatus != CreditRequestStatus.Initiated) {
+            revert CreditAgent_CreditRequestStatusInappropriate(txId, oldStatus);
         }
 
         _checkCashierCashOutState(txId, creditRequest.account, creditRequest.cashOutAmount);
@@ -395,8 +409,8 @@ abstract contract CreditAgent is
             txId,
             creditRequest.account,
             loanId,
-            CreditRequestStatus.Pending, // newStatus
-            CreditRequestStatus.Initiated, // oldStatus
+            CreditRequestStatus.Pending,
+            oldStatus,
             creditRequest.cashOutAmount
         );
 
@@ -414,8 +428,10 @@ abstract contract CreditAgent is
 
         CreditRequest storage creditRequest = $.creditRequests[txId];
 
-        if (creditRequest.status != CreditRequestStatus.Pending) {
-            revert CreditAgent_CreditRequestStatusInappropriate(txId, creditRequest.status);
+        CreditRequestStatus oldStatus = _getCreditRequestStatus(creditRequest);
+
+        if (oldStatus != CreditRequestStatus.Pending) {
+            revert CreditAgent_CreditRequestStatusInappropriate(txId, oldStatus);
         }
 
         creditRequest.status = CreditRequestStatus.Confirmed;
@@ -424,8 +440,8 @@ abstract contract CreditAgent is
             txId,
             creditRequest.account,
             creditRequest.loanId,
-            CreditRequestStatus.Confirmed, // newStatus
-            CreditRequestStatus.Pending, // oldStatus
+            CreditRequestStatus.Confirmed,
+            oldStatus,
             creditRequest.cashOutAmount
         );
 
@@ -442,8 +458,9 @@ abstract contract CreditAgent is
 
         CreditRequest storage creditRequest = $.creditRequests[txId];
 
-        if (creditRequest.status != CreditRequestStatus.Pending) {
-            revert CreditAgent_CreditRequestStatusInappropriate(txId, creditRequest.status);
+        CreditRequestStatus oldStatus = _getCreditRequestStatus(creditRequest);
+        if (oldStatus != CreditRequestStatus.Pending) {
+            revert CreditAgent_CreditRequestStatusInappropriate(txId, oldStatus);
         }
 
         (bool success, bytes memory result) = $.lendingMarket.call(
@@ -457,8 +474,8 @@ abstract contract CreditAgent is
             txId,
             creditRequest.account,
             creditRequest.loanId,
-            CreditRequestStatus.Reversed, // newStatus
-            CreditRequestStatus.Pending, // oldStatus
+            CreditRequestStatus.Reversed,
+            oldStatus,
             creditRequest.cashOutAmount
         );
 

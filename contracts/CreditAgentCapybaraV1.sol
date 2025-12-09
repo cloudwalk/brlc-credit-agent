@@ -166,13 +166,14 @@ contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
                 uint256 durationInPeriods
             ) = abi.decode(creditRequest.takeLoanData, (address, uint32, uint256, uint256, uint256));
             result = Credit(
-                creditRequest.status,
+                _getCreditRequestStatus(creditRequest),
                 borrower,
                 programId,
                 durationInPeriods,
                 loanAmount,
                 loanAddon,
-                creditRequest.loanId
+                creditRequest.loanId,
+                creditRequest.deadline
             );
         }
         // else empty object
@@ -193,13 +194,14 @@ contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
                 uint256[] memory durationsInPeriods
             ) = abi.decode(creditRequest.takeLoanData, (address, uint256, uint256[], uint256[], uint256[]));
             result = InstallmentCredit(
-                creditRequest.status,
+                _getCreditRequestStatus(creditRequest),
                 borrower,
                 programId,
                 durationsInPeriods,
                 borrowAmounts,
                 addonAmounts,
-                creditRequest.loanId
+                creditRequest.loanId,
+                creditRequest.deadline
             );
         }
         // else empty object

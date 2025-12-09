@@ -22,6 +22,7 @@ export enum CreditRequestStatus {
   Pending = 2,
   Confirmed = 3,
   Reversed = 4,
+  Expired = 5,
 }
 
 export enum HookIndex {

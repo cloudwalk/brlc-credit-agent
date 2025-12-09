@@ -18,11 +18,18 @@ interface ICreditAgentTypes {
      * - Pending = 2 ------ The credit request is pending due to the related operation request, waiting for further actions.
      * - Confirmed = 3 ---- The credit request is confirmed as the related operation was confirmed.
      * - Reversed = 4 ----- The credit request is reversed as the related operation was reversed.
+     * - Expired = 5 ------ The credit request is considered expired due to the timeout.
+     *   Important: `Expired` is a **derived** status and is never stored in the contract storage.
+     *   It must be recomputed at read-time using the in-memory value and the deadline, for example:
+     *     `status = (status == Initiated && deadline < block.timestamp) ? Expired : status`
+     *   In other words, if the stored status is `Initiated` but its `deadline` is in the past,
+     *   any view/helper function that exposes the status SHOULD treat it as `Expired`.
      *
      * The possible status transitions are:
      *
      * - Nonexistent => Initiated (by a manager)
      * - Initiated => Nonexistent (by a manager)
+     * - Initiated => Expired (due to the timeout) (not real state transition, only calculated in future transactions)
      * - Initiated => Pending (due to requesting the related cash-out operation)
      * - Pending => Confirmed (due to confirming the related cash-out operation)
      * - Pending => Reversed (due to reversing the related cash-out operation)
@@ -41,7 +48,8 @@ interface ICreditAgentTypes {
         Initiated,
         Pending,
         Confirmed,
-        Reversed
+        Reversed,
+        Expired
     }
 
     /**
@@ -56,6 +64,7 @@ interface ICreditAgentTypes {
      *   It should accept the loan ID as a single argument.
      * - takeLoanSelector --- The selector of the function in lending market contract to take the loan.
      *   It may accept any arguments, because arguments are encoded in the {takeLoanData} field.
+     * - deadline ----------- The deadline of the credit request to become pending.
      * - takeLoanData ------- The arguments to call the {takeLoanSelector} function.
      * - loanId ------------- The unique ID of the related loan on the lending market or zero if not taken.
      */
@@ -68,12 +77,14 @@ interface ICreditAgentTypes {
         bytes4 takeLoanSelector;
         // uint16 __reserved; // Reserved until the end of the storage slot
 
+        // Slot 2
+        uint64 deadline;
+        // uint192 __reserved; // Reserved until the end of the storage slot
+
         // Slot 3
         bytes takeLoanData;
-        // uint24 __reserved; // Reserved until the end of the storage slot
-
-        // Slot 2
-        uint256 loanId; // maybe bytes32?
+        // Slot 4
+        uint256 loanId;
     }
 
     /**

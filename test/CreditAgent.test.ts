@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { ethers, upgrades } from "hardhat";
 import { expect } from "chai";
-import { Contract, ContractFactory } from "ethers";
+import { Contract, ContractFactory, AbiCoder } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   checkContractUupsUpgrading,
@@ -28,6 +29,7 @@ interface Version {
   minor: number;
   patch: number;
 }
+const abiCoder = AbiCoder.defaultAbiCoder();
 
 describe("Abstract Contract 'CreditAgent'", () => {
   const TX_ID_STUB = ethers.encodeBytes32String("STUB_TRANSACTION_ID_ORDINARY");
@@ -422,7 +424,16 @@ describe("Abstract Contract 'CreditAgent'", () => {
           account: borrower.address,
           amount: 100n,
         } as CashOut);
-        await creditAgent.createCreditRequestWithFailedTakeLoan(txId, borrower.address);
+        const failExecutionFunction = lendingMarketMock.interface.getFunction("failExecution")!;
+        const revokeLoanFunction = lendingMarketMock.interface.getFunction("revokeLoan")!;
+        await creditAgent.createCreditRequest(
+          txId,
+          borrower.address,
+          100n,
+          failExecutionFunction.selector,
+          revokeLoanFunction.selector,
+          abiCoder.encode(failExecutionFunction.inputs, [100n]),
+        );
         // error thrown by the lending market mock
         const expectedErrorData = lendingMarketMock.interface.encodeErrorResult(
           ERROR_NAME_LENDING_MARKET_CALL_FAILED,
@@ -441,7 +452,19 @@ describe("Abstract Contract 'CreditAgent'", () => {
           account: borrower.address,
           amount: 100n,
         } as CashOut);
-        await creditAgent.createCreditRequestWithFailedRevokeLoan(txId, borrower.address);
+
+        const failExecutionFunction = lendingMarketMock.interface.getFunction("failExecution")!;
+        const takeLoanFunction = lendingMarketMock.interface.getFunction("takeLoanFor")!;
+        await creditAgent.createCreditRequest(
+          txId,
+          borrower.address,
+          100n,
+          takeLoanFunction.selector,
+          failExecutionFunction.selector,
+          abiCoder.encode(takeLoanFunction.inputs,
+            [borrower.address, 100n, 100n, 100n, 100n],
+          ),
+        );
         await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId));
 
         // error thrown by the lending market mock
