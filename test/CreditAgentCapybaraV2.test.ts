@@ -68,7 +68,7 @@ const initialCashOut: CashOut = {
   flags: 0,
 };
 
-describe("Contract 'CreditAgentCapybaraV1'", async () => {
+describe("Contract 'CreditAgentCapybaraV1'", () => {
   const TX_ID_STUB = ethers.encodeBytes32String("STUB_TRANSACTION_ID_ORDINARY");
   const TX_ID_STUB_INSTALLMENT = ethers.encodeBytes32String("STUB_TRANSACTION_ID_INSTALLMENT");
   const TX_ID_ZERO = ethers.ZeroHash;
@@ -315,7 +315,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
     return array.reduce((acc, val) => acc + val, 0n);
   }
 
-  describe("Function '_validateLendingMarket()'", async () => {
+  describe("Function '_validateLendingMarket()'", () => {
     it("Returns false for a non-compatible lending market contract and fails `proveLendingMarket()` call", async () => {
       const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
       const anotherCreditAgent = await deployCreditAgent();
@@ -325,8 +325,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
     });
   });
 
-  describe("Function 'initiateCredit()'", async () => {
-    describe("Executes as expected if", async () => {
+  describe("Function 'initiateCredit()'", () => {
+    describe("Executes as expected if", () => {
       it("The 'loanAddon' value is not zero", async () => {
         const fixture = await setUpFixture(deployAndConfigureContracts);
         const credit = defineCredit({ loanAddon: LOAN_ADDON_STUB });
@@ -344,7 +344,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
         await proveTx(creditAgent.pause());
@@ -464,7 +464,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
     });
   });
 
-  describe("Function 'revokeCredit()'", async () => {
+  describe("Function 'revokeCredit()'", () => {
     it("Executes as expected", async () => {
       const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
       const credit = defineCredit();
@@ -522,7 +522,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
     // Additional more complex checks are in the other sections
   });
 
-  describe("Function 'onCashierHook()' for an ordinary credit", async () => {
+  describe("Function 'onCashierHook()' for an ordinary credit", () => {
     async function checkCashierHookCalling(fixture: Fixture, props: {
       txId: string;
       credit: Credit;
@@ -570,7 +570,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       checkEquality(await creditAgent.getCredit(txId) as Credit, credit);
     }
 
-    describe("Executes as expected if", async () => {
+    describe("Executes as expected if", () => {
       it("A cash-out requested and then confirmed with other proper conditions", async () => {
         const { fixture, txId, initCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
         const expectedAgentState: AgentState = {
@@ -649,7 +649,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       async function checkCashierHookInappropriateStatusError(fixture: Fixture, props: {
         txId: string;
         hookIndex: HookIndex;
@@ -790,7 +790,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
     });
   });
 
-  describe("Complex scenarios", async () => {
+  describe("Complex scenarios", () => {
     it("A revoked credit can be re-initiated", async () => {
       const { fixture, txId, initCredit } = await setUpFixture(deployAndConfigureContractsThenInitiateCredit);
       const { creditAgent } = fixture;
@@ -927,8 +927,8 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
     });
   });
 
-  describe("Function 'initiateInstallmentCredit()'", async () => {
-    describe("Executes as expected if", async () => {
+  describe("Function 'initiateInstallmentCredit()'", () => {
+    describe("Executes as expected if", () => {
       it("The 'addonAmounts' values are not zero", async () => {
         const fixture = await setUpFixture(deployAndConfigureContracts);
         const credit = defineInstallmentCredit({ addonAmounts: [LOAN_ADDON_STUB, LOAN_ADDON_STUB / 2n] });
@@ -945,7 +945,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
         await proveTx(creditAgent.pause());
@@ -1108,7 +1108,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
     });
   });
 
-  describe("Function 'revokeInstallmentCredit()", async () => {
+  describe("Function 'revokeInstallmentCredit()", () => {
     it("Executes as expected", async () => {
       const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
       const credit = defineInstallmentCredit();
@@ -1166,7 +1166,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
     // Additional more complex checks are in the other sections
   });
 
-  describe("Function 'onCashierHook()' for an installment credit", async () => {
+  describe("Function 'onCashierHook()' for an installment credit", () => {
     async function checkCashierHookCalling(fixture: Fixture, props: {
       txId: string;
       credit: InstallmentCredit;
@@ -1216,7 +1216,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       checkEquality(await creditAgent.getInstallmentCredit(txId) as InstallmentCredit, credit);
     }
 
-    describe("Executes as expected if", async () => {
+    describe("Executes as expected if", () => {
       it("A cash-out requested and then confirmed with other proper conditions", async () => {
         const {
           fixture,
@@ -1303,7 +1303,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       async function checkCashierHookInappropriateStatusError(fixture: Fixture, props: {
         txId: string;
         hookIndex: HookIndex;
@@ -1452,7 +1452,7 @@ describe("Contract 'CreditAgentCapybaraV1'", async () => {
     });
   });
 
-  describe("Complex scenarios for installment credit", async () => {
+  describe("Complex scenarios for installment credit", () => {
     it("A revoked credit can be re-initiated", async () => {
       const {
         fixture,

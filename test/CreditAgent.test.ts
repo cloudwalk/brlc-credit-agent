@@ -27,7 +27,7 @@ interface Version {
   patch: number;
 }
 
-describe("Abstract Contract 'CreditAgent'", async () => {
+describe("Abstract Contract 'CreditAgent'", () => {
   const TX_ID_STUB = ethers.encodeBytes32String("STUB_TRANSACTION_ID_ORDINARY");
 
   const EXPECTED_VERSION: Version = {
@@ -101,7 +101,7 @@ describe("Abstract Contract 'CreditAgent'", async () => {
     return deployAndConfigureCoreContracts(deployAndConfigureCreditAgentMock);
   }
 
-  describe("Function 'initialize()'", async () => {
+  describe("Function 'initialize()'", () => {
     it("Configures the contract as expected", async () => {
       const creditAgent = await setUpFixture(deployCreditAgentMock);
 
@@ -153,7 +153,7 @@ describe("Abstract Contract 'CreditAgent'", async () => {
     });
   });
 
-  describe("Function '$__VERSION()'", async () => {
+  describe("Function '$__VERSION()'", () => {
     it("Returns expected values", async () => {
       const creditAgent = await setUpFixture(deployCreditAgentMock);
       const creditAgentVersion = await creditAgent.$__VERSION();
@@ -161,7 +161,7 @@ describe("Abstract Contract 'CreditAgent'", async () => {
     });
   });
 
-  describe("Function 'upgradeToAndCall()'", async () => {
+  describe("Function 'upgradeToAndCall()'", () => {
     it("Executes as expected", async () => {
       const creditAgent = await setUpFixture(deployCreditAgentMock);
       await checkContractUupsUpgrading(creditAgent, creditAgentFactory);
@@ -175,7 +175,7 @@ describe("Abstract Contract 'CreditAgent'", async () => {
     });
   });
 
-  describe("Function 'upgradeTo()'", async () => {
+  describe("Function 'upgradeTo()'", () => {
     it("Executes as expected", async () => {
       const creditAgent = await setUpFixture(deployCreditAgentMock);
       await checkContractUupsUpgrading(creditAgent, creditAgentFactory, "upgradeTo(address)");
@@ -196,7 +196,7 @@ describe("Abstract Contract 'CreditAgent'", async () => {
     });
   });
 
-  describe("Function 'setCashier()'", async () => {
+  describe("Function 'setCashier()'", () => {
     it("Executes as expected in different cases", async () => {
       const creditAgent = await setUpFixture(deployAndConfigureCreditAgentMock);
       const lendingMarketMock = await setUpFixture(deployLendingMarketMock);
@@ -279,7 +279,7 @@ describe("Abstract Contract 'CreditAgent'", async () => {
     // Additional more complex checks are in the other sections
   });
 
-  describe("Function 'setLendingMarket()'", async () => {
+  describe("Function 'setLendingMarket()'", () => {
     it("Executes as expected in different cases", async () => {
       const creditAgent = await setUpFixture(deployAndConfigureCreditAgentMock);
       const lendingMarketMock = await setUpFixture(deployLendingMarketMock);
@@ -379,29 +379,33 @@ describe("Abstract Contract 'CreditAgent'", async () => {
     // Additional more complex checks are in the other sections
   });
 
-  describe("Function 'onCashierHook()' is reverted as expected for an unknown credit in the case of", async () => {
-    it("A cash-out request hook", async () => {
-      const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
-      const txId = TX_ID_STUB;
-      await expect(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
-        .withArgs(txId, CreditRequestStatus.Nonexistent);
-    });
+  describe("Function 'onCashierHook()'", () => {
+    describe("Is reverted", () => {
+      describe("for an unknown credit in the case of", () => {
+        it("A cash-out request hook", async () => {
+          const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
+          const txId = TX_ID_STUB;
+          await expect(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId))
+            .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+            .withArgs(txId, CreditRequestStatus.Nonexistent);
+        });
 
-    it("A cash-out confirmation hook", async () => {
-      const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
-      const txId = TX_ID_STUB;
-      await expect(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutConfirmationAfter, txId))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
-        .withArgs(txId, CreditRequestStatus.Nonexistent);
-    });
+        it("A cash-out confirmation hook", async () => {
+          const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
+          const txId = TX_ID_STUB;
+          await expect(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutConfirmationAfter, txId))
+            .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+            .withArgs(txId, CreditRequestStatus.Nonexistent);
+        });
 
-    it("A cash-out reversal hook", async () => {
-      const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
-      const txId = TX_ID_STUB;
-      await expect(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutReversalAfter, txId))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
-        .withArgs(txId, CreditRequestStatus.Nonexistent);
+        it("A cash-out reversal hook", async () => {
+          const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
+          const txId = TX_ID_STUB;
+          await expect(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutReversalAfter, txId))
+            .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+            .withArgs(txId, CreditRequestStatus.Nonexistent);
+        });
+      });
     });
   });
 });
