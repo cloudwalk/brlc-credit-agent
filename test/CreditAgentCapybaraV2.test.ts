@@ -9,17 +9,10 @@ import {
   HookIndex,
   initialAgentState,
   deployAndConfigureContracts as deployAndConfigureCoreContracts,
+  CreditRequestStatus,
 } from "../test-utils/creditAgent";
 
 const ADDRESS_ZERO = ethers.ZeroAddress;
-
-enum CreditRequestStatus {
-  Nonexistent = 0,
-  Initiated = 1,
-  Pending = 2,
-  Confirmed = 3,
-  Reversed = 4,
-}
 
 interface Credit {
   borrower: string;

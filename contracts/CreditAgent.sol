@@ -196,11 +196,11 @@ abstract contract CreditAgent is
      */
     function onCashierHook(uint256 hookIndex, bytes32 txId) external whenNotPaused onlyCashier {
         if (hookIndex == uint256(ICashierHookableTypes.HookIndex.CashOutRequestBefore)) {
-            _processCashierHookCashOutRequestBefore(txId);
+            _processTakeLoanFor(txId);
         } else if (hookIndex == uint256(ICashierHookableTypes.HookIndex.CashOutConfirmationAfter)) {
-            _processCashierHookCashOutConfirmationAfter(txId);
+            _processChangeCreditStatus(txId);
         } else if (hookIndex == uint256(ICashierHookableTypes.HookIndex.CashOutReversalAfter)) {
-            _processCashierHookCashOutReversalAfter(txId);
+            _processRevokeLoan(txId);
         } else {
             revert CreditAgent_CashierHookIndexUnexpected(hookIndex, txId, _msgSender());
         }
@@ -343,45 +343,6 @@ abstract contract CreditAgent is
     }
 
     /**
-     * @dev Processes the cash-out request before hook.
-     *
-     * @param txId The unique identifier of the related cash-out operation.
-     */
-    function _processCashierHookCashOutRequestBefore(bytes32 txId) internal {
-        if (_processTakeLoanFor(txId)) {
-            return;
-        }
-
-        revert CreditAgent_FailedToProcessCashOutRequestBefore(txId);
-    }
-
-    /**
-     * @dev Processes the cash-out confirmation after hook.
-     *
-     * @param txId The unique identifier of the related cash-out operation.
-     */
-    function _processCashierHookCashOutConfirmationAfter(bytes32 txId) internal {
-        if (_processChangeCreditStatus(txId)) {
-            return;
-        }
-
-        revert CreditAgent_FailedToProcessCashOutConfirmationAfter(txId);
-    }
-
-    /**
-     * @dev Processes the cash-out reversal after hook.
-     *
-     * @param txId The unique identifier of the related cash-out operation.
-     */
-    function _processCashierHookCashOutReversalAfter(bytes32 txId) internal {
-        if (_processRevokeLoan(txId)) {
-            return;
-        }
-
-        revert CreditAgent_FailedToProcessCashOutReversalAfter(txId);
-    }
-
-    /**
      * @dev Checks the state of a related cash-out operation to be matched with the expected values.
      *
      * @param txId The unique identifier of the related cash-out operation.
@@ -405,16 +366,11 @@ abstract contract CreditAgent is
      * @dev Tries to process the cash-out request before hook by taking an ordinary loan.
      *
      * @param txId The unique identifier of the related cash-out operation.
-     * @return true if the operation was successful, false otherwise.
      */
-    function _processTakeLoanFor(bytes32 txId) internal returns (bool) {
+    function _processTakeLoanFor(bytes32 txId) internal {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
 
         CreditRequest storage creditRequest = $.creditRequests[txId];
-
-        if (creditRequest.status == CreditRequestStatus.Nonexistent) {
-            return false;
-        }
 
         if (creditRequest.status != CreditRequestStatus.Initiated) {
             revert CreditAgent_CreditRequestStatusInappropriate(txId, creditRequest.status);
@@ -425,8 +381,9 @@ abstract contract CreditAgent is
         (bool success, bytes memory result) = $.lendingMarket.call(
             bytes.concat(creditRequest.takeLoanSelector, creditRequest.takeLoanData)
         );
+
         if (!success) {
-            return false;
+            revert CreditAgent_CallTakeLoanFailed(txId, result);
         }
 
         uint256 loanId = abi.decode(result, (uint256));
@@ -445,24 +402,17 @@ abstract contract CreditAgent is
 
         $.agentState.initiatedRequestCounter--;
         $.agentState.pendingRequestCounter++;
-
-        return true;
     }
 
     /**
      * @dev Tries to process the cash-out confirmation after hook by changing the credit status to Confirmed.
      *
      * @param txId The unique identifier of the related cash-out operation.
-     * @return true if the operation was successful, false otherwise.
      */
-    function _processChangeCreditStatus(bytes32 txId) internal returns (bool) {
+    function _processChangeCreditStatus(bytes32 txId) internal {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
 
         CreditRequest storage creditRequest = $.creditRequests[txId];
-
-        if (creditRequest.status == CreditRequestStatus.Nonexistent) {
-            return false;
-        }
 
         if (creditRequest.status != CreditRequestStatus.Pending) {
             revert CreditAgent_CreditRequestStatusInappropriate(txId, creditRequest.status);
@@ -480,34 +430,27 @@ abstract contract CreditAgent is
         );
 
         $.agentState.pendingRequestCounter--;
-
-        return true;
     }
 
     /**
      * @dev Tries to process the cash-out reversal after hook by revoking an ordinary loan.
      *
      * @param txId The unique identifier of the related cash-out operation.
-     * @return true if the operation was successful, false otherwise.
      */
-    function _processRevokeLoan(bytes32 txId) internal returns (bool) {
+    function _processRevokeLoan(bytes32 txId) internal {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
 
         CreditRequest storage creditRequest = $.creditRequests[txId];
-
-        if (creditRequest.status == CreditRequestStatus.Nonexistent) {
-            return false;
-        }
 
         if (creditRequest.status != CreditRequestStatus.Pending) {
             revert CreditAgent_CreditRequestStatusInappropriate(txId, creditRequest.status);
         }
 
-        (bool success, ) = $.lendingMarket.call(
+        (bool success, bytes memory result) = $.lendingMarket.call(
             abi.encodeWithSelector(creditRequest.revokeLoanSelector, creditRequest.loanId)
         );
         if (!success) {
-            return false;
+            revert CreditAgent_CallRevokeLoanFailed(txId, result);
         }
 
         emit CreditRequestStatusChanged(
@@ -522,8 +465,6 @@ abstract contract CreditAgent is
         creditRequest.status = CreditRequestStatus.Reversed;
 
         $.agentState.pendingRequestCounter--;
-
-        return true;
     }
 
     /**

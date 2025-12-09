@@ -2,6 +2,14 @@ import { ethers } from "hardhat";
 import { Contract, ContractFactory } from "ethers";
 import { connect, getAddress, proveTx } from "./eth";
 
+export enum CreditRequestStatus {
+  Nonexistent = 0,
+  Initiated = 1,
+  Pending = 2,
+  Confirmed = 3,
+  Reversed = 4,
+}
+
 export enum HookIndex {
   Unused = 1,
   CashOutRequestBefore = 6,

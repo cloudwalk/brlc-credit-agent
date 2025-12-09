@@ -10,6 +10,10 @@
   - `CreditAgent_ProgramIdZero`
 - Added `CreditAgent_LendingMarketNotContract` error for validate lendingMarking contract.
 - Initialize request from reversed state emits correct `CreditRequestStatusChanged.oldStatus` = `Reversed` value
+- `CreditAgent_FailedToProcessCashOutConfirmationAfter` error removed
+- `CreditAgent_FailedToProcessCashOutRequestBefore` error replaced by `CreditAgent_CallTakeLoanFailed`
+- `CreditAgent_FailedToProcessCashOutReversalAfter` error replaced by `CreditAgent_CallRevokeLoanFailed`
+
 ## Technical changes
 
 - Solc updated to 0.8.28 and evmVersion to cancun. IR compilation enabled.

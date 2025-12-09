@@ -210,6 +210,20 @@ interface ICreditAgentErrors is ICreditAgentTypes {
      */
     error CreditAgent_CashOutParametersInappropriate(bytes32 txId);
 
+    /**
+     * @dev The call to revoke the loan failed.
+     * @param txId The off-chain transaction identifier of the operation.
+     * @param errorData The error data returned by the call.
+     */
+    error CreditAgent_CallRevokeLoanFailed(bytes32 txId, bytes errorData);
+
+    /**
+     * @dev The call to take the loan failed.
+     * @param txId The off-chain transaction identifier of the operation.
+     * @param errorData The error data returned by the call.
+     */
+    error CreditAgent_CallTakeLoanFailed(bytes32 txId, bytes errorData);
+
     /// @dev Configuring is prohibited due to at least one unprocessed credit exists or other conditions.
     error CreditAgent_ConfiguringProhibited();
 
@@ -225,24 +239,6 @@ interface ICreditAgentErrors is ICreditAgentTypes {
 
     /// @dev The zero off-chain transaction identifier has been passed as a function argument.
     error CreditAgent_TxIdZero();
-
-    /**
-     * @dev The related cash-out operation has failed to be processed by the cashier hook.
-     * @param txId The off-chain transaction identifier of the operation.
-     */
-    error CreditAgent_FailedToProcessCashOutRequestBefore(bytes32 txId);
-
-    /**
-     * @dev The related cash-out operation has failed to be processed by the cashier hook.
-     * @param txId The off-chain transaction identifier of the operation.
-     */
-    error CreditAgent_FailedToProcessCashOutConfirmationAfter(bytes32 txId);
-
-    /**
-     * @dev The related cash-out operation has failed to be processed by the cashier hook.
-     * @param txId The off-chain transaction identifier of the operation.
-     */
-    error CreditAgent_FailedToProcessCashOutReversalAfter(bytes32 txId);
 
     /**
      * @dev The provided lending market contract is not a contract.

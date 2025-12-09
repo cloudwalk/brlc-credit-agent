@@ -16,6 +16,7 @@ import {
   HookIndex,
   initialAgentState,
   deployAndConfigureContracts as deployAndConfigureCoreContracts,
+  CreditRequestStatus,
 } from "../test-utils/creditAgent";
 
 const ADDRESS_ZERO = ethers.ZeroAddress;
@@ -46,13 +47,10 @@ describe("Abstract Contract 'CreditAgent'", async () => {
 
   // Errors of the contracts under test
   const ERROR_NAME_ALREADY_CONFIGURED = "CreditAgent_AlreadyConfigured";
-  const ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_CONFIRMATION_AFTER =
-    "CreditAgent_FailedToProcessCashOutConfirmationAfter";
-  const ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_REQUEST_BEFORE = "CreditAgent_FailedToProcessCashOutRequestBefore";
-  const ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_REVERSAL_AFTER = "CreditAgent_FailedToProcessCashOutReversalAfter";
   const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "CreditAgent_ImplementationAddressInvalid";
   const ERROR_NAME_LENDING_MARKET_NOT_CONTRACT = "CreditAgent_LendingMarketNotContract";
   const ERROR_NAME_LENDING_MARKET_INCOMPATIBLE = "CreditAgent_LendingMarketIncompatible";
+  const ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE = "CreditAgent_CreditRequestStatusInappropriate";
 
   let creditAgentFactory: ContractFactory;
   let deployer: HardhatEthersSigner;
@@ -386,24 +384,24 @@ describe("Abstract Contract 'CreditAgent'", async () => {
       const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
       const txId = TX_ID_STUB;
       await expect(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_REQUEST_BEFORE)
-        .withArgs(txId);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+        .withArgs(txId, CreditRequestStatus.Nonexistent);
     });
 
     it("A cash-out confirmation hook", async () => {
       const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
       const txId = TX_ID_STUB;
       await expect(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutConfirmationAfter, txId))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_CONFIRMATION_AFTER)
-        .withArgs(txId);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+        .withArgs(txId, CreditRequestStatus.Nonexistent);
     });
 
     it("A cash-out reversal hook", async () => {
       const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
       const txId = TX_ID_STUB;
       await expect(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutReversalAfter, txId))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_FAILED_TO_PROCESS_CASH_OUT_REVERSAL_AFTER)
-        .withArgs(txId);
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
+        .withArgs(txId, CreditRequestStatus.Nonexistent);
     });
   });
 });

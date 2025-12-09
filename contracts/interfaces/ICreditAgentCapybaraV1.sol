@@ -146,9 +146,6 @@ interface ICreditAgentCapybaraV1Primary is ICreditAgentCapybaraV1Types {
  * @dev Defines the custom errors used in the credit agent for capybara v1 contract.
  */
 interface ICreditAgentCapybaraV1Errors {
-    /// @dev The lending market contract is not compatible with the capybara v1 interface.
-    error CreditAgentCapybaraV1_LendingMarketIncompatible();
-
     /// @dev The zero loan amount has been passed as a function argument.
     error CreditAgentCapybaraV1_LoanAmountZero();
 
