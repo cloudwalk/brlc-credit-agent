@@ -1,3 +1,9 @@
+# New Features
+
+- Added a derived `Expired` status for credit and installment credit requests.
+  After 5 minutes in the `Initiated` state, read methods treat the request as `Expired`.
+  This status is not stored on-chain, and the request can only be revoked manually.
+
 # Main Changes
 
 - Merged the `CreditStatusChanged` and `InstallmentCreditStatusChanged` events into a single simplified `CreditRequestStatusChanged` event.
@@ -16,12 +22,16 @@
 
 ## Technical changes
 
+- `CreditAgent` contract separated into a core abstract contract that handles Cashier hooks and executes calls to the lending market
+  and a CapybaraFinance V1-specific "frontend" that provides user-facing functions and correctly packs CapybaraFinance V1 calls.
+  `CreditAgent` contract works with an abstract `CreditRequest` structure that stores the calls needed to be executed for the loan lifecycle.
 - Solc updated to 0.8.28 and evmVersion to cancun. IR compilation enabled.
 - Storage location moved to ERC-7201: Namespaced Storage Layout slot calculation.
+- Added `.mocharc.json` file.
 
 ## Migration Steps
 
-- Contract requires redeploy because storage layout changed.
+- The contract requires redeploy because the storage layout changed.
 
 # 1.3.0
 

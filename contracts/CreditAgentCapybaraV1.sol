@@ -131,7 +131,7 @@ contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
      * - The contract must not be paused.
      * - The caller must have the {MANAGER_ROLE} role.
      * - The provided `txId` must not be zero.
-     * - The credit with the provided `txId` must have the `Initiated` status.
+     * - The credit with the provided `txId` must have the `Initiated` or `Expired` status.
      */
     function revokeCredit(bytes32 txId) external whenNotPaused onlyRole(MANAGER_ROLE) {
         _removeCreditRequest(txId);
@@ -145,7 +145,7 @@ contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
      * - The contract must not be paused.
      * - The caller must have the {MANAGER_ROLE} role.
      * - The provided `txId` must not be zero.
-     * - The credit with the provided `txId` must have the `Initiated` status.
+     * - The credit with the provided `txId` must have the `Initiated` or `Expired` status.
      */
     function revokeInstallmentCredit(bytes32 txId) external whenNotPaused onlyRole(MANAGER_ROLE) {
         _removeCreditRequest(txId);

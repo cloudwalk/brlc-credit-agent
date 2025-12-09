@@ -23,6 +23,8 @@ interface ICreditAgentCapybaraV1Types {
      * - loanAddon ---------- The addon amount (extra charges or fees) of the related loan.
      * - loanId ------------- The unique ID of the related loan on the lending market or zero if not taken.
      * - deadline ----------- The deadline of the credit request to become pending.
+     *
+     * See {CreditRequestStatus} for the semantics of the `Expired` status.
      */
     struct Credit {
         ICreditAgentTypes.CreditRequestStatus status;
@@ -48,6 +50,8 @@ interface ICreditAgentCapybaraV1Types {
      * - addonAmounts -------- The addon amounts of each installment.
      * - firstInstallmentId -- The unique ID of the related first installment loan on the market or zero if not taken.
      * - deadline ----------- The deadline of the credit request to become pending.
+     *
+     * See {CreditRequestStatus} for the semantics of the `Expired` status.
      */
     struct InstallmentCredit {
         ICreditAgentTypes.CreditRequestStatus status;

@@ -79,7 +79,7 @@ abstract contract CreditAgent is
         (1 << uint256(ICashierHookableTypes.HookIndex.CashOutConfirmationAfter)) +
         (1 << uint256(ICashierHookableTypes.HookIndex.CashOutReversalAfter));
 
-    /// @dev The timeout for credit requests to become expired is seconds
+    /// @dev The timeout for credit requests to become expired, in seconds.
     uint64 private constant CREDIT_REQUEST_EXPIRATION_TIMEOUT = 5 minutes;
 
     // ------------------ Modifiers ------------------------------- //
@@ -244,6 +244,11 @@ abstract contract CreditAgent is
 
     // ------------------ Internal functions ---------------------- //
 
+    /**
+     * @dev Returns the effective status of a credit request.
+     *
+     * See {CreditRequestStatus} for the semantics of the `Expired` status.
+     */
     function _getCreditRequestStatus(CreditRequest storage creditRequest) internal view returns (CreditRequestStatus) {
         if (creditRequest.status == CreditRequestStatus.Initiated && creditRequest.deadline < block.timestamp) {
             return CreditRequestStatus.Expired;

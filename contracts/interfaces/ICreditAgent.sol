@@ -19,11 +19,14 @@ interface ICreditAgentTypes {
      * - Confirmed = 3 ---- The credit request is confirmed as the related operation was confirmed.
      * - Reversed = 4 ----- The credit request is reversed as the related operation was reversed.
      * - Expired = 5 ------ The credit request is considered expired due to the timeout.
-     *   Important: `Expired` is a **derived** status and is never stored in the contract storage.
-     *   It must be recomputed at read-time using the in-memory value and the deadline, for example:
-     *     `status = (status == Initiated && deadline < block.timestamp) ? Expired : status`
-     *   In other words, if the stored status is `Initiated` but its `deadline` is in the past,
-     *   any view/helper function that exposes the status SHOULD treat it as `Expired`.
+     *
+     * Notes for the `Expired` status:
+     *
+     * - `Expired` is a **derived** status and is never stored in the contract storage; the stored value remains
+     *   `Initiated` and `Expired` must always be computed from the stored status and the `deadline`.
+     * - A typical computation is: `status = (status == Initiated && deadline < block.timestamp) ? Expired : status`.
+     * - While a request is effectively `Expired`, all automatic processing that expects `Initiated` or `Pending`
+     *   will treat the status as inappropriate and revert, and only manual revocation of the request is allowed.
      *
      * The possible status transitions are:
      *
