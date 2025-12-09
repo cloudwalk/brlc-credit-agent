@@ -43,6 +43,11 @@ contract LendingMarketMock {
     /// @dev Emitted when the `revokeInstallmentLoan()` function is called with the parameters of the function.
     event MockRevokeInstallmentLoanCalled(uint256 loanId);
 
+    // ------------------ Errors ---------------------------------- //
+
+    /// @dev Emitted when the `failExecution()` function is called.
+    error LendingMarketMock_Fail(uint256 someId);
+
     // ------------------ Transactional functions ----------------- //
 
     /**
@@ -105,5 +110,9 @@ contract LendingMarketMock {
     /// @dev Sets the compatible state of the contract.
     function setCompatible(bool compatible) external {
         _compatible = compatible;
+    }
+
+    function failExecution(uint256 someId) external pure {
+        revert LendingMarketMock_Fail(someId);
     }
 }

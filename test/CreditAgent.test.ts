@@ -17,6 +17,8 @@ import {
   initialAgentState,
   deployAndConfigureContracts as deployAndConfigureCoreContracts,
   CreditRequestStatus,
+  initialCashOut,
+  CashOut,
 } from "../test-utils/creditAgent";
 
 const ADDRESS_ZERO = ethers.ZeroAddress;
@@ -50,7 +52,12 @@ describe("Abstract Contract 'CreditAgent'", () => {
   const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "CreditAgent_ImplementationAddressInvalid";
   const ERROR_NAME_LENDING_MARKET_NOT_CONTRACT = "CreditAgent_LendingMarketNotContract";
   const ERROR_NAME_LENDING_MARKET_INCOMPATIBLE = "CreditAgent_LendingMarketIncompatible";
+  const ERROR_NAME_LENDING_MARKET_CALL_FAILED = "LendingMarketMock_Fail";
   const ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE = "CreditAgent_CreditRequestStatusInappropriate";
+
+  // Errors of the contracts under test
+  const ERROR_NAME_CALL_TAKE_LOAN_FAILED = "CreditAgent_CallTakeLoanFailed";
+  const ERROR_NAME_CALL_REVOKE_LOAN_FAILED = "CreditAgent_CallRevokeLoanFailed";
 
   let creditAgentFactory: ContractFactory;
   let deployer: HardhatEthersSigner;
@@ -381,7 +388,7 @@ describe("Abstract Contract 'CreditAgent'", () => {
 
   describe("Function 'onCashierHook()'", () => {
     describe("Is reverted", () => {
-      describe("for an unknown credit in the case of", () => {
+      describe("For an unknown credit in the case of", () => {
         it("A cash-out request hook", async () => {
           const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
           const txId = TX_ID_STUB;
@@ -405,6 +412,47 @@ describe("Abstract Contract 'CreditAgent'", () => {
             .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE)
             .withArgs(txId, CreditRequestStatus.Nonexistent);
         });
+      });
+
+      it("For a cash-out request hook when the take loan call fails", async () => {
+        const { creditAgent, cashierMock, lendingMarketMock } = await setUpFixture(deployAndConfigureContracts);
+        const txId = TX_ID_STUB;
+        await cashierMock.setCashOut(txId, {
+          ...initialCashOut,
+          account: borrower.address,
+          amount: 100n,
+        } as CashOut);
+        await creditAgent.createCreditRequestWithFailedTakeLoan(txId, borrower.address);
+        // error thrown by the lending market mock
+        const expectedErrorData = lendingMarketMock.interface.encodeErrorResult(
+          ERROR_NAME_LENDING_MARKET_CALL_FAILED,
+          [100n],
+        );
+        await expect(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId))
+          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CALL_TAKE_LOAN_FAILED)
+          .withArgs(txId, expectedErrorData);
+      });
+
+      it("For a cash-out request hook when the revoke loan call fails", async () => {
+        const { creditAgent, cashierMock, lendingMarketMock } = await setUpFixture(deployAndConfigureContracts);
+        const txId = TX_ID_STUB;
+        await cashierMock.setCashOut(txId, {
+          ...initialCashOut,
+          account: borrower.address,
+          amount: 100n,
+        } as CashOut);
+        await creditAgent.createCreditRequestWithFailedRevokeLoan(txId, borrower.address);
+        await proveTx(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId));
+
+        // error thrown by the lending market mock
+        const expectedErrorData = lendingMarketMock.interface.encodeErrorResult(
+          ERROR_NAME_LENDING_MARKET_CALL_FAILED,
+          [await lendingMarketMock.LOAN_ID_STAB()],
+        );
+
+        await expect(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutReversalAfter, txId))
+          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CALL_REVOKE_LOAN_FAILED)
+          .withArgs(txId, expectedErrorData);
       });
     });
   });

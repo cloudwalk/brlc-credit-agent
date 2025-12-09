@@ -2,6 +2,20 @@ import { ethers } from "hardhat";
 import { Contract, ContractFactory } from "ethers";
 import { connect, getAddress, proveTx } from "./eth";
 
+export interface CashOut {
+  account: string;
+  amount: bigint;
+  status: number;
+  flags: number;
+}
+
+export const initialCashOut: CashOut = {
+  account: ethers.ZeroAddress,
+  amount: 0n,
+  status: 0,
+  flags: 0,
+};
+
 export enum CreditRequestStatus {
   Nonexistent = 0,
   Initiated = 1,

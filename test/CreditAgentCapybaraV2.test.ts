@@ -10,6 +10,8 @@ import {
   initialAgentState,
   deployAndConfigureContracts as deployAndConfigureCoreContracts,
   CreditRequestStatus,
+  initialCashOut,
+  CashOut,
 } from "../test-utils/creditAgent";
 
 const ADDRESS_ZERO = ethers.ZeroAddress;
@@ -34,13 +36,6 @@ interface InstallmentCredit {
   firstInstallmentId: bigint;
 }
 
-interface CashOut {
-  account: string;
-  amount: bigint;
-  status: number;
-  flags: number;
-}
-
 const initialCredit: Credit = {
   borrower: ADDRESS_ZERO,
   programId: 0,
@@ -59,13 +54,6 @@ const initialInstallmentCredit: InstallmentCredit = {
   borrowAmounts: [],
   addonAmounts: [],
   firstInstallmentId: 0n,
-};
-
-const initialCashOut: CashOut = {
-  account: ADDRESS_ZERO,
-  amount: 0n,
-  status: 0,
-  flags: 0,
 };
 
 describe("Contract 'CreditAgentCapybaraV1'", () => {

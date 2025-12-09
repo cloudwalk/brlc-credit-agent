@@ -25,4 +25,26 @@ contract CreditAgentMock is CreditAgent {
             return false;
         }
     }
+
+    function createCreditRequestWithFailedTakeLoan(bytes32 txId, address account) external {
+        _createCreditRequest(
+            txId,
+            account,
+            100,
+            LendingMarketMock.failExecution.selector,
+            LendingMarketMock.revokeLoan.selector,
+            abi.encode(100)
+        );
+    }
+
+    function createCreditRequestWithFailedRevokeLoan(bytes32 txId, address account) external {
+        _createCreditRequest(
+            txId,
+            account,
+            100,
+            LendingMarketMock.takeLoanFor.selector,
+            LendingMarketMock.failExecution.selector,
+            abi.encode(account, uint32(100), 100, 100, 100)
+        );
+    }
 }
