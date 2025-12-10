@@ -201,9 +201,9 @@ abstract contract CreditAgent is
         if (hookIndex == uint256(ICashierHookableTypes.HookIndex.CashOutRequestBefore)) {
             _processTakeLoanFor(txId);
         } else if (hookIndex == uint256(ICashierHookableTypes.HookIndex.CashOutConfirmationAfter)) {
-            _processChangeCreditStatus(txId);
+            _processConfirmLoanFor(txId);
         } else if (hookIndex == uint256(ICashierHookableTypes.HookIndex.CashOutReversalAfter)) {
-            _processRevokeLoan(txId);
+            _processRevokeLoanFor(txId);
         } else {
             revert CreditAgent_CashierHookIndexUnexpected(hookIndex, txId, _msgSender());
         }
@@ -428,7 +428,7 @@ abstract contract CreditAgent is
      *
      * @param txId The unique identifier of the related cash-out operation.
      */
-    function _processChangeCreditStatus(bytes32 txId) internal {
+    function _processConfirmLoanFor(bytes32 txId) internal {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
 
         CreditRequest storage creditRequest = $.creditRequests[txId];
@@ -458,7 +458,7 @@ abstract contract CreditAgent is
      *
      * @param txId The unique identifier of the related cash-out operation.
      */
-    function _processRevokeLoan(bytes32 txId) internal {
+    function _processRevokeLoanFor(bytes32 txId) internal {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
 
         CreditRequest storage creditRequest = $.creditRequests[txId];
