@@ -48,16 +48,7 @@ contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
         if (programId == 0) {
             revert CreditAgentCapybaraV1_ProgramIdZero();
         }
-        if (durationInPeriods == 0) {
-            revert CreditAgentCapybaraV1_LoanDurationZero();
-        }
-        if (loanAmount == 0) {
-            revert CreditAgentCapybaraV1_LoanAmountZero();
-        }
-
-        loanAmount.toUint64();
-        loanAddon.toUint64();
-        durationInPeriods.toUint32();
+        _validateSubLoanParams(durationInPeriods, loanAmount, loanAddon);
 
         _createCreditRequest(
             txId,
@@ -102,15 +93,7 @@ contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
             revert CreditAgentCapybaraV1_InputArraysInvalid();
         }
         for (uint256 i = 0; i < borrowAmounts.length; i++) {
-            if (durationsInPeriods[i] == 0) {
-                revert CreditAgentCapybaraV1_LoanDurationZero();
-            }
-            if (borrowAmounts[i] == 0) {
-                revert CreditAgentCapybaraV1_LoanAmountZero();
-            }
-            borrowAmounts[i].toUint64();
-            addonAmounts[i].toUint64();
-            durationsInPeriods[i].toUint32();
+            _validateSubLoanParams(durationsInPeriods[i], borrowAmounts[i], addonAmounts[i]);
         }
 
         _createCreditRequest(
@@ -224,7 +207,19 @@ contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
         }
     }
 
-    // ------------------ Pure functions -------------------------- //
+    /// @dev Validates and downcasts subLoan parameters.
+    function _validateSubLoanParams(uint256 durationInPeriods, uint256 loanAmount, uint256 loanAddon) internal pure {
+        if (durationInPeriods == 0) {
+            revert CreditAgentCapybaraV1_LoanDurationZero();
+        }
+        if (loanAmount == 0) {
+            revert CreditAgentCapybaraV1_LoanAmountZero();
+        }
+
+        loanAmount.toUint64();
+        loanAddon.toUint64();
+        durationInPeriods.toUint32();
+    }
 
     /// @dev Calculates the sum of all elements in a memory array.
     /// @param values Array of amounts to sum.
