@@ -18,7 +18,7 @@ interface ICreditAgentTypes {
      * - Pending = 2 ------ The credit request is pending due to the related operation request, waiting for further actions.
      * - Confirmed = 3 ---- The credit request is confirmed as the related operation was confirmed.
      * - Reversed = 4 ----- The credit request is reversed as the related operation was reversed.
-     * - Expired = 5 ------ The credit request is considered expired due to the timeout.
+     * - Expired = 5 ------ The credit request is expired due to the timeout.
      *
      * Notes for the `Expired` status:
      *
@@ -33,6 +33,7 @@ interface ICreditAgentTypes {
      * - Nonexistent => Initiated (by a manager)
      * - Initiated => Nonexistent (by a manager)
      * - Initiated => Expired (due to the timeout) (not real state transition, only calculated in future transactions)
+     * - Expired => Nonexistent (by a manager)
      * - Initiated => Pending (due to requesting the related cash-out operation)
      * - Pending => Confirmed (due to confirming the related cash-out operation)
      * - Pending => Reversed (due to reversing the related cash-out operation)
@@ -60,16 +61,18 @@ interface ICreditAgentTypes {
      *
      * Fields:
      *
-     * - status ------------- The status of the credit request, see {CreditRequestStatus}.
-     * - account ------------ The account of the related cash-out operation.
-     * - cashOutAmount ------ The amount of the related cash-out operation.
-     * - revokeLoanSelector - The selector of the function in lending market contract to revoke the loan.
-     *   It should accept the loan ID as a single argument.
-     * - takeLoanSelector --- The selector of the function in lending market contract to take the loan.
-     *   It may accept any arguments, because arguments are encoded in the {takeLoanData} field.
-     * - deadline ----------- The deadline of the credit request to become pending.
-     * - takeLoanData ------- The arguments to call the {takeLoanSelector} function.
-     * - loanId ------------- The unique ID of the related loan on the lending market or zero if not taken.
+     * - status -------------- The status of the credit request, see {CreditRequestStatus}.
+     * - account ------------- The account of the related cash-out operation.
+     * - cashOutAmount ------- The amount of the related cash-out operation.
+     * - revokeLoanSelector -- The selector of the function in lending market contract to revoke the loan.
+     * - takeLoanSelector ---- The selector of the function in lending market contract to take the loan.
+     * - deadline ------------ The deadline of the credit request to become expired.
+     * - takeLoanData -------- The arguments to call the {takeLoanSelector} function.
+     * - loanId -------------- The unique ID of the related loan on the lending market or zero if not taken.
+     *
+     * Notes:
+     * - The loan revocation function must accept the loan ID as a single argument.
+     * - The loan taking function may accept any arguments, because arguments are encoded in the {takeLoanData} field.
      */
     struct CreditRequest {
         // Slot 1
@@ -95,9 +98,9 @@ interface ICreditAgentTypes {
      *
      * Fields:
      *
-     * - configured ------------------------- True if the agent is properly configured.
-     * - initiatedCreditCounter ------------- The counter of initiated credit requests.
-     * - pendingCreditCounter --------------- The counter of pending credit requests.
+     * - configured -------------- True if the agent is properly configured.
+     * - initiatedCreditCounter -- The counter of initiated credit requests.
+     * - pendingCreditCounter ---- The counter of pending credit requests.
      */
     struct AgentState {
         // Slot 1
@@ -117,13 +120,13 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
     // ------------------ Events ---------------------------------- //
 
     /**
-     * @dev Emitted when the status of an installment credit is changed.
+     * @dev Emitted when the status of a credit request is changed.
      * @param txId The unique identifier of the related cash-out operation.
      * @param account The account of the related cash-out operation.
-     * @param newStatus The current status of the credit.
-     * @param oldStatus The previous status of the credit.
-     * @param totalBorrowAmount The total amount of all installments.
      * @param loanId The unique ID of the related loan on the lending market or zero if not taken.
+     * @param newStatus The current status of the credit request.
+     * @param oldStatus The previous status of the credit request.
+     * @param cashOutAmount The amount of the related cash-out operation.
      */
     event CreditRequestStatusChanged(
         bytes32 indexed txId,
@@ -131,7 +134,7 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
         uint256 indexed loanId,
         CreditRequestStatus newStatus,
         CreditRequestStatus oldStatus,
-        uint256 totalBorrowAmount
+        uint256 cashOutAmount
     );
 
     // ------------------ Functions ------------------------------- //
@@ -177,6 +180,8 @@ interface ICreditAgentConfiguration is ICreditAgentTypes {
      * @param newLendingMarket The address of the new lending market contract to set.
      */
     function setLendingMarket(address newLendingMarket) external;
+
+    // ------------------ View functions -------------------------- //
 
     /**
      * @dev Returns the address of the currently configured cashier contract.

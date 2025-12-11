@@ -7,11 +7,11 @@ import { ICreditAgentTypes } from "./ICreditAgent.sol";
 /**
  * @title ICreditAgentCapybaraV1Types interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the types used in the credit agent for capybara v1 contract.
+ * @dev Defines the types used in the credit agent for the capybara finance V1 protocol.
  */
 interface ICreditAgentCapybaraV1Types {
     /**
-     * @dev The view of a single credit.
+     * @dev The view of a single ordinary credit.
      *
      * Fields:
      *
@@ -22,9 +22,7 @@ interface ICreditAgentCapybaraV1Types {
      * - loanAmount --------- The amount of the related loan.
      * - loanAddon ---------- The addon amount (extra charges or fees) of the related loan.
      * - loanId ------------- The unique ID of the related loan on the lending market or zero if not taken.
-     * - deadline ----------- The deadline of the credit request to become pending.
-     *
-     * See {CreditRequestStatus} for the semantics of the `Expired` status.
+     * - deadline ----------- The deadline of the credit request to become expired.
      */
     struct Credit {
         ICreditAgentTypes.CreditRequestStatus status;
@@ -49,9 +47,7 @@ interface ICreditAgentCapybaraV1Types {
      * - borrowAmounts ------- The amounts of each installment.
      * - addonAmounts -------- The addon amounts of each installment.
      * - firstInstallmentId -- The unique ID of the related first installment loan on the market or zero if not taken.
-     * - deadline ----------- The deadline of the credit request to become pending.
-     *
-     * See {CreditRequestStatus} for the semantics of the `Expired` status.
+     * - deadline ----------- The deadline of the credit request to become expired.
      */
     struct InstallmentCredit {
         ICreditAgentTypes.CreditRequestStatus status;
@@ -68,13 +64,13 @@ interface ICreditAgentCapybaraV1Types {
 /**
  * @title ICreditAgentCapybaraV1Primary interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev The primary part of the credit agent for capybara v1 contract interface.
+ * @dev The primary part of the credit agent for the capybara finance V1 protocol.
  */
 interface ICreditAgentCapybaraV1Primary is ICreditAgentCapybaraV1Types {
     // ------------------ Functions ------------------------------- //
 
     /**
-     * @dev Initiates a credit.
+     * @dev Initiates an ordinary credit.
      *
      * This function is expected to be called by a limited number of accounts.
      *
@@ -116,7 +112,7 @@ interface ICreditAgentCapybaraV1Primary is ICreditAgentCapybaraV1Types {
     ) external;
 
     /**
-     * @dev Revokes a credit.
+     * @dev Revokes an ordinary credit.
      *
      * This function is expected to be called by a limited number of accounts.
      *
@@ -134,7 +130,7 @@ interface ICreditAgentCapybaraV1Primary is ICreditAgentCapybaraV1Types {
     function revokeInstallmentCredit(bytes32 txId) external;
 
     /**
-     * @dev Returns a credit structure by its unique identifier.
+     * @dev Returns an ordinary credit structure by its unique identifier.
      * @param txId The unique identifier of the related cash-out operation.
      * @return The credit structure.
      */
@@ -151,7 +147,7 @@ interface ICreditAgentCapybaraV1Primary is ICreditAgentCapybaraV1Types {
 /**
  * @title ICreditAgentCapybaraV1Errors interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the custom errors used in the credit agent for capybara v1 contract.
+ * @dev Defines the custom errors used in the credit agent for the capybara finance V1 protocol.
  */
 interface ICreditAgentCapybaraV1Errors {
     /// @dev The zero loan amount has been passed as a function argument.

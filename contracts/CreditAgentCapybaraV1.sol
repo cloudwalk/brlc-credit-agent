@@ -13,10 +13,10 @@ import { SafeCast } from "./libraries/SafeCast.sol";
 /**
  * @title CreditAgentCapybaraV1 contract
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Wrapper contract for credit operations.
+ * @dev Wrapper contract for credit operations of the capybara finance V1 protocol.
  *
- * This contract is a stateless wrapper contract for the CreditAgent contract
- * that creates correct CreditRequest using Capybara Finance V1 lending market interface.
+ * This contract is a specific implementation of the CreditAgent contract
+ * that creates correct CreditRequest using the Capybara Finance V1 lending market interface.
  *
  * It validates input parameters and creates CreditRequest using the correct selectors and data.
  *

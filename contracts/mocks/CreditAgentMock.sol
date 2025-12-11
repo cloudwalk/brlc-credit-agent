@@ -9,9 +9,9 @@ import { LendingMarketMock } from "./LendingMarketMock.sol";
 /**
  * @title CreditAgentMock contract
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Wrapper contract for credit operations.
+ * @dev Mock wrapper contract for credit operations.
  *
- * This is simpleest version of the CreditAgent contract for testing purposes.
+ * This is a simple implementation of the CreditAgent contract for testing purposes.
  * It does not have any specific lending market contract interactions and used to deploy abstract CreditAgent contract.
  *
  * @custom:oz-upgrades-unsafe-allow missing-initializer

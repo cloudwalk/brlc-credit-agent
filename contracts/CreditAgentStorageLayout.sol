@@ -48,7 +48,7 @@ abstract contract CreditAgentStorageLayout is ICreditAgentTypes {
 
         // Slot 4
         AgentState agentState;
-        // No reserve until the end of the storage slot
+        // uint184 __reserved; // Reserved until the end of the storage slot
     }
 
     // --- Internal functions ---- //

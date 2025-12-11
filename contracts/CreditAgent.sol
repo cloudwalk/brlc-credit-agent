@@ -199,11 +199,11 @@ abstract contract CreditAgent is
      */
     function onCashierHook(uint256 hookIndex, bytes32 txId) external whenNotPaused onlyCashier {
         if (hookIndex == uint256(ICashierHookableTypes.HookIndex.CashOutRequestBefore)) {
-            _processTakeLoanFor(txId);
+            _processCashOutInitiation(txId);
         } else if (hookIndex == uint256(ICashierHookableTypes.HookIndex.CashOutConfirmationAfter)) {
-            _processConfirmLoanFor(txId);
+            _processCashOutConfirmation(txId);
         } else if (hookIndex == uint256(ICashierHookableTypes.HookIndex.CashOutReversalAfter)) {
-            _processRevokeLoanFor(txId);
+            _processCashOutReversal(txId);
         } else {
             revert CreditAgent_CashierHookIndexUnexpected(hookIndex, txId, _msgSender());
         }
@@ -215,24 +215,21 @@ abstract contract CreditAgent is
      * @inheritdoc ICreditAgentConfiguration
      */
     function cashier() external view returns (address) {
-        CreditAgentStorage storage $ = _getCreditAgentStorage();
-        return $.cashier;
+        return _getCreditAgentStorage().cashier;
     }
 
     /**
      * @inheritdoc ICreditAgentConfiguration
      */
     function lendingMarket() public view returns (address) {
-        CreditAgentStorage storage $ = _getCreditAgentStorage();
-        return $.lendingMarket;
+        return _getCreditAgentStorage().lendingMarket;
     }
 
     /**
      * @inheritdoc ICreditAgentPrimary
      */
     function agentState() external view returns (AgentState memory) {
-        CreditAgentStorage storage $ = _getCreditAgentStorage();
-        return $.agentState;
+        return _getCreditAgentStorage().agentState;
     }
 
     // ------------------ Pure functions -------------------------- //
@@ -249,11 +246,13 @@ abstract contract CreditAgent is
      *
      * See {CreditRequestStatus} for the semantics of the `Expired` status.
      */
-    function _getCreditRequestStatus(CreditRequest storage creditRequest) internal view returns (CreditRequestStatus) {
-        if (creditRequest.status == CreditRequestStatus.Initiated && creditRequest.deadline < block.timestamp) {
+    function _getCreditRequestStatus(
+        CreditRequest storage creditRequest
+    ) internal view returns (CreditRequestStatus status) {
+        status = creditRequest.status;
+        if (status == CreditRequestStatus.Initiated && creditRequest.deadline < block.timestamp) {
             return CreditRequestStatus.Expired;
         }
-        return creditRequest.status;
     }
 
     function _createCreditRequest(
@@ -381,11 +380,11 @@ abstract contract CreditAgent is
     }
 
     /**
-     * @dev Tries to process the cash-out request before hook by taking an ordinary loan.
+     * @dev Tries to process the cash-out request before hook by taking a loan.
      *
      * @param txId The unique identifier of the related cash-out operation.
      */
-    function _processTakeLoanFor(bytes32 txId) internal {
+    function _processCashOutInitiation(bytes32 txId) internal {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
 
         CreditRequest storage creditRequest = $.creditRequests[txId];
@@ -428,7 +427,7 @@ abstract contract CreditAgent is
      *
      * @param txId The unique identifier of the related cash-out operation.
      */
-    function _processConfirmLoanFor(bytes32 txId) internal {
+    function _processCashOutConfirmation(bytes32 txId) internal {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
 
         CreditRequest storage creditRequest = $.creditRequests[txId];
@@ -454,11 +453,11 @@ abstract contract CreditAgent is
     }
 
     /**
-     * @dev Tries to process the cash-out reversal after hook by revoking an ordinary loan.
+     * @dev Tries to process the cash-out reversal after hook by revoking a loan.
      *
      * @param txId The unique identifier of the related cash-out operation.
      */
-    function _processRevokeLoanFor(bytes32 txId) internal {
+    function _processCashOutReversal(bytes32 txId) internal {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
 
         CreditRequest storage creditRequest = $.creditRequests[txId];
