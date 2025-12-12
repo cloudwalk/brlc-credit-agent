@@ -5,6 +5,7 @@
   This status is not stored on-chain, and the request can only be revoked manually.
 - Added the `penaltyInterestRates` parameter to the `initiateInstallmentCredit` function.
   Now we call the `takeInstallmentLoan` function instead of `takeInstallmentLoanFor` on CapybaraFinance V1 lending market.
+- Used the `AccessControlEnumerableUpgradeable` contract instead of the `AccessControlUpgradeable` contract that allows to get role members list.
 
 # Main Changes
 
