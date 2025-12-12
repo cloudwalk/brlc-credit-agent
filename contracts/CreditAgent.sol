@@ -3,6 +3,7 @@
 pragma solidity ^0.8.28;
 
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { RescuableUpgradeable } from "./base/RescuableUpgradeable.sol";
@@ -11,7 +12,6 @@ import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 import { Versionable } from "./base/Versionable.sol";
 
 import { CreditAgentStorageLayout } from "./CreditAgentStorageLayout.sol";
-import { SafeCast } from "./libraries/SafeCast.sol";
 
 import { ICashier } from "./interfaces/ICashier.sol";
 import { ICreditAgent } from "./interfaces/ICreditAgent.sol";

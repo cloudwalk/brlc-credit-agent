@@ -61,7 +61,7 @@ describe("Abstract Contract 'CreditAgent'", () => {
   const ERROR_NAME_LOAN_TAKING_FAILED = "CreditAgent_LoanTakingFailed";
   const ERROR_NAME_LOAN_REVOCATION_FAILED = "CreditAgent_LoanRevocationFailed";
 
-  const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCast_OverflowedUintDowncast";
+  const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
 
   let creditAgentFactory: ContractFactory;
   let deployer: HardhatEthersSigner;

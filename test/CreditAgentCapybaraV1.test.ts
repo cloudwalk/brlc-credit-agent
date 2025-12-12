@@ -101,7 +101,7 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
   const ERROR_NAME_LOAN_AMOUNT_ZERO = "CreditAgentCapybaraV1_LoanAmountZero";
   const ERROR_NAME_LOAN_DURATION_ZERO = "CreditAgentCapybaraV1_LoanDurationZero";
   const ERROR_NAME_PROGRAM_ID_ZERO = "CreditAgentCapybaraV1_ProgramIdZero";
-  const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCast_OverflowedUintDowncast";
+  const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
   const ERROR_NAME_TX_ID_ZERO = "CreditAgent_TxIdZero";
   const ERROR_NAME_LENDING_MARKET_INCOMPATIBLE = "CreditAgent_LendingMarketIncompatible";
 

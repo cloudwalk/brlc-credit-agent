@@ -2,13 +2,13 @@
 
 pragma solidity 0.8.28;
 
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 import { CreditAgent } from "./CreditAgent.sol";
 
 import { ICreditAgentCapybaraV1, ICreditAgentCapybaraV1Primary } from "./interfaces/ICreditAgentCapybaraV1.sol";
 
 import { ILendingMarketCapybaraV1 } from "./interfaces/ILendingMarketCapybaraV1.sol";
-
-import { SafeCast } from "./libraries/SafeCast.sol";
 
 /**
  * @title CreditAgentCapybaraV1 contract
