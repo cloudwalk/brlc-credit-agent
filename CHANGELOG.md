@@ -3,6 +3,8 @@
 - Added a derived `Expired` status for credit and installment credit requests.
   After 5 minutes in the `Initiated` state, read methods treat the request as `Expired`.
   This status is not stored on-chain, and the request can only be revoked manually.
+- Added the `penaltyInterestRates` parameter to the `initiateInstallmentCredit` function.
+  Now we call the `takeInstallmentLoan` function instead of `takeInstallmentLoanFor` on CapybaraFinance V1 lending market.
 
 # Main Changes
 
@@ -18,14 +20,13 @@
     - `CreditAgent_InputArraysInvalid`
     - `CreditAgent_ProgramIdZero`
 - Removed errors:
-  - `CreditAgent_TxIdAlreadyUsed`:  error that was previously used to cross-check ID uniqueness across the two credit request types.
+  - `CreditAgent_TxIdAlreadyUsed`: error that was previously used to cross-check ID uniqueness across the two credit request types.
   - `CreditAgent_FailedToProcessCashOutConfirmationAfter`
 - Replaced the `CreditAgent_FailedToProcessCashOutRequestBefore` error with `CreditAgent_LoanTakingFailed`.
 - Replaced the `CreditAgent_FailedToProcessCashOutReversalAfter` error with `CreditAgent_LoanRevocationFailed`.
 - Merged the `CreditStatusChanged` and `InstallmentCreditStatusChanged` events into a single simplified `CreditRequestStatusChanged` event.
 - Added the `CreditAgent_LendingMarketNotContract` error to validate the lending market contract address.
 - Fixed initialization from the `Reversed` state so that it emits the correct `CreditRequestStatusChanged.oldStatus = Reversed` value.
-
 
 ## Technical changes
 

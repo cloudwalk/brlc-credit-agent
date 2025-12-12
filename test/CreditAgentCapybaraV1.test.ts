@@ -37,6 +37,7 @@ interface InstallmentCredit {
   durationsInPeriods: number[];
   borrowAmounts: bigint[];
   addonAmounts: bigint[];
+  penaltyInterestRates: number[];
   firstInstallmentId: bigint;
 }
 
@@ -57,6 +58,7 @@ const initialInstallmentCredit: InstallmentCredit = {
   durationsInPeriods: [],
   borrowAmounts: [],
   addonAmounts: [],
+  penaltyInterestRates: [],
   firstInstallmentId: 0n,
 };
 
@@ -80,7 +82,7 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
   const EVENT_NAME_MOCK_CONFIGURE_CASH_OUT_HOOKS_CALLED = "MockConfigureCashOutHooksCalled";
   const EVENT_NAME_MOCK_REVOKE_INSTALLMENT_LOAN_CALLED = "MockRevokeInstallmentLoanCalled";
   const EVENT_NAME_MOCK_REVOKE_LOAN_CALLED = "MockRevokeLoanCalled";
-  const EVENT_NAME_MOCK_TAKE_INSTALLMENT_LOAN_FOR_CALLED = "MockTakeInstallmentLoanForCalled";
+  const EVENT_NAME_MOCK_TAKE_INSTALLMENT_LOAN_CALLED = "MockTakeInstallmentLoanCalled";
   const EVENT_NAME_MOCK_TAKE_LOAN_FOR_CALLED = "MockTakeLoanForCalled";
 
   // Errors of the library contracts
@@ -258,6 +260,7 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
       durationsInPeriods: props.durationsInPeriods ?? [10, 20],
       borrowAmounts: props.borrowAmounts ?? [BigInt(1000), BigInt(2000)],
       addonAmounts: props.addonAmounts ?? [BigInt(100), BigInt(200)],
+      penaltyInterestRates: props.penaltyInterestRates ?? [0, 0],
       firstInstallmentId: props.firstInstallmentId ?? 0n,
     };
   }
@@ -280,6 +283,7 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
       credit.durationsInPeriods,
       credit.borrowAmounts,
       credit.addonAmounts,
+      credit.penaltyInterestRates,
     );
   }
 
@@ -1138,6 +1142,14 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
           .withArgs(64, credit.addonAmounts[1]);
       });
 
+      it("The 'penaltyInterestRates' array contains a value greater than unsigned 32-bit integer", async () => {
+        const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
+        const credit = defineInstallmentCredit({ penaltyInterestRates: [OVERFLOW_UINT32, 0] });
+        await expect(initiateInstallmentCredit(creditAgent, { credit }))
+          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST)
+          .withArgs(32, credit.penaltyInterestRates[0]);
+      });
+
       it("The 'durationsInPeriods' array is empty", async () => {
         const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
         const credit = defineInstallmentCredit({
@@ -1181,7 +1193,18 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
         await expect(initiateInstallmentCredit(creditAgent, { credit }))
           .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_INPUT_ARRAYS_INVALID);
       });
-      // Additional more complex checks are in the other sections
+
+      it("The 'penaltyInterestRates' array has different length than other arrays", async () => {
+        const { creditAgent } = await setUpFixture(deployAndConfigureContracts);
+        const credit = defineInstallmentCredit({
+          durationsInPeriods: [10, 20],
+          borrowAmounts: [1000n, 2000n],
+          addonAmounts: [100n, 200n],
+          penaltyInterestRates: [0],
+        });
+        await expect(initiateInstallmentCredit(creditAgent, { credit }))
+          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_INPUT_ARRAYS_INVALID);
+      });
     });
   });
 
@@ -1296,15 +1319,16 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
           _sumArray(credit.borrowAmounts),
         );
         if (newCreditStatus == CreditRequestStatus.Pending) {
-          await expect(tx).to.emit(lendingMarketMock, EVENT_NAME_MOCK_TAKE_INSTALLMENT_LOAN_FOR_CALLED).withArgs(
+          await expect(tx).to.emit(lendingMarketMock, EVENT_NAME_MOCK_TAKE_INSTALLMENT_LOAN_CALLED).withArgs(
             credit.borrower,
             credit.programId,
             credit.borrowAmounts,
             credit.addonAmounts,
             credit.durationsInPeriods,
+            credit.penaltyInterestRates,
           );
         } else {
-          await expect(tx).not.to.emit(lendingMarketMock, EVENT_NAME_MOCK_TAKE_INSTALLMENT_LOAN_FOR_CALLED);
+          await expect(tx).not.to.emit(lendingMarketMock, EVENT_NAME_MOCK_TAKE_INSTALLMENT_LOAN_CALLED);
         }
 
         if (newCreditStatus == CreditRequestStatus.Reversed) {

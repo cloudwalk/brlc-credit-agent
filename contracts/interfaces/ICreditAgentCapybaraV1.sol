@@ -40,14 +40,15 @@ interface ICreditAgentCapybaraV1Types {
      *
      * Fields:
      *
-     * - status -------------- The status of the credit, see {CreditRequestStatus}.
-     * - borrower ------------ The address of the borrower.
-     * - programId ----------- The unique identifier of a lending program for the credit.
-     * - durationsInPeriods -- The duration of each installment in periods.
-     * - borrowAmounts ------- The amounts of each installment.
-     * - addonAmounts -------- The addon amounts of each installment.
-     * - firstInstallmentId -- The unique ID of the related first installment loan on the market or zero if not taken.
-     * - deadline ----------- The deadline of the credit request to become expired.
+     * - status --------------- The status of the credit, see {CreditRequestStatus}.
+     * - borrower ------------- The address of the borrower.
+     * - programId ------------ The unique identifier of a lending program for the credit.
+     * - durationsInPeriods --- The duration of each installment in periods.
+     * - borrowAmounts -------- The amounts of each installment.
+     * - addonAmounts --------- The addon amounts of each installment.
+     * - penaltyInterestRates - The penalty interest rates for each installment.
+     * - firstInstallmentId --- The unique ID of the related first installment loan on the market or zero if not taken.
+     * - deadline ------------- The deadline of the credit request to become expired.
      */
     struct InstallmentCredit {
         ICreditAgentTypes.CreditRequestStatus status;
@@ -56,6 +57,7 @@ interface ICreditAgentCapybaraV1Types {
         uint256[] durationsInPeriods;
         uint256[] borrowAmounts;
         uint256[] addonAmounts;
+        uint256[] penaltyInterestRates;
         uint256 firstInstallmentId;
         uint256 deadline;
     }
@@ -101,6 +103,7 @@ interface ICreditAgentCapybaraV1Primary is ICreditAgentCapybaraV1Types {
      * @param durationsInPeriods The duration of each installment in periods.
      * @param borrowAmounts The amounts of each installment.
      * @param addonAmounts The addon amounts of each installment.
+     * @param penaltyInterestRates The penalty interest rates for each installment.
      */
     function initiateInstallmentCredit(
         bytes32 txId,
@@ -108,7 +111,8 @@ interface ICreditAgentCapybaraV1Primary is ICreditAgentCapybaraV1Types {
         uint256 programId,
         uint256[] calldata durationsInPeriods,
         uint256[] calldata borrowAmounts,
-        uint256[] calldata addonAmounts
+        uint256[] calldata addonAmounts,
+        uint256[] calldata penaltyInterestRates
     ) external;
 
     /**

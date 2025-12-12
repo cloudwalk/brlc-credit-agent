@@ -80,7 +80,8 @@ contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
         uint256 programId,
         uint256[] calldata durationsInPeriods,
         uint256[] calldata borrowAmounts,
-        uint256[] calldata addonAmounts
+        uint256[] calldata addonAmounts,
+        uint256[] calldata penaltyInterestRates
     ) external whenNotPaused onlyRole(MANAGER_ROLE) {
         if (programId == 0) {
             revert CreditAgentCapybaraV1_ProgramIdZero();
@@ -88,21 +89,30 @@ contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
         if (
             durationsInPeriods.length == 0 ||
             durationsInPeriods.length != borrowAmounts.length ||
-            durationsInPeriods.length != addonAmounts.length
+            durationsInPeriods.length != addonAmounts.length ||
+            durationsInPeriods.length != penaltyInterestRates.length
         ) {
             revert CreditAgentCapybaraV1_InputArraysInvalid();
         }
         for (uint256 i = 0; i < borrowAmounts.length; i++) {
             _validateSubLoanParams(durationsInPeriods[i], borrowAmounts[i], addonAmounts[i]);
+            penaltyInterestRates[i].toUint32();
         }
 
         _createCreditRequest(
             txId,
             borrower,
             _sumArray(borrowAmounts),
-            ILendingMarketCapybaraV1.takeInstallmentLoanFor.selector,
+            ILendingMarketCapybaraV1.takeInstallmentLoan.selector,
             ILendingMarketCapybaraV1.revokeInstallmentLoan.selector,
-            abi.encode(borrower, programId.toUint32(), borrowAmounts, addonAmounts, durationsInPeriods)
+            abi.encode(
+                borrower,
+                programId.toUint32(),
+                borrowAmounts,
+                addonAmounts,
+                durationsInPeriods,
+                penaltyInterestRates
+            )
         );
     }
 
@@ -174,8 +184,12 @@ contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
                 uint256 programId,
                 uint256[] memory borrowAmounts,
                 uint256[] memory addonAmounts,
-                uint256[] memory durationsInPeriods
-            ) = abi.decode(creditRequest.loanTakingData, (address, uint256, uint256[], uint256[], uint256[]));
+                uint256[] memory durationsInPeriods,
+                uint256[] memory penaltyInterestRates
+            ) = abi.decode(
+                    creditRequest.loanTakingData,
+                    (address, uint256, uint256[], uint256[], uint256[], uint256[])
+                );
             result = InstallmentCredit(
                 _getCreditRequestStatus(creditRequest),
                 borrower,
@@ -183,6 +197,7 @@ contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
                 durationsInPeriods,
                 borrowAmounts,
                 addonAmounts,
+                penaltyInterestRates,
                 creditRequest.loanId,
                 creditRequest.deadline
             );

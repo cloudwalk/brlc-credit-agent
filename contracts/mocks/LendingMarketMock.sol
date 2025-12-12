@@ -21,20 +21,21 @@ contract LendingMarketMock {
 
     /// @dev Emitted when the `takeLoanFor()` function is called with the parameters of the function.
     event MockTakeLoanForCalled(
-        address borrower, // Tools: prevent Prettier one-liner
+        address borrower,
         uint256 programId,
         uint256 borrowAmount,
         uint256 addonAmount,
         uint256 durationInPeriods
     );
 
-    /// @dev Emitted when the `takeInstallmentLoanFor()` function is called with the parameters of the function.
-    event MockTakeInstallmentLoanForCalled(
-        address borrower, // Tools: prevent Prettier one-liner
+    /// @dev Emitted when the `takeInstallmentLoan()` function is called with the parameters of the function.
+    event MockTakeInstallmentLoanCalled(
+        address borrower,
         uint256 programId,
         uint256[] borrowAmounts,
         uint256[] addonAmounts,
-        uint256[] durationsInPeriods
+        uint256[] durationsInPeriods,
+        uint256[] penaltyInterestRates
     );
 
     /// @dev Emitted when the `revokeLoan()` function is called with the parameters of the function.
@@ -75,19 +76,21 @@ contract LendingMarketMock {
      * @dev Imitates the same-name function of a lending market contract.
      *      Just emits an event about the call and returns a constant.
      */
-    function takeInstallmentLoanFor(
+    function takeInstallmentLoan(
         address borrower, // Tools: prevent Prettier one-liner
         uint32 programId,
-        uint256[] memory borrowAmounts,
+        uint256[] memory borrowedAmounts,
         uint256[] memory addonAmounts,
-        uint256[] memory durationsInPeriods
+        uint256[] memory durationsInPeriods,
+        uint256[] memory penaltyInterestRates
     ) external returns (uint256, uint256) {
-        emit MockTakeInstallmentLoanForCalled(
+        emit MockTakeInstallmentLoanCalled(
             borrower, // Tools: prevent Prettier one-liner
             programId,
-            borrowAmounts,
+            borrowedAmounts,
             addonAmounts,
-            durationsInPeriods
+            durationsInPeriods,
+            penaltyInterestRates
         );
         return (LOAN_ID_STAB, INSTALLMENT_COUNT_STAB);
     }
