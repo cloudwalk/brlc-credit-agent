@@ -9,8 +9,8 @@ import {
   getAddress,
   proveTx,
   checkEquality,
-  setUpFixture,
 } from "../test-utils/eth";
+import { setUpFixture } from "../test-utils/common";
 import {
   AgentState,
   Fixture,
@@ -58,8 +58,10 @@ describe("Abstract Contract 'CreditAgent'", () => {
   const ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE = "CreditAgent_CreditRequestStatusInappropriate";
 
   // Errors of the contracts under test
-  const ERROR_NAME_CALL_TAKE_LOAN_FAILED = "CreditAgent_CallTakeLoanFailed";
-  const ERROR_NAME_CALL_REVOKE_LOAN_FAILED = "CreditAgent_CallRevokeLoanFailed";
+  const ERROR_NAME_CALL_TAKE_LOAN_FAILED = "CreditAgent_CallLoanTakingFailed";
+  const ERROR_NAME_CALL_REVOKE_LOAN_FAILED = "CreditAgent_CallLoanRevocationFailed";
+
+  const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCast_OverflowedUintDowncast";
 
   let creditAgentFactory: ContractFactory;
   let deployer: HardhatEthersSigner;
@@ -477,6 +479,23 @@ describe("Abstract Contract 'CreditAgent'", () => {
           .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CALL_REVOKE_LOAN_FAILED)
           .withArgs(txId, expectedErrorData);
       });
+    });
+  });
+
+  describe("Internal function _createCreditRequest()", () => {
+    it("Is reverted if the provided cash-out amount exceeds the uint64.max value", async () => {
+      const { creditAgent, lendingMarketMock } = await setUpFixture(deployAndConfigureContracts);
+      const txId = TX_ID_STUB;
+      const takeLoanFunction = lendingMarketMock.interface.getFunction("takeLoanFor")!;
+      const revokeLoanFunction = lendingMarketMock.interface.getFunction("revokeLoan")!;
+      await expect(creditAgent.createCreditRequest(
+        txId,
+        borrower.address,
+        2n ** 64n,
+        takeLoanFunction.selector,
+        revokeLoanFunction.selector,
+        abiCoder.encode(takeLoanFunction.inputs, [borrower.address, 1, 100, 0, 10]),
+      )).to.be.revertedWithCustomError(creditAgent, ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST);
     });
   });
 });

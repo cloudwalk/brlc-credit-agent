@@ -228,8 +228,14 @@ abstract contract CreditAgent is
     /**
      * @inheritdoc ICreditAgentPrimary
      */
-    function agentState() external view returns (AgentState memory) {
-        return _getCreditAgentStorage().agentState;
+    function agentState() external view returns (AgentStateView memory) {
+        CreditAgentStorage storage $ = _getCreditAgentStorage();
+        return
+            AgentStateView(
+                $.agentState.configured,
+                $.agentState.initiatedRequestCounter,
+                $.agentState.pendingRequestCounter
+            );
     }
 
     // ------------------ Pure functions -------------------------- //
@@ -259,9 +265,9 @@ abstract contract CreditAgent is
         bytes32 txId,
         address account,
         uint256 cashOutAmount,
-        bytes4 takeLoanSelector,
-        bytes4 revokeLoanSelector,
-        bytes memory takeLoanData
+        bytes4 loanTakingSelector,
+        bytes4 loanRevocationSelector,
+        bytes memory loanTakingData
     ) internal {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
 
@@ -288,10 +294,10 @@ abstract contract CreditAgent is
         creditRequest.status = CreditRequestStatus.Initiated;
         creditRequest.account = account;
         delete creditRequest.loanId; // clean up if status was Reversed
-        creditRequest.cashOutAmount = uint64(cashOutAmount);
-        creditRequest.takeLoanData = takeLoanData;
-        creditRequest.takeLoanSelector = takeLoanSelector;
-        creditRequest.revokeLoanSelector = revokeLoanSelector;
+        creditRequest.cashOutAmount = cashOutAmount.toUint64();
+        creditRequest.loanTakingData = loanTakingData;
+        creditRequest.loanTakingSelector = loanTakingSelector;
+        creditRequest.loanRevocationSelector = loanRevocationSelector;
         creditRequest.deadline = (block.timestamp + CREDIT_REQUEST_EXPIRATION_TIMEOUT).toUint64();
 
         emit CreditRequestStatusChanged(
@@ -397,11 +403,11 @@ abstract contract CreditAgent is
         _checkCashierCashOutState(txId, creditRequest.account, creditRequest.cashOutAmount);
 
         (bool success, bytes memory result) = $.lendingMarket.call(
-            bytes.concat(creditRequest.takeLoanSelector, creditRequest.takeLoanData)
+            bytes.concat(creditRequest.loanTakingSelector, creditRequest.loanTakingData)
         );
 
         if (!success) {
-            revert CreditAgent_CallTakeLoanFailed(txId, result);
+            revert CreditAgent_CallLoanTakingFailed(txId, result);
         }
 
         uint256 loanId = abi.decode(result, (uint256));
@@ -468,10 +474,10 @@ abstract contract CreditAgent is
         }
 
         (bool success, bytes memory result) = $.lendingMarket.call(
-            abi.encodeWithSelector(creditRequest.revokeLoanSelector, creditRequest.loanId)
+            abi.encodeWithSelector(creditRequest.loanRevocationSelector, creditRequest.loanId)
         );
         if (!success) {
-            revert CreditAgent_CallRevokeLoanFailed(txId, result);
+            revert CreditAgent_CallLoanRevocationFailed(txId, result);
         }
 
         emit CreditRequestStatusChanged(

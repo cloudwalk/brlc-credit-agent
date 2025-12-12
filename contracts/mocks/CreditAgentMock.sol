@@ -30,10 +30,10 @@ contract CreditAgentMock is CreditAgent {
         bytes32 txId,
         address account,
         uint256 cashOutAmount,
-        bytes4 takeLoanSelector,
-        bytes4 revokeLoanSelector,
-        bytes memory takeLoanData
+        bytes4 loanTakingSelector,
+        bytes4 loanRevocationSelector,
+        bytes memory loanTakingData
     ) external {
-        _createCreditRequest(txId, account, cashOutAmount, takeLoanSelector, revokeLoanSelector, takeLoanData);
+        _createCreditRequest(txId, account, cashOutAmount, loanTakingSelector, loanRevocationSelector, loanTakingData);
     }
 }

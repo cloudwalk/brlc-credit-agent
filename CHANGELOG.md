@@ -6,19 +6,26 @@
 
 # Main Changes
 
+- Functions:
+  - `initiateCredit` -> `initiateOrdinaryCredit`
+  - `getCredit` -> `getOrdinaryCredit`
+  - `revokeCredit` -> `revokeOrdinaryCredit`
+- Renamed errors:
+  - `CreditAgent_BorrowerAddressZero` -> `CreditAgent_AccountAddressZero`
+  - following errors renamed to their `CreditAgentCapybaraV1_*` counterparts:
+    - `CreditAgent_LoanAmountZero`
+    - `CreditAgent_LoanDurationZero`
+    - `CreditAgent_InputArraysInvalid`
+    - `CreditAgent_ProgramIdZero`
+- Removed errors:
+  - `CreditAgent_TxIdAlreadyUsed`:  error that was previously used to cross-check ID uniqueness across the two credit request types.
+  - `CreditAgent_FailedToProcessCashOutConfirmationAfter`
+- Replaced the `CreditAgent_FailedToProcessCashOutRequestBefore` error with `CreditAgent_CallLoanTakingFailed`.
+- Replaced the `CreditAgent_FailedToProcessCashOutReversalAfter` error with `CreditAgent_CallLoanRevocationFailed`.
 - Merged the `CreditStatusChanged` and `InstallmentCreditStatusChanged` events into a single simplified `CreditRequestStatusChanged` event.
-- Removed the `CreditAgent_TxIdAlreadyUsed` error that was previously used to cross-check ID uniqueness across the two credit request types.
-- Renamed the `CreditAgent_BorrowerAddressZero` error to `CreditAgent_AccountAddressZero`.
-- Renamed the following errors to their `CreditAgentCapybaraV1_*` counterparts:
-  - `CreditAgent_LoanAmountZero`
-  - `CreditAgent_LoanDurationZero`
-  - `CreditAgent_InputArraysInvalid`
-  - `CreditAgent_ProgramIdZero`
 - Added the `CreditAgent_LendingMarketNotContract` error to validate the lending market contract address.
 - Fixed initialization from the `Reversed` state so that it emits the correct `CreditRequestStatusChanged.oldStatus = Reversed` value.
-- Removed the `CreditAgent_FailedToProcessCashOutConfirmationAfter` error.
-- Replaced the `CreditAgent_FailedToProcessCashOutRequestBefore` error with `CreditAgent_CallTakeLoanFailed`.
-- Replaced the `CreditAgent_FailedToProcessCashOutReversalAfter` error with `CreditAgent_CallRevokeLoanFailed`.
+
 
 ## Technical changes
 

@@ -24,7 +24,7 @@ interface ICreditAgentCapybaraV1Types {
      * - loanId ------------- The unique ID of the related loan on the lending market or zero if not taken.
      * - deadline ----------- The deadline of the credit request to become expired.
      */
-    struct Credit {
+    struct OrdinaryCredit {
         ICreditAgentTypes.CreditRequestStatus status;
         address borrower;
         uint256 programId;
@@ -81,7 +81,7 @@ interface ICreditAgentCapybaraV1Primary is ICreditAgentCapybaraV1Types {
      * @param loanAmount The amount of the related loan.
      * @param loanAddon The addon amount (extra charges or fees) of the related loan.
      */
-    function initiateCredit(
+    function initiateOrdinaryCredit(
         bytes32 txId, // Tools: prevent Prettier one-liner
         address borrower,
         uint256 programId,
@@ -118,7 +118,7 @@ interface ICreditAgentCapybaraV1Primary is ICreditAgentCapybaraV1Types {
      *
      * @param txId The unique identifier of the related cash-out operation.
      */
-    function revokeCredit(bytes32 txId) external;
+    function revokeOrdinaryCredit(bytes32 txId) external;
 
     /**
      * @dev Revokes an installment credit.
@@ -134,7 +134,7 @@ interface ICreditAgentCapybaraV1Primary is ICreditAgentCapybaraV1Types {
      * @param txId The unique identifier of the related cash-out operation.
      * @return The credit structure.
      */
-    function getCredit(bytes32 txId) external view returns (Credit memory);
+    function getOrdinaryCredit(bytes32 txId) external view returns (OrdinaryCredit memory);
 
     /**
      * @dev Returns an installment credit structure by its unique identifier.

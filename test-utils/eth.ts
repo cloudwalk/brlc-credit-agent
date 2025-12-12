@@ -1,6 +1,5 @@
-import { network, upgrades, ethers } from "hardhat";
+import { upgrades, ethers } from "hardhat";
 
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { BaseContract, Contract, ContractFactory, TransactionReceipt, TransactionResponse } from "ethers";
 import { expect } from "chai";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
@@ -79,14 +78,6 @@ export function checkEquality<T extends object>(actualObject: T, expectedObject:
       );
     }
   });
-}
-
-export async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
-  if (network.name === "hardhat") {
-    return loadFixture(func);
-  } else {
-    return func();
-  }
 }
 
 export async function getBlockTimestamp(txResponse: TransactionResponse | TransactionReceipt): Promise<number> {

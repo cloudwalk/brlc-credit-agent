@@ -64,23 +64,23 @@ interface ICreditAgentTypes {
      * - status -------------- The status of the credit request, see {CreditRequestStatus}.
      * - account ------------- The account of the related cash-out operation.
      * - cashOutAmount ------- The amount of the related cash-out operation.
-     * - revokeLoanSelector -- The selector of the function in lending market contract to revoke the loan.
-     * - takeLoanSelector ---- The selector of the function in lending market contract to take the loan.
+     * - loanRevocationSelector -- The selector of the function in lending market contract to revoke the loan.
+     * - loanTakingSelector ----- The selector of the function in lending market contract to take the loan.
      * - deadline ------------ The deadline of the credit request to become expired.
-     * - takeLoanData -------- The arguments to call the {takeLoanSelector} function.
+     * - loanTakingData ------ The arguments to call the {loanTakingSelector} function.
      * - loanId -------------- The unique ID of the related loan on the lending market or zero if not taken.
      *
      * Notes:
      * - The loan revocation function must accept the loan ID as a single argument.
-     * - The loan taking function may accept any arguments, because arguments are encoded in the {takeLoanData} field.
+     * - The loan taking function may accept any arguments, because arguments are encoded in the {loanTakingData} field.
      */
     struct CreditRequest {
         // Slot 1
         CreditRequestStatus status;
         address account;
         uint64 cashOutAmount;
-        bytes4 revokeLoanSelector;
-        bytes4 takeLoanSelector;
+        bytes4 loanRevocationSelector;
+        bytes4 loanTakingSelector;
         // uint16 __reserved; // Reserved until the end of the storage slot
 
         // Slot 2
@@ -88,7 +88,7 @@ interface ICreditAgentTypes {
         // uint192 __reserved; // Reserved until the end of the storage slot
 
         // Slot 3
-        bytes takeLoanData;
+        bytes loanTakingData;
         // Slot 4
         uint256 loanId;
     }
@@ -108,6 +108,23 @@ interface ICreditAgentTypes {
         uint32 initiatedRequestCounter;
         uint32 pendingRequestCounter;
         // uint184 __reserved; // Reserved until the end of the storage slot
+    }
+
+    /**
+     * @dev The view of the agent state.s
+     *
+     * This structure is used as a return type for appropriate view functions.
+     *
+     * Fields:
+     *
+     * - configured -------------- True if the agent is properly configured.
+     * - initiatedRequestCounter -- The counter of initiated credit requests.
+     * - pendingRequestCounter ---- The counter of pending credit requests.
+     */
+    struct AgentStateView {
+        bool configured;
+        uint256 initiatedRequestCounter;
+        uint256 pendingRequestCounter;
     }
 }
 
@@ -142,7 +159,7 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
     /**
      * @dev Returns the state of this agent contract.
      */
-    function agentState() external view returns (AgentState memory);
+    function agentState() external view returns (AgentStateView memory);
 }
 
 /**
@@ -234,14 +251,14 @@ interface ICreditAgentErrors is ICreditAgentTypes {
      * @param txId The off-chain transaction identifier of the operation.
      * @param errorData The error data returned by the call.
      */
-    error CreditAgent_CallRevokeLoanFailed(bytes32 txId, bytes errorData);
+    error CreditAgent_CallLoanRevocationFailed(bytes32 txId, bytes errorData);
 
     /**
      * @dev The call to take the loan failed.
      * @param txId The off-chain transaction identifier of the operation.
      * @param errorData The error data returned by the call.
      */
-    error CreditAgent_CallTakeLoanFailed(bytes32 txId, bytes errorData);
+    error CreditAgent_CallLoanTakingFailed(bytes32 txId, bytes errorData);
 
     /// @dev Configuring is prohibited due to at least one unprocessed credit exists or other conditions.
     error CreditAgent_ConfiguringProhibited();

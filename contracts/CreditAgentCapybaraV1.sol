@@ -37,7 +37,7 @@ contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
      * - The provided `txId`, `borrower`, `programId`, `durationInPeriods`, `loanAmount` must not be zeros.
      * - The credit with the provided `txId` must have the `Nonexistent` or `Reversed` status.
      */
-    function initiateCredit(
+    function initiateOrdinaryCredit(
         bytes32 txId, // Tools: prevent Prettier one-liner
         address borrower,
         uint256 programId,
@@ -116,7 +116,7 @@ contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
      * - The provided `txId` must not be zero.
      * - The credit with the provided `txId` must have the `Initiated` or `Expired` status.
      */
-    function revokeCredit(bytes32 txId) external whenNotPaused onlyRole(MANAGER_ROLE) {
+    function revokeOrdinaryCredit(bytes32 txId) external whenNotPaused onlyRole(MANAGER_ROLE) {
         _removeCreditRequest(txId);
     }
 
@@ -137,18 +137,18 @@ contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
     /**
      * @inheritdoc ICreditAgentCapybaraV1Primary
      */
-    function getCredit(bytes32 txId) external view returns (Credit memory result) {
+    function getOrdinaryCredit(bytes32 txId) external view returns (OrdinaryCredit memory result) {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
         CreditRequest storage creditRequest = $.creditRequests[txId];
-        if (creditRequest.takeLoanData.length != 0) {
+        if (creditRequest.loanTakingData.length != 0) {
             (
                 address borrower,
                 uint256 programId,
                 uint256 loanAmount,
                 uint256 loanAddon,
                 uint256 durationInPeriods
-            ) = abi.decode(creditRequest.takeLoanData, (address, uint32, uint256, uint256, uint256));
-            result = Credit(
+            ) = abi.decode(creditRequest.loanTakingData, (address, uint32, uint256, uint256, uint256));
+            result = OrdinaryCredit(
                 _getCreditRequestStatus(creditRequest),
                 borrower,
                 programId,
@@ -168,14 +168,14 @@ contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
     function getInstallmentCredit(bytes32 txId) external view returns (InstallmentCredit memory result) {
         CreditAgentStorage storage $ = _getCreditAgentStorage();
         CreditRequest storage creditRequest = $.creditRequests[txId];
-        if (creditRequest.takeLoanData.length != 0) {
+        if (creditRequest.loanTakingData.length != 0) {
             (
                 address borrower,
                 uint256 programId,
                 uint256[] memory borrowAmounts,
                 uint256[] memory addonAmounts,
                 uint256[] memory durationsInPeriods
-            ) = abi.decode(creditRequest.takeLoanData, (address, uint256, uint256[], uint256[], uint256[]));
+            ) = abi.decode(creditRequest.loanTakingData, (address, uint256, uint256[], uint256[], uint256[]));
             result = InstallmentCredit(
                 _getCreditRequestStatus(creditRequest),
                 borrower,
