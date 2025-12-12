@@ -407,7 +407,7 @@ abstract contract CreditAgent is
         );
 
         if (!success) {
-            revert CreditAgent_CallLoanTakingFailed(txId, result);
+            revert CreditAgent_LoanTakingFailed(txId, result);
         }
 
         uint256 loanId = abi.decode(result, (uint256));
@@ -477,7 +477,7 @@ abstract contract CreditAgent is
             abi.encodeWithSelector(creditRequest.loanRevocationSelector, creditRequest.loanId)
         );
         if (!success) {
-            revert CreditAgent_CallLoanRevocationFailed(txId, result);
+            revert CreditAgent_LoanRevocationFailed(txId, result);
         }
 
         emit CreditRequestStatusChanged(

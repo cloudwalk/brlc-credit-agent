@@ -251,14 +251,14 @@ interface ICreditAgentErrors is ICreditAgentTypes {
      * @param txId The off-chain transaction identifier of the operation.
      * @param errorData The error data returned by the call.
      */
-    error CreditAgent_CallLoanRevocationFailed(bytes32 txId, bytes errorData);
+    error CreditAgent_LoanRevocationFailed(bytes32 txId, bytes errorData);
 
     /**
      * @dev The call to take the loan failed.
      * @param txId The off-chain transaction identifier of the operation.
      * @param errorData The error data returned by the call.
      */
-    error CreditAgent_CallLoanTakingFailed(bytes32 txId, bytes errorData);
+    error CreditAgent_LoanTakingFailed(bytes32 txId, bytes errorData);
 
     /// @dev Configuring is prohibited due to at least one unprocessed credit exists or other conditions.
     error CreditAgent_ConfiguringProhibited();

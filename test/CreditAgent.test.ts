@@ -58,8 +58,8 @@ describe("Abstract Contract 'CreditAgent'", () => {
   const ERROR_NAME_CREDIT_REQUEST_STATUS_INAPPROPRIATE = "CreditAgent_CreditRequestStatusInappropriate";
 
   // Errors of the contracts under test
-  const ERROR_NAME_CALL_TAKE_LOAN_FAILED = "CreditAgent_CallLoanTakingFailed";
-  const ERROR_NAME_CALL_REVOKE_LOAN_FAILED = "CreditAgent_CallLoanRevocationFailed";
+  const ERROR_NAME_LOAN_TAKING_FAILED = "CreditAgent_LoanTakingFailed";
+  const ERROR_NAME_LOAN_REVOCATION_FAILED = "CreditAgent_LoanRevocationFailed";
 
   const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCast_OverflowedUintDowncast";
 
@@ -442,7 +442,7 @@ describe("Abstract Contract 'CreditAgent'", () => {
           [100n],
         );
         await expect(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutRequestBefore, txId))
-          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CALL_TAKE_LOAN_FAILED)
+          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_LOAN_TAKING_FAILED)
           .withArgs(txId, expectedErrorData);
       });
 
@@ -476,7 +476,7 @@ describe("Abstract Contract 'CreditAgent'", () => {
         );
 
         await expect(cashierMock.callCashierHook(getAddress(creditAgent), HookIndex.CashOutReversalAfter, txId))
-          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_CALL_REVOKE_LOAN_FAILED)
+          .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_LOAN_REVOCATION_FAILED)
           .withArgs(txId, expectedErrorData);
       });
     });
