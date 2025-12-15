@@ -238,13 +238,6 @@ abstract contract CreditAgent is
             );
     }
 
-    // ------------------ Pure functions -------------------------- //
-
-    /**
-     * @inheritdoc ICreditAgent
-     */
-    function proveCreditAgent() external pure {}
-
     // ------------------ Internal functions ---------------------- //
 
     /**
@@ -492,16 +485,6 @@ abstract contract CreditAgent is
         );
 
         $.agentState.pendingRequestCounter--;
-    }
-
-    /**
-     * @dev The upgrade validation function for the UUPSExtUpgradeable contract.
-     * @param newImplementation The address of the new implementation.
-     */
-    function _validateUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
-        try ICreditAgent(newImplementation).proveCreditAgent() {} catch {
-            revert CreditAgent_ImplementationAddressInvalid();
-        }
     }
 
     /**

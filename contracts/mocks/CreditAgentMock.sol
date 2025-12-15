@@ -19,6 +19,7 @@ import { LendingMarketMock } from "./LendingMarketMock.sol";
 contract CreditAgentMock is CreditAgent {
     /// @dev close to the original implementation of verification mechanism for lending market contract.
     function _validateLendingMarket(address lendingMarket) internal view override returns (bool) {
+        _validateUpgrade(address(this)); // calling that only to provide coverage to that function
         try LendingMarketMock(lendingMarket).proveLendingMarket() {
             return true;
         } catch {
@@ -36,4 +37,6 @@ contract CreditAgentMock is CreditAgent {
     ) external {
         _createCreditRequest(txId, account, cashOutAmount, loanTakingSelector, loanRevocationSelector, loanTakingData);
     }
+
+    function _validateUpgrade(address newImplementation) internal view override {}
 }

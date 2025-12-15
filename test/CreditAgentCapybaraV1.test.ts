@@ -4,7 +4,14 @@ import { Contract, ContractFactory, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { time } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 
-import { connect, getAddress, proveTx, checkEquality, getBlockTimestamp } from "../test-utils/eth";
+import {
+  connect,
+  getAddress,
+  proveTx,
+  checkEquality,
+  getBlockTimestamp,
+  checkContractUupsUpgrading,
+} from "../test-utils/eth";
 import { setUpFixture } from "../test-utils/common";
 import {
   AgentState,
@@ -104,6 +111,7 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
   const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
   const ERROR_NAME_TX_ID_ZERO = "CreditAgent_TxIdZero";
   const ERROR_NAME_LENDING_MARKET_INCOMPATIBLE = "CreditAgent_LendingMarketIncompatible";
+  const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "CreditAgentCapybaraV1_ImplementationAddressInvalid";
 
   let creditAgentCapybaraV1Factory: ContractFactory;
   let deployer: HardhatEthersSigner;
@@ -315,6 +323,41 @@ describe("Contract 'CreditAgentCapybaraV1'", () => {
   function _sumArray(array: bigint[]): bigint {
     return array.reduce((acc, val) => acc + val, 0n);
   }
+
+  describe("Function 'upgradeToAndCall()'", () => {
+    it("Executes as expected", async () => {
+      const creditAgent = await setUpFixture(deployCreditAgent);
+      await checkContractUupsUpgrading(creditAgent, creditAgentCapybaraV1Factory);
+    });
+
+    it("Is reverted if the caller does not have the owner role", async () => {
+      const creditAgent = await setUpFixture(deployCreditAgent);
+
+      await expect(connect(creditAgent, admin).upgradeToAndCall(creditAgent, "0x"))
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT);
+    });
+  });
+
+  describe("Function 'upgradeTo()'", () => {
+    it("Executes as expected", async () => {
+      const creditAgent = await setUpFixture(deployCreditAgent);
+      await checkContractUupsUpgrading(creditAgent, creditAgentCapybaraV1Factory, "upgradeTo(address)");
+    });
+
+    it("Is reverted if the caller does not have the owner role", async () => {
+      const creditAgent = await setUpFixture(deployCreditAgent);
+
+      await expect(connect(creditAgent, admin).upgradeTo(creditAgent))
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT);
+    });
+
+    it("Is reverted if the provided implementation address is not a credit agent contract", async () => {
+      const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
+
+      await expect(creditAgent.upgradeTo(cashierMock))
+        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID);
+    });
+  });
 
   describe("Function '_validateLendingMarket()'", () => {
     it("Returns false for a non-compatible lending market contract and fails `proveLendingMarket()` call", async () => {

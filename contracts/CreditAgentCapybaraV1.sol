@@ -205,7 +205,24 @@ contract CreditAgentCapybaraV1 is CreditAgent, ICreditAgentCapybaraV1 {
         // else empty object
     }
 
+    // ------------------ Pure functions -------------------------- //
+
+    /**
+     * @inheritdoc ICreditAgentCapybaraV1
+     */
+    function proveCreditAgentCapybaraV1() external pure {}
+
     // ------------------ Internal functions ---------------------- //
+
+    /**
+     * @dev The upgrade validation function for the UUPSExtUpgradeable contract.
+     * @param newImplementation The address of the new implementation.
+     */
+    function _validateUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
+        try ICreditAgentCapybaraV1(newImplementation).proveCreditAgentCapybaraV1() {} catch {
+            revert CreditAgentCapybaraV1_ImplementationAddressInvalid();
+        }
+    }
 
     /**
      * @inheritdoc CreditAgent

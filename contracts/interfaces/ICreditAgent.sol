@@ -223,9 +223,6 @@ interface ICreditAgentErrors is ICreditAgentTypes {
     /// @dev The zero borrower address has been passed as a function argument.
     error CreditAgent_AccountAddressZero();
 
-    /// @dev Thrown if the provided new implementation address is not of a credit agent contract.
-    error CreditAgent_ImplementationAddressInvalid();
-
     /**
      * @dev The caller is not allowed to execute the hook function.
      * @param caller The address of the caller.
@@ -290,9 +287,4 @@ interface ICreditAgentErrors is ICreditAgentTypes {
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev The full interface of the credit agent contract.
  */
-interface ICreditAgent is ICreditAgentPrimary, ICreditAgentConfiguration, ICreditAgentErrors {
-    /**
-     * @dev Proves that the contract is the credit agent contract.
-     */
-    function proveCreditAgent() external pure;
-}
+interface ICreditAgent is ICreditAgentPrimary, ICreditAgentConfiguration, ICreditAgentErrors {}

@@ -4,7 +4,6 @@ import { expect } from "chai";
 import { Contract, ContractFactory, AbiCoder } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import {
-  checkContractUupsUpgrading,
   connect,
   getAddress,
   proveTx,
@@ -51,7 +50,6 @@ describe("Abstract Contract 'CreditAgent'", () => {
 
   // Errors of the contracts under test
   const ERROR_NAME_ALREADY_CONFIGURED = "CreditAgent_AlreadyConfigured";
-  const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "CreditAgent_ImplementationAddressInvalid";
   const ERROR_NAME_LENDING_MARKET_NOT_CONTRACT = "CreditAgent_LendingMarketNotContract";
   const ERROR_NAME_LENDING_MARKET_INCOMPATIBLE = "CreditAgent_LendingMarketIncompatible";
   const ERROR_NAME_LENDING_MARKET_CALL_FAILED = "LendingMarketMock_Fail";
@@ -169,41 +167,6 @@ describe("Abstract Contract 'CreditAgent'", () => {
       const creditAgent = await setUpFixture(deployCreditAgentMock);
       const creditAgentVersion = await creditAgent.$__VERSION();
       checkEquality(creditAgentVersion, EXPECTED_VERSION);
-    });
-  });
-
-  describe("Function 'upgradeToAndCall()'", () => {
-    it("Executes as expected", async () => {
-      const creditAgent = await setUpFixture(deployCreditAgentMock);
-      await checkContractUupsUpgrading(creditAgent, creditAgentFactory);
-    });
-
-    it("Is reverted if the caller does not have the owner role", async () => {
-      const creditAgent = await setUpFixture(deployCreditAgentMock);
-
-      await expect(connect(creditAgent, admin).upgradeToAndCall(creditAgent, "0x"))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT);
-    });
-  });
-
-  describe("Function 'upgradeTo()'", () => {
-    it("Executes as expected", async () => {
-      const creditAgent = await setUpFixture(deployCreditAgentMock);
-      await checkContractUupsUpgrading(creditAgent, creditAgentFactory, "upgradeTo(address)");
-    });
-
-    it("Is reverted if the caller does not have the owner role", async () => {
-      const creditAgent = await setUpFixture(deployCreditAgentMock);
-
-      await expect(connect(creditAgent, admin).upgradeTo(creditAgent))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT);
-    });
-
-    it("Is reverted if the provided implementation address is not a credit agent contract", async () => {
-      const { creditAgent, cashierMock } = await setUpFixture(deployAndConfigureContracts);
-
-      await expect(creditAgent.upgradeTo(cashierMock))
-        .to.be.revertedWithCustomError(creditAgent, ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID);
     });
   });
 

@@ -154,6 +154,9 @@ interface ICreditAgentCapybaraV1Primary is ICreditAgentCapybaraV1Types {
  * @dev Defines the custom errors used in the credit agent for the capybara finance V1 protocol.
  */
 interface ICreditAgentCapybaraV1Errors {
+    /// @dev Thrown if the provided new implementation address is not a CreditAgentCapybaraV1 contract.
+    error CreditAgentCapybaraV1_ImplementationAddressInvalid();
+
     /// @dev The zero loan amount has been passed as a function argument.
     error CreditAgentCapybaraV1_LoanAmountZero();
 
@@ -172,4 +175,9 @@ interface ICreditAgentCapybaraV1Errors {
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev The full interface of the credit agent for capybara v1 contract.
  */
-interface ICreditAgentCapybaraV1 is ICreditAgentCapybaraV1Primary, ICreditAgentCapybaraV1Errors {}
+interface ICreditAgentCapybaraV1 is ICreditAgentCapybaraV1Primary, ICreditAgentCapybaraV1Errors {
+    /**
+     * @dev Proves that the contract is the credit agent for the capybara finance V1 protocol.
+     */
+    function proveCreditAgentCapybaraV1() external pure;
+}
