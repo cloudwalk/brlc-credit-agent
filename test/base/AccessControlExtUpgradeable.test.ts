@@ -51,7 +51,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
     return { accessControlExtMock };
   }
 
-  describe("Function 'initialize()' and internal initializers", async () => {
+  describe("Function 'initialize()' and internal initializers", () => {
     it("The external initializer configures the contract as expected", async () => {
       const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
 
@@ -84,8 +84,8 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
     });
   });
 
-  describe("Function 'grantRoleBatch()'", async () => {
-    describe("Executes as expected if the input account array contains", async () => {
+  describe("Function 'grantRoleBatch()'", () => {
+    describe("Executes as expected if the input account array contains", () => {
       it("A single account without the previously granted role", async () => {
         const { accessControlExtMock } = await setUpFixture(deployAndConfigureAccessControlExtMock);
         expect(await accessControlExtMock.hasRole(USER_ROLE, userAddresses[0])).to.equal(false);
@@ -130,7 +130,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The caller does not have the expected admin role", async () => {
         const { accessControlExtMock } = await setUpFixture(deployAndConfigureAccessControlExtMock);
 
@@ -142,8 +142,8 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
     });
   });
 
-  describe("Function 'revokeRoleBatch()'", async () => {
-    describe("Executes as expected if the input account array contains", async () => {
+  describe("Function 'revokeRoleBatch()'", () => {
+    describe("Executes as expected if the input account array contains", () => {
       it("A single account with the previously granted role", async () => {
         const { accessControlExtMock } = await setUpFixture(deployAndConfigureAccessControlExtMock);
         await proveTx(accessControlExtMock.grantRoleBatch(USER_ROLE, [userAddresses[0]]));
@@ -189,7 +189,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The caller does not have the expected admin role", async () => {
         const { accessControlExtMock } = await setUpFixture(deployAndConfigureAccessControlExtMock);
 
@@ -201,7 +201,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
     });
   });
 
-  describe("Function 'setRoleAdmin()'", async () => {
+  describe("Function 'setRoleAdmin()'", () => {
     it("Executes as expected for a non-existing role", async () => {
       const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
       const role = ethers.id("SOME_ROLE");

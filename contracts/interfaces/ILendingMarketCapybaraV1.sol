@@ -3,11 +3,13 @@
 pragma solidity ^0.8.0;
 
 /**
- * @title ILendingMarket interface
+ * @title ILendingMarketCapybaraV1 interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Defines the needed functions of the lending market contract.
+ *
+ * See https://github.com/cloudwalk/brlc-capybara-finance
  */
-interface ILendingMarket {
+interface ILendingMarketCapybaraV1 {
     /**
      * @dev Takes an ordinary loan for a provided account.
      * @param borrower The account for whom the loan is taken.
@@ -26,21 +28,27 @@ interface ILendingMarket {
     ) external returns (uint256);
 
     /**
-     * @dev Takes an installment loan with multiple sub-loans for a provided account.
+     * @dev Takes an installment loan with multiple sub-loans for a provided account with additional parameters.
+     *
+     * See notes about the penalty interest rate in the CapybaraFinance V1 repository
+     * https://github.com/cloudwalk/brlc-capybara-finance
+     *
      * @param borrower The account for whom the loan is taken.
      * @param programId The identifier of the program to take the loan from.
-     * @param borrowAmounts The desired amounts of tokens to borrow for each installment.
+     * @param borrowedAmounts The desired amounts of tokens to borrow for each installment.
      * @param addonAmounts The off-chain calculated addon amounts for each installment.
      * @param durationsInPeriods The desired duration of each installment in periods.
+     * @param penaltyInterestRates The penalty interest rates for each installment.
      * @return firstInstallmentId The unique identifier of the first sub-loan of the installment loan.
      * @return installmentCount The total number of installments.
      */
-    function takeInstallmentLoanFor(
+    function takeInstallmentLoan(
         address borrower,
         uint32 programId,
-        uint256[] calldata borrowAmounts,
+        uint256[] calldata borrowedAmounts,
         uint256[] calldata addonAmounts,
-        uint256[] calldata durationsInPeriods
+        uint256[] calldata durationsInPeriods,
+        uint256[] calldata penaltyInterestRates
     ) external returns (uint256 firstInstallmentId, uint256 installmentCount);
 
     /**
@@ -54,4 +62,9 @@ interface ILendingMarket {
      * @param loanId The unique identifier of any sub-loan of the installment loan to revoke.
      */
     function revokeInstallmentLoan(uint256 loanId) external;
+
+    /**
+     * @dev Proves that the contract is a lending market contract.
+     */
+    function proveLendingMarket() external pure;
 }

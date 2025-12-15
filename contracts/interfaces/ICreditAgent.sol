@@ -5,24 +5,35 @@ pragma solidity ^0.8.20;
 /**
  * @title ICreditAgentTypes interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the types used in the credit agent contract.
+ * @dev Defines the types used in the credit abstract agent contract.
  */
 interface ICreditAgentTypes {
     /**
-     * @dev The status of a credit.
+     * @dev The status of a credit request.
      *
      * The possible values:
      *
-     * - Nonexistent = 0 -- The credit does not exist. The default value.
-     * - Initiated = 1 ---- The credit is initiated by a manager, waiting for the related cash-out operation request.
-     * - Pending = 2 ------ The credit is pending due to the related operation request, waiting for further actions.
-     * - Confirmed = 3 ---- The credit is confirmed as the related operation was confirmed.
-     * - Reversed = 4 ----- The credit is reversed as the related operation was reversed.
+     * - Nonexistent = 0 -- The credit request does not exist. The default value.
+     * - Initiated = 1 ---- The credit request is initiated by a manager, waiting for the related cash-out operation request.
+     * - Pending = 2 ------ The credit request is pending due to the related operation request, waiting for further actions.
+     * - Confirmed = 3 ---- The credit request is confirmed as the related operation was confirmed.
+     * - Reversed = 4 ----- The credit request is reversed as the related operation was reversed.
+     * - Expired = 5 ------ The credit request is expired due to the timeout.
+     *
+     * Notes for the `Expired` status:
+     *
+     * - `Expired` is a **derived** status and is never stored in the contract storage; the stored value remains
+     *   `Initiated` and `Expired` must always be computed from the stored status and the `deadline`.
+     * - A typical computation is: `status = (status == Initiated && deadline < block.timestamp) ? Expired : status`.
+     * - While a request is effectively `Expired`, all automatic processing that expects `Initiated` or `Pending`
+     *   will treat the status as inappropriate and revert, and only manual revocation of the request is allowed.
      *
      * The possible status transitions are:
      *
      * - Nonexistent => Initiated (by a manager)
      * - Initiated => Nonexistent (by a manager)
+     * - Initiated => Expired (due to the timeout) (not real state transition, only calculated in future transactions)
+     * - Expired => Nonexistent (by a manager)
      * - Initiated => Pending (due to requesting the related cash-out operation)
      * - Pending => Confirmed (due to confirming the related cash-out operation)
      * - Pending => Reversed (due to reversing the related cash-out operation)
@@ -36,80 +47,50 @@ interface ICreditAgentTypes {
      * - Confirmed: The loan is taken and cannot be revoked.
      * - Reversed: The loan is revoked.
      */
-    enum CreditStatus {
+    enum CreditRequestStatus {
         Nonexistent,
         Initiated,
         Pending,
         Confirmed,
-        Reversed
+        Reversed,
+        Expired
     }
 
     /**
-     * @dev The data of a single credit.
+     * @dev The data of a single credit request.
      *
      * Fields:
      *
-     * - borrower ----------- The address of the borrower.
-     * - programId ---------- The unique identifier of a lending program for the credit.
-     * - durationInPeriods -- The duration of the credit in periods. The period length is defined outside.
-     * - status ------------- The status of the credit, see {CreditStatus}.
-     * - loanAmount --------- The amount of the related loan.
-     * - loanAddon ---------- The addon amount (extra charges or fees) of the related loan.
-     * - loanId ------------- The unique ID of the related loan on the lending market or zero if not taken.
+     * - status ----------------- The status of the credit request, see {CreditRequestStatus}.
+     * - account ---------------- The account of the related cash-out operation.
+     * - cashOutAmount ---------- The amount of the related cash-out operation.
+     * - loanRevocationSelector - The selector of the function in lending market contract to revoke the loan.
+     * - loanTakingSelector ----- The selector of the function in lending market contract to take the loan.
+     * - deadline --------------- The deadline of the credit request to become expired.
+     * - loanTakingData --------- The arguments to call the {loanTakingSelector} function.
+     * - loanId ----------------- The unique ID of the related loan on the lending market or zero if not taken.
+     *
+     * Notes:
+     * - The loan revocation function must accept the loan ID as a single argument.
+     * - The loan taking function may accept any arguments, because arguments are encoded in the {loanTakingData} field.
      */
-    struct Credit {
+    struct CreditRequest {
         // Slot 1
-        address borrower;
-        uint32 programId;
-        uint32 durationInPeriods;
-        CreditStatus status;
-        // uint24 __reserved; // Reserved until the end of the storage slot
+        CreditRequestStatus status;
+        address account;
+        uint64 cashOutAmount;
+        bytes4 loanRevocationSelector;
+        bytes4 loanTakingSelector;
+        // uint16 __reserved; // Reserved until the end of the storage slot
 
         // Slot 2
-        uint64 loanAmount;
-        uint64 loanAddon;
-        // uint128 __reserved; // Reserved until the end of the storage slot
+        uint64 deadline;
+        // uint192 __reserved; // Reserved until the end of the storage slot
 
         // Slot 3
-        uint256 loanId;
-        // No reserve until the end of the storage slot
-    }
-
-    /**
-     * @dev The data of a single installment credit.
-     *
-     * Fields:
-     *
-     * - borrower ------------ The address of the borrower.
-     * - programId ----------- The unique identifier of a lending program for the credit.
-     * - status -------------- The status of the credit, see {CreditStatus}.
-     * - durationsInPeriods -- The duration of each installment in periods.
-     * - borrowAmounts ------- The amounts of each installment.
-     * - addonAmounts -------- The addon amounts of each installment.
-     * - firstInstallmentId -- The unique ID of the related first installment loan on the market or zero if not taken.
-     */
-    struct InstallmentCredit {
-        // Slot 1
-        address borrower;
-        uint32 programId;
-        CreditStatus status;
-        // uint56 __reserved; // Reserved until the end of the storage slot
-
-        // Slot 2
-        uint32[] durationsInPeriods;
-        // No reserve until the end of the storage slot
-
-        // Slot 3
-        uint64[] borrowAmounts;
-        // No reserve until the end of the storage slot
-
+        bytes loanTakingData;
         // Slot 4
-        uint64[] addonAmounts;
-        // No reserve until the end of the storage slot
-
-        // Slot 5
-        uint256 firstInstallmentId;
-        // No reserve until the end of the storage slot
+        uint256 loanId;
     }
 
     /**
@@ -117,20 +98,33 @@ interface ICreditAgentTypes {
      *
      * Fields:
      *
-     * - configured ------------------------- True if the agent is properly configured.
-     * - initiatedCreditCounter ------------- The counter of initiated credits.
-     * - pendingCreditCounter --------------- The counter of pending credits.
-     * - initiatedInstallmentCreditCounter -- The counter of initiated installment credits.
-     * - pendingInstallmentCreditCounter ---- The counter of pending installment credits.
+     * - configured -------------- True if the agent is properly configured.
+     * - initiatedCreditCounter -- The counter of initiated credit requests.
+     * - pendingCreditCounter ---- The counter of pending credit requests.
      */
     struct AgentState {
         // Slot 1
         bool configured;
-        uint32 initiatedCreditCounter;
-        uint32 pendingCreditCounter;
-        uint32 initiatedInstallmentCreditCounter;
-        uint32 pendingInstallmentCreditCounter;
-        // uint120 __reserved; // Reserved until the end of the storage slot
+        uint32 initiatedRequestCounter;
+        uint32 pendingRequestCounter;
+        // uint184 __reserved; // Reserved until the end of the storage slot
+    }
+
+    /**
+     * @dev The view of the agent state.s
+     *
+     * This structure is used as a return type for appropriate view functions.
+     *
+     * Fields:
+     *
+     * - configured --------------- True if the agent is properly configured.
+     * - initiatedRequestCounter -- The counter of initiated credit requests.
+     * - pendingRequestCounter ---- The counter of pending credit requests.
+     */
+    struct AgentStateView {
+        bool configured;
+        uint256 initiatedRequestCounter;
+        uint256 pendingRequestCounter;
     }
 }
 
@@ -143,135 +137,29 @@ interface ICreditAgentPrimary is ICreditAgentTypes {
     // ------------------ Events ---------------------------------- //
 
     /**
-     * @dev Emitted when the status of a credit is changed.
+     * @dev Emitted when the status of a credit request is changed.
      * @param txId The unique identifier of the related cash-out operation.
-     * @param borrower The address of the borrower.
-     * @param newStatus The current status of the credit.
-     * @param oldStatus The previous status of the credit.
+     * @param account The account of the related cash-out operation.
      * @param loanId The unique ID of the related loan on the lending market or zero if not taken.
-     * @param programId The unique identifier of the lending program for the credit.
-     * @param durationInPeriods The duration of the credit in periods.
-     * @param loanAmount The amount of the related loan.
-     * @param loanAddon The addon amount of the related loan.
+     * @param newStatus The current status of the credit request.
+     * @param oldStatus The previous status of the credit request.
+     * @param cashOutAmount The amount of the related cash-out operation.
      */
-    event CreditStatusChanged(
+    event CreditRequestStatusChanged(
         bytes32 indexed txId,
-        address indexed borrower,
-        CreditStatus newStatus,
-        CreditStatus oldStatus,
-        uint256 loanId,
-        uint256 programId,
-        uint256 durationInPeriods,
-        uint256 loanAmount,
-        uint256 loanAddon
-    );
-
-    /**
-     * @dev Emitted when the status of an installment credit is changed.
-     * @param txId The unique identifier of the related cash-out operation.
-     * @param borrower The address of the borrower.
-     * @param newStatus The current status of the credit.
-     * @param oldStatus The previous status of the credit.
-     * @param firstInstallmentId The unique ID of the related first installment loan on the lending market or zero if not taken.
-     * @param programId The unique identifier of the lending program for the credit.
-     * @param lastDurationInPeriods The duration of the last installment in periods.
-     * @param totalBorrowAmount The total amount of all installments.
-     * @param totalAddonAmount The total addon amount of all installments.
-     * @param installmentCount The number of installments.
-     */
-    event InstallmentCreditStatusChanged(
-        bytes32 indexed txId,
-        address indexed borrower,
-        CreditStatus newStatus,
-        CreditStatus oldStatus,
-        uint256 firstInstallmentId,
-        uint256 programId,
-        uint256 lastDurationInPeriods,
-        uint256 totalBorrowAmount,
-        uint256 totalAddonAmount,
-        uint256 installmentCount
+        address indexed account,
+        uint256 indexed loanId,
+        CreditRequestStatus newStatus,
+        CreditRequestStatus oldStatus,
+        uint256 cashOutAmount
     );
 
     // ------------------ Functions ------------------------------- //
 
     /**
-     * @dev Initiates a credit.
-     *
-     * This function is expected to be called by a limited number of accounts.
-     *
-     * @param txId The unique identifier of the related cash-out operation.
-     * @param borrower The address of the borrower.
-     * @param programId The unique identifier of the lending program for the credit.
-     * @param durationInPeriods The duration of the credit in periods. The period length is defined outside.
-     * @param loanAmount The amount of the related loan.
-     * @param loanAddon The addon amount (extra charges or fees) of the related loan.
-     */
-    function initiateCredit(
-        bytes32 txId, // Tools: prevent Prettier one-liner
-        address borrower,
-        uint256 programId,
-        uint256 durationInPeriods,
-        uint256 loanAmount,
-        uint256 loanAddon
-    ) external;
-
-    /**
-     * @dev Initiates an installment credit.
-     *
-     * This function is expected to be called by a limited number of accounts.
-     *
-     * @param txId The unique identifier of the related cash-out operation.
-     * @param borrower The address of the borrower.
-     * @param programId The unique identifier of the lending program for the credit.
-     * @param durationsInPeriods The duration of each installment in periods.
-     * @param borrowAmounts The amounts of each installment.
-     * @param addonAmounts The addon amounts of each installment.
-     */
-    function initiateInstallmentCredit(
-        bytes32 txId,
-        address borrower,
-        uint256 programId,
-        uint256[] calldata durationsInPeriods,
-        uint256[] calldata borrowAmounts,
-        uint256[] calldata addonAmounts
-    ) external;
-
-    /**
-     * @dev Revokes a credit.
-     *
-     * This function is expected to be called by a limited number of accounts.
-     *
-     * @param txId The unique identifier of the related cash-out operation.
-     */
-    function revokeCredit(bytes32 txId) external;
-
-    /**
-     * @dev Revokes an installment credit.
-     *
-     * This function is expected to be called by a limited number of accounts.
-     *
-     * @param txId The unique identifier of the related cash-out operation.
-     */
-    function revokeInstallmentCredit(bytes32 txId) external;
-
-    /**
-     * @dev Returns a credit structure by its unique identifier.
-     * @param txId The unique identifier of the related cash-out operation.
-     * @return The credit structure.
-     */
-    function getCredit(bytes32 txId) external view returns (Credit memory);
-
-    /**
-     * @dev Returns an installment credit structure by its unique identifier.
-     * @param txId The unique identifier of the related cash-out operation.
-     * @return The installment credit structure.
-     */
-    function getInstallmentCredit(bytes32 txId) external view returns (InstallmentCredit memory);
-
-    /**
      * @dev Returns the state of this agent contract.
      */
-    function agentState() external view returns (AgentState memory);
+    function agentState() external view returns (AgentStateView memory);
 }
 
 /**
@@ -310,6 +198,8 @@ interface ICreditAgentConfiguration is ICreditAgentTypes {
      */
     function setLendingMarket(address newLendingMarket) external;
 
+    // ------------------ View functions -------------------------- //
+
     /**
      * @dev Returns the address of the currently configured cashier contract.
      */
@@ -331,10 +221,7 @@ interface ICreditAgentErrors is ICreditAgentTypes {
     error CreditAgent_AlreadyConfigured();
 
     /// @dev The zero borrower address has been passed as a function argument.
-    error CreditAgent_BorrowerAddressZero();
-
-    /// @dev Thrown if the provided new implementation address is not of a credit agent contract.
-    error CreditAgent_ImplementationAddressInvalid();
+    error CreditAgent_AccountAddressZero();
 
     /**
      * @dev The caller is not allowed to execute the hook function.
@@ -356,6 +243,20 @@ interface ICreditAgentErrors is ICreditAgentTypes {
      */
     error CreditAgent_CashOutParametersInappropriate(bytes32 txId);
 
+    /**
+     * @dev The call to revoke the loan failed.
+     * @param txId The off-chain transaction identifier of the operation.
+     * @param errorData The error data returned by the call.
+     */
+    error CreditAgent_LoanRevocationFailed(bytes32 txId, bytes errorData);
+
+    /**
+     * @dev The call to take the loan failed.
+     * @param txId The off-chain transaction identifier of the operation.
+     * @param errorData The error data returned by the call.
+     */
+    error CreditAgent_LoanTakingFailed(bytes32 txId, bytes errorData);
+
     /// @dev Configuring is prohibited due to at least one unprocessed credit exists or other conditions.
     error CreditAgent_ConfiguringProhibited();
 
@@ -367,43 +268,18 @@ interface ICreditAgentErrors is ICreditAgentTypes {
      * @param txId The off-chain transaction identifiers of the operation.
      * @param status The current status of the credit.
      */
-    error CreditAgent_CreditStatusInappropriate(bytes32 txId, CreditStatus status);
-
-    /// @dev The zero loan amount has been passed as a function argument.
-    error CreditAgent_LoanAmountZero();
-
-    /// @dev The zero loan duration has been passed as a function argument.
-    error CreditAgent_LoanDurationZero();
-
-    /// @dev The input arrays are empty or have different lengths.
-    error CreditAgent_InputArraysInvalid();
-
-    /// @dev The zero program ID has been passed as a function argument.
-    error CreditAgent_ProgramIdZero();
+    error CreditAgent_CreditRequestStatusInappropriate(bytes32 txId, CreditRequestStatus status);
 
     /// @dev The zero off-chain transaction identifier has been passed as a function argument.
     error CreditAgent_TxIdZero();
 
-    /// @dev The transaction identifier is already used.
-    error CreditAgent_TxIdAlreadyUsed();
-
     /**
-     * @dev The related cash-out operation has failed to be processed by the cashier hook.
-     * @param txId The off-chain transaction identifier of the operation.
+     * @dev The provided lending market contract is not a contract.
      */
-    error CreditAgent_FailedToProcessCashOutRequestBefore(bytes32 txId);
+    error CreditAgent_LendingMarketNotContract();
 
-    /**
-     * @dev The related cash-out operation has failed to be processed by the cashier hook.
-     * @param txId The off-chain transaction identifier of the operation.
-     */
-    error CreditAgent_FailedToProcessCashOutConfirmationAfter(bytes32 txId);
-
-    /**
-     * @dev The related cash-out operation has failed to be processed by the cashier hook.
-     * @param txId The off-chain transaction identifier of the operation.
-     */
-    error CreditAgent_FailedToProcessCashOutReversalAfter(bytes32 txId);
+    /// @dev The lending market contract is not compatible.
+    error CreditAgent_LendingMarketIncompatible();
 }
 
 /**
@@ -411,9 +287,4 @@ interface ICreditAgentErrors is ICreditAgentTypes {
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev The full interface of the credit agent contract.
  */
-interface ICreditAgent is ICreditAgentPrimary, ICreditAgentConfiguration, ICreditAgentErrors {
-    /**
-     * @dev Proves that the contract is the credit agent contract.
-     */
-    function proveCreditAgent() external pure;
-}
+interface ICreditAgent is ICreditAgentPrimary, ICreditAgentConfiguration, ICreditAgentErrors {}

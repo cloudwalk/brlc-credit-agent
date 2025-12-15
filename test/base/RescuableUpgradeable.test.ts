@@ -70,7 +70,7 @@ describe("Contract 'RescuableUpgradeable'", async () => {
     };
   }
 
-  describe("Function 'initialize()' and internal initializers", async () => {
+  describe("Function 'initialize()' and internal initializers", () => {
     it("The external initializer configures the contract as expected", async () => {
       const { rescuableMock } = await setUpFixture(deployRescuableMock);
 
@@ -103,7 +103,7 @@ describe("Contract 'RescuableUpgradeable'", async () => {
     });
   });
 
-  describe("Function 'rescueERC20()'", async () => {
+  describe("Function 'rescueERC20()'", () => {
     it("Executes as expected and emits the correct event", async () => {
       const { rescuableMock, tokenMock } = await setUpFixture(deployAndConfigureAllContracts);
 

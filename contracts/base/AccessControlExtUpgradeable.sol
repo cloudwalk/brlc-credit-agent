@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.28;
 
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 
 /**
  * @title AccessControlExtUpgradeable base contract
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Extends the OpenZeppelin's {AccessControlUpgradeable} contract by introducing new roles and
+ * @dev Extends the OpenZeppelin's {AccessControlEnumerableUpgradeable} contract by introducing new roles and
  *      adding functions for granting and revoking roles in batch.
  */
-abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
+abstract contract AccessControlExtUpgradeable is AccessControlEnumerableUpgradeable {
     // ------------------ Constants ------------------------------- //
 
     /// @dev The role of this contract owner.

@@ -47,7 +47,7 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
     return { pausableExtMock };
   }
 
-  describe("Function 'initialize()' and internal initializers", async () => {
+  describe("Function 'initialize()' and internal initializers", () => {
     it("The external initializer configures the contract as expected", async () => {
       const { pausableExtMock } = await setUpFixture(deployPausableExtMock);
 
@@ -83,7 +83,7 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
     });
   });
 
-  describe("Function 'pause()'", async () => {
+  describe("Function 'pause()'", () => {
     it("Executes successfully and emits the correct event", async () => {
       const { pausableExtMock } = await setUpFixture(deployAndConfigurePausableExtMock);
 
@@ -103,7 +103,7 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
     });
   });
 
-  describe("Function 'unpause()'", async () => {
+  describe("Function 'unpause()'", () => {
     it("Executes successfully and emits the correct event", async () => {
       const { pausableExtMock } = await setUpFixture(deployAndConfigurePausableExtMock);
       await proveTx(connect(pausableExtMock, pauser).pause());

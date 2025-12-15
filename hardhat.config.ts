@@ -20,12 +20,14 @@ function pkOrEmpty(pk: string | undefined) {
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.24",
+    version: "0.8.28",
     settings: {
+      evmVersion: "cancun",
       optimizer: {
         enabled: true,
         runs: Number(process.env.OPTIMIZER_RUNS ?? 1000),
       },
+      viaIR: true,
     },
   },
   networks: {
