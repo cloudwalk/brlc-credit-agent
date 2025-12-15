@@ -328,7 +328,7 @@ abstract contract CreditAgent is
         CreditRequestStatus oldStatus = _getCreditRequestStatus(creditRequest);
 
         if (oldStatus != CreditRequestStatus.Initiated && oldStatus != CreditRequestStatus.Expired) {
-            revert CreditAgent_CreditRequestStatusInappropriate(txId, creditRequest.status);
+            revert CreditAgent_CreditRequestStatusInappropriate(txId, oldStatus);
         }
 
         emit CreditRequestStatusChanged(
@@ -480,6 +480,8 @@ abstract contract CreditAgent is
             revert CreditAgent_LoanRevocationFailed(txId, result);
         }
 
+        creditRequest.status = CreditRequestStatus.Reversed;
+
         emit CreditRequestStatusChanged(
             txId,
             creditRequest.account,
@@ -488,8 +490,6 @@ abstract contract CreditAgent is
             oldStatus,
             creditRequest.cashOutAmount
         );
-
-        creditRequest.status = CreditRequestStatus.Reversed;
 
         $.agentState.pendingRequestCounter--;
     }
