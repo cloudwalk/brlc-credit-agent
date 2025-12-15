@@ -61,14 +61,14 @@ interface ICreditAgentTypes {
      *
      * Fields:
      *
-     * - status -------------- The status of the credit request, see {CreditRequestStatus}.
-     * - account ------------- The account of the related cash-out operation.
-     * - cashOutAmount ------- The amount of the related cash-out operation.
-     * - loanRevocationSelector -- The selector of the function in lending market contract to revoke the loan.
+     * - status ----------------- The status of the credit request, see {CreditRequestStatus}.
+     * - account ---------------- The account of the related cash-out operation.
+     * - cashOutAmount ---------- The amount of the related cash-out operation.
+     * - loanRevocationSelector - The selector of the function in lending market contract to revoke the loan.
      * - loanTakingSelector ----- The selector of the function in lending market contract to take the loan.
-     * - deadline ------------ The deadline of the credit request to become expired.
-     * - loanTakingData ------ The arguments to call the {loanTakingSelector} function.
-     * - loanId -------------- The unique ID of the related loan on the lending market or zero if not taken.
+     * - deadline --------------- The deadline of the credit request to become expired.
+     * - loanTakingData --------- The arguments to call the {loanTakingSelector} function.
+     * - loanId ----------------- The unique ID of the related loan on the lending market or zero if not taken.
      *
      * Notes:
      * - The loan revocation function must accept the loan ID as a single argument.
@@ -117,7 +117,7 @@ interface ICreditAgentTypes {
      *
      * Fields:
      *
-     * - configured -------------- True if the agent is properly configured.
+     * - configured --------------- True if the agent is properly configured.
      * - initiatedRequestCounter -- The counter of initiated credit requests.
      * - pendingRequestCounter ---- The counter of pending credit requests.
      */
